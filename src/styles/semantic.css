@@ -1,0 +1,144 @@
+/* ============================================================
+   TOKENS SEMANTICOS — tema claro (padrao) e escuro
+   Referencie SEMPRE estes na UI, nunca as escalas cruas.
+   O tema escuro liga com <html data-theme="dark">.
+   ============================================================ */
+
+:root,
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  /* Superficies */
+  --bg: var(--surface-lt); /* pagina */
+  --surface: var(--white); /* cards, header */
+  --surface-2: #eef4f9; /* elevacao sutil */
+  --surface-brand: var(--violet-500); /* bloco solido da marca */
+  --surface-soft: var(--violet-100); /* secao tingida */
+
+  /* Menu lateral — versao do Figma: lilas claro com texto escuro.
+     (O Chamada.dc.html usava gradiente roxo com texto branco; descartado.) */
+  --sidebar-bg: #cbbfe7;
+  --sidebar-text: var(--violet-950);
+  --sidebar-text-active: var(--violet-500);
+  --sidebar-item-active: var(--white);
+
+  /* Texto */
+  --text: var(--ink);
+  --text-body: var(--body);
+  --text-muted: var(--muted);
+  --text-brand: var(--violet-700);
+  --text-on-brand: var(--white);
+  --text-display: var(--violet-500);
+
+  /* Linhas e foco */
+  --border: var(--line);
+  --border-strong: var(--navy-200);
+  --focus-ring: var(--violet-500);
+
+  /* Interativo */
+  --primary: var(--violet-500);
+  --primary-hover: var(--violet-600);
+  --primary-active: var(--violet-700);
+  --accent: var(--cyan-500);
+
+  /* Elevacao */
+  --shadow-card: 0 4px 4px rgba(0, 0, 0, 0.04);
+  --shadow-raise: 2px 4px 4px 1px rgba(0, 0, 0, 0.25);
+  --shadow-header: 0 3px 34.8px rgba(76, 67, 83, 0.12);
+
+  --radius-sm: 8px;
+  --radius: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg: var(--coal-950);
+  --surface: var(--coal-800);
+  --surface-2: var(--coal-700);
+  --surface-brand: var(--violet-700);
+  --surface-soft: #241a33;
+
+  /* No escuro o menu vira superficie escura com acento lilas — manter o
+     lilas claro do tema claro daria contraste insuficiente com o texto. */
+  --sidebar-bg: #1e1729;
+  --sidebar-text: var(--grey-200);
+  --sidebar-text-active: var(--lilac-100);
+  --sidebar-item-active: rgba(255, 255, 255, 0.1);
+
+  --text: var(--white);
+  --text-body: var(--grey-200);
+  --text-muted: #a99fb3;
+  --text-brand: #c79bf5;
+  --text-on-brand: var(--white);
+  --text-display: #b57bff;
+
+  --border: rgba(255, 255, 255, 0.1);
+  --border-strong: rgba(255, 255, 255, 0.22);
+  --focus-ring: #b57bff;
+
+  --primary: var(--violet-400); /* violet-500 nao passa contraste no escuro */
+  --primary-hover: #b57bff;
+  --primary-active: var(--violet-500);
+  --accent: var(--cyan-500);
+
+  --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.45);
+  --shadow-raise: 2px 4px 16px rgba(0, 0, 0, 0.55);
+  --shadow-header: 0 3px 24px rgba(0, 0, 0, 0.6);
+
+  /* Fundos de estado precisam ser escuros no tema escuro; os claros
+     (--ok-bg etc.) ficariam ofuscantes sobre a superficie escura. */
+  --ok-bg: rgba(26, 157, 92, 0.18);
+  --ok-fg: #4ade80;
+  --warn-bg: rgba(242, 169, 59, 0.18);
+  --warn-fg: #fbbf24;
+  --danger-bg: rgba(224, 72, 63, 0.18);
+  --danger-fg: #f87171;
+}
+
+/* Respeita a preferencia do sistema quando o usuario ainda nao escolheu
+   um tema manualmente (sem data-theme no <html>). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    color-scheme: dark;
+
+    --bg: var(--coal-950);
+    --surface: var(--coal-800);
+    --surface-2: var(--coal-700);
+    --surface-brand: var(--violet-700);
+    --surface-soft: #241a33;
+
+    --sidebar-bg: #1e1729;
+    --sidebar-text: var(--grey-200);
+    --sidebar-text-active: var(--lilac-100);
+    --sidebar-item-active: rgba(255, 255, 255, 0.1);
+
+    --text: var(--white);
+    --text-body: var(--grey-200);
+    --text-muted: #a99fb3;
+    --text-brand: #c79bf5;
+    --text-on-brand: var(--white);
+    --text-display: #b57bff;
+
+    --border: rgba(255, 255, 255, 0.1);
+    --border-strong: rgba(255, 255, 255, 0.22);
+    --focus-ring: #b57bff;
+
+    --primary: var(--violet-400);
+    --primary-hover: #b57bff;
+    --primary-active: var(--violet-500);
+
+    --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.45);
+    --shadow-raise: 2px 4px 16px rgba(0, 0, 0, 0.55);
+    --shadow-header: 0 3px 24px rgba(0, 0, 0, 0.6);
+
+    --ok-bg: rgba(26, 157, 92, 0.18);
+    --ok-fg: #4ade80;
+    --warn-bg: rgba(242, 169, 59, 0.18);
+    --warn-fg: #fbbf24;
+    --danger-bg: rgba(224, 72, 63, 0.18);
+    --danger-fg: #f87171;
+  }
+}

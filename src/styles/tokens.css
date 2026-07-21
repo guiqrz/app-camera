@@ -1,0 +1,78 @@
+/* ============================================================
+   STRIX / CUPCAM — TOKENS DE MARCA (escalas cruas)
+   Transcrito do design system "Strix / Cupcam Design System".
+   Tres familias: Violeta, Ciano, Azul escuro — mais neutros.
+   O gradiente do logo vai de Violeta ate Ciano.
+
+   NUNCA referencie estas variaveis direto na UI. Use os tokens
+   semanticos de semantic.css, que respeitam tema claro/escuro.
+   ============================================================ */
+
+:root {
+  /* ---- Violeta (marca primaria) ---- */
+  --violet-50: #f4eefb;
+  --violet-100: #e9e0f3; /* claro :hover */
+  --violet-200: #d1bfe5; /* claro :active */
+  --violet-400: #9d4edd; /* acento suave / gradientes */
+  --violet-500: #7b2cbf; /* NORMAL — botoes primarios, links */
+  --violet-600: #6a30ac; /* normal :hover */
+  --violet-700: #6100a4; /* profundo — eyebrows, enfase */
+  --violet-800: #502481; /* escuro */
+  --violet-900: #2b0052; /* mais profundo — titulos hero */
+  --violet-950: #25113c;
+
+  /* ---- Ciano (marca secundaria) ---- */
+  --cyan-50: #e6f9fb;
+  --cyan-100: #d9f6f9;
+  --cyan-200: #b0ecf3;
+  --cyan-500: #00c1d7; /* NORMAL */
+  --cyan-600: #00aec2;
+  --cyan-700: #009aac;
+  --cyan-800: #0091a1;
+  --cyan-950: #00444b;
+
+  /* ---- Azul escuro (texto profundo / superficies escuras) ---- */
+  --navy-100: #d9dde5;
+  --navy-200: #b1b9ca;
+  --navy-500: #02153d;
+  --navy-700: #02163e;
+  --navy-900: #010a1d;
+
+  /* ---- Neutros ---- */
+  --white: #ffffff;
+  --ink: #171c1f; /* titulos no claro */
+  --body: #4c4353; /* texto corrido */
+  --muted: #8e98a8; /* legendas / meta */
+  --line: #e9ebf8; /* bordas finas */
+  --surface-lt: #f5fafd; /* fundo da pagina, claro */
+
+  /* ---- Cinzas do tema escuro ---- */
+  --coal-950: #130f19; /* fundo da pagina, escuro */
+  --coal-800: #1c1822; /* superficie elevada */
+  --coal-700: #3c3541; /* card no escuro */
+  --coal-500: #4c4353;
+  --lilac-100: #f2dfff; /* violeta claro sobre escuro */
+  --grey-200: #e1e1e1; /* texto suave no escuro */
+
+  /* ---- Gradientes da marca ---- */
+  --grad-brand: linear-gradient(
+    90deg,
+    #7b2cbf 0%,
+    #6100a4 30%,
+    #1e6fb8 70%,
+    #00c1d7 100%
+  );
+
+  /* ---- Cores de estado (do Chamada.dc.html) ----
+     Verde/amarelo/vermelho das faixas de engajamento e presenca.
+     Fixas nos dois temas: significado semaforico nao muda com o tema. */
+  --ok: #1a9d5c;
+  --ok-bg: #e6f7ee;
+  --ok-fg: #1a9d5c;
+  --warn: #f2a93b;
+  --warn-bg: #fdf4e3;
+  --warn-fg: #a9741c;
+  --danger: #e0483f;
+  --danger-bg: #fdeceb;
+  --danger-fg: #c53a32;
+}
