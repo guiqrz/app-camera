@@ -199,6 +199,73 @@ export function IconLua({ size = 18, className }: IconProps) {
   );
 }
 
+export function IconTendencia({ size = 18, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <path
+        d="M3 17l6-6 4 4 8-8"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M15 7h6v6" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function IconRaio({ size = 18, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <path
+        d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function IconQueda({ size = 18, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <path
+        d="M3 7l6 6 4-4 8 8"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M15 17h6v-6" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function IconRelogio({ size = 18, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M12 7v5l3.5 2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function IconCheck({ size = 18, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
+      <path
+        d="M8 12l3 3 5-6"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function IconMenu({ size = 22, className }: IconProps) {
   return (
     <svg {...base(size, className)}>
