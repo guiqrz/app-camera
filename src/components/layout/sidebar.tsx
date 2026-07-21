@@ -25,7 +25,7 @@ type ItemMenu = {
 const ITENS: ItemMenu[] = [
   { rotulo: "Minhas Aulas", href: "/aulas", Icone: IconAulas },
   { rotulo: "Chamada", href: "/chamada", Icone: IconChamada, emBreve: true },
-  { rotulo: "Relatórios", href: "/relatorios", Icone: IconRelatorios, emBreve: true },
+  { rotulo: "Relatórios", href: "/relatorios", Icone: IconRelatorios },
   { rotulo: "Inteligência Artificial", href: "/ia", Icone: IconIA, emBreve: true },
   { rotulo: "Administração", href: "/administracao", Icone: IconAdministracao, emBreve: true },
   { rotulo: "Configurações", href: "/configuracoes", Icone: IconConfiguracoes, emBreve: true },

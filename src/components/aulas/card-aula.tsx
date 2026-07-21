@@ -93,7 +93,7 @@ export function CardAula({ aula, nomeTurma }: CardAulaProps) {
         </p>
 
         <Link
-          href={`/relatorios/${aula.sessao_id}`}
+          href={`/relatorios/sessao/${aula.sessao_id}`}
           className="text-text-brand border-border-default hover:bg-surface-2 mt-auto flex w-fit items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors"
         >
           Ver análise

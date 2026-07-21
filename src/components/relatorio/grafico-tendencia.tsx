@@ -41,7 +41,7 @@ export function GraficoTendencia({ serie }: GraficoTendenciaProps) {
           return (
             <Link
               key={ponto.sessaoId}
-              href={`/relatorios/${ponto.sessaoId}`}
+              href={`/relatorios/sessao/${ponto.sessaoId}`}
               className="group flex h-full min-w-0 flex-1 flex-col justify-end"
               title={`${formatarDataCurta(ponto.data)}: ${ponto.engajamento}% — ver relatório`}
             >

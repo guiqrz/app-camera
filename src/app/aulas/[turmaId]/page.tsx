@@ -6,12 +6,14 @@ import { AppShell } from "@/components/layout/app-shell";
 import { ApiError, buscarAulasDaTurma, listarTurmas } from "@/lib/api";
 
 type Props = {
-  // No App Router os parametros de rota chegam como Promise.
+  // No App Router os parametros de rota e de busca chegam como Promise.
   params: Promise<{ turmaId: string }>;
+  searchParams: Promise<{ data?: string }>;
 };
 
-export default async function AulasDaTurmaPage({ params }: Props) {
+export default async function AulasDaTurmaPage({ params, searchParams }: Props) {
   const { turmaId } = await params;
+  const { data: dataInicial } = await searchParams;
   const id = Number(turmaId);
 
   // Endereco com id nao numerico (/aulas/abc) e' 404, nao erro de servidor.
@@ -49,7 +51,11 @@ export default async function AulasDaTurmaPage({ params }: Props) {
           <SeletorTurma turmas={turmas} turmaAtualId={id} />
         </div>
 
-        <ListaAulas aulas={aulas.aulas} nomeTurma={aulas.turma.nome} />
+        <ListaAulas
+          aulas={aulas.aulas}
+          nomeTurma={aulas.turma.nome}
+          dataInicial={dataInicial}
+        />
       </div>
     </AppShell>
   );

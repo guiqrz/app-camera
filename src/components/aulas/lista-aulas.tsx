@@ -11,6 +11,8 @@ import { CardAula } from "./card-aula";
 type ListaAulasProps = {
   aulas: AulaCard[];
   nomeTurma: string;
+  /** Data inicial do filtro, vinda de ?data= (ex.: ao chegar do Relatorio). */
+  dataInicial?: string;
 };
 
 type FiltroStatus = "todos" | StatusEngajamento;
@@ -22,9 +24,9 @@ type FiltroStatus = "todos" | StatusEngajamento;
  * da turma de uma vez, entao nao ha ida a rede por digito nem paginacao a
  * fazer. Se o volume crescer muito, isso migra para a API.
  */
-export function ListaAulas({ aulas, nomeTurma }: ListaAulasProps) {
+export function ListaAulas({ aulas, nomeTurma, dataInicial = "" }: ListaAulasProps) {
   const [busca, setBusca] = useState("");
-  const [data, setData] = useState("");
+  const [data, setData] = useState(dataInicial);
   const [status, setStatus] = useState<FiltroStatus>("todos");
 
   const aulasFiltradas = useMemo(() => {
