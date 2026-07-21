@@ -66,8 +66,11 @@ export function VistaRelatorio({ relatorio }: VistaRelatorioProps) {
         )}
       </div>
 
-      {/* Cinco cartoes de estatistica */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      {/* Cinco cartoes numa linha so', como no Figma. Em telas onde os cinco
+          nao cabem sem espremer, a fileira rola horizontalmente (cada card
+          tem largura minima); no celular estreito eles empilham. O
+          [&>*]:min-w garante que os cards nao encolham demais na rolagem. */}
+      <div className="grid grid-cols-1 gap-4 min-[560px]:auto-cols-fr min-[560px]:grid-flow-col min-[560px]:overflow-x-auto min-[560px]:[&>*]:min-w-[190px] xl:min-w-0 xl:[&>*]:min-w-0">
         <StatCard
           rotulo="Engajamento médio"
           valor={engajamento ?? "Sem dados"}
