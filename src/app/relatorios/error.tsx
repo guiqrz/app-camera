@@ -4,7 +4,7 @@ import { useEffect } from "react";
 
 import { EstadoErroApi } from "@/components/layout/estado-erro-api";
 
-export default function ErroAulas({
+export default function ErroRelatorio({
   error,
   reset,
 }: {
@@ -12,7 +12,7 @@ export default function ErroAulas({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("[cupcam] falha ao carregar aulas:", error);
+    console.error("[cupcam] falha ao carregar relatório:", error);
   }, [error]);
 
   return <EstadoErroApi error={error} reset={reset} />;
