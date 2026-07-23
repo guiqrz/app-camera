@@ -49,6 +49,19 @@ no banco e não deve passar a existir.
 - `null` da API significa "sem dado" — mostre isso na tela. Nunca troque por
   `0`, que significaria "medimos e deu zero" (ex.: turma 100% desatenta).
 
+## 📦 Commits
+
+- **Commit a cada ~25% de progresso da tela, DURANTE a construção** — não
+  espere a tela ficar pronta para commitar de uma vez. Essa convenção já é a
+  autorização: não precisa pedir ok de novo a cada commit.
+- Mensagem simples no formato `Tela: descricao curta`, sem acentos.
+  Ex.: `Chamada: lista de alunos com marcacao otimista e resumo ao vivo`.
+- **Sem coautor/colaborador** na mensagem (nada de `Co-Authored-By`), e sem
+  citar porcentagem.
+- `push` só com ordem explícita do usuário.
+- Fora dessa convenção, nenhum comando git que altere o repositório sem ordem
+  explícita (leitura — `status`, `log`, `diff` — é sempre livre).
+
 ## ✅ Antes de considerar pronto
 
 ```bash
