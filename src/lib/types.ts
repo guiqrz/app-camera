@@ -193,6 +193,8 @@ export type AlunoAdmin = {
   ra: string;
   nome: string;
   turma_id: number;
+  /** true se o aluno tem foto/embedding cadastrado (a camera consegue reconhece-lo). */
+  tem_reconhecimento: boolean;
 };
 
 /** GET /admin/visao — visao completa que alimenta a tela de Administracao. */

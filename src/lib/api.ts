@@ -77,7 +77,7 @@ function lerConfiguracao(): { baseUrl: string; apiKey: string } {
 type OpcoesRequisicao = {
   /** Segundos ate revalidar o cache. 0 desliga o cache (dado ao vivo). */
   revalidate?: number;
-  method?: "GET" | "POST" | "DELETE";
+  method?: "GET" | "POST" | "PUT" | "DELETE";
   /** FormData vai crua (multipart); qualquer outra coisa vira JSON. */
   body?: unknown;
 };
@@ -89,8 +89,8 @@ async function requisitar<T>(
   const { baseUrl, apiKey } = lerConfiguracao();
 
   const eFormData = body instanceof FormData;
-  // Escrita (POST/DELETE) nunca e' cacheada; leitura revalida no intervalo pedido.
-  const eEscrita = method === "POST" || method === "DELETE";
+  // Escrita (POST/PUT/DELETE) nunca e' cacheada; leitura revalida no intervalo pedido.
+  const eEscrita = method === "POST" || method === "PUT" || method === "DELETE";
 
   let resposta: Response;
   try {
@@ -264,4 +264,34 @@ export function excluirAluno(
     `/admin/alunos/${encodeURIComponent(ra)}${query}`,
     { method: "DELETE" },
   );
+}
+
+/**
+ * Edita um aluno (multipart: nome, turma_id, opcional foto, opcional
+ * remover_foto). Repassa o FormData cru — quem monta os campos e' a rota PUT em
+ * app/api/admin/alunos/[ra], que recebe o multipart do navegador e encaminha.
+ */
+export function editarAluno(
+  ra: string,
+  form: FormData,
+): Promise<{ ra: string; nome: string; turma_id: number }> {
+  return requisitar<{ ra: string; nome: string; turma_id: number }>(
+    `/admin/alunos/${encodeURIComponent(ra)}`,
+    { method: "PUT", body: form },
+  );
+}
+
+/** Edita todos os campos de uma turma. A API recusa com 409 em conflito de horario. */
+export function editarTurma(id: number, dados: NovaTurma): Promise<{ id: number }> {
+  return requisitar<{ id: number }>(`/admin/turmas/${id}`, {
+    method: "PUT",
+    body: dados,
+  });
+}
+
+/** Exclui uma turma. A API recusa com 409 se ela ainda tiver alunos. */
+export function excluirTurma(id: number): Promise<{ id: number; nome: string }> {
+  return requisitar<{ id: number; nome: string }>(`/admin/turmas/${id}`, {
+    method: "DELETE",
+  });
 }
