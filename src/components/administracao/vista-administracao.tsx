@@ -2,41 +2,47 @@
 
 import { useCallback, useMemo, useState } from "react";
 
+import { ModalAluno } from "@/components/administracao/modal-aluno";
 import { ModalConfirmarExclusao } from "@/components/administracao/modal-confirmar-exclusao";
-import { ModalNovaTurma } from "@/components/administracao/modal-nova-turma";
-import { ModalNovoAluno } from "@/components/administracao/modal-novo-aluno";
+import { ModalConfirmarExclusaoTurma } from "@/components/administracao/modal-confirmar-exclusao-turma";
+import { ModalTurma } from "@/components/administracao/modal-turma";
 import { PainelAlunos } from "@/components/administracao/painel-alunos";
 import { PainelTurmas } from "@/components/administracao/painel-turmas";
 import { IconPessoas, IconTendencia, IconTurma } from "@/components/ui/icons";
 import { StatCard } from "@/components/ui/stat-card";
-import type { AlunoAdmin, NovaTurma, VisaoAdmin } from "@/lib/types";
+import type { AlunoAdmin, NovaTurma, TurmaAdmin, VisaoAdmin } from "@/lib/types";
 
 type VistaAdministracaoProps = {
   /** Retrato inicial vindo do servidor no carregamento da pagina. */
   visaoInicial: VisaoAdmin;
 };
 
+/** Estado dos modais de aluno e turma — modo mais o item sendo editado. */
+type EstadoModalAluno = { modo: "criar" | "editar"; aluno?: AlunoAdmin };
+type EstadoModalTurma = { modo: "criar" | "editar"; turma?: TurmaAdmin };
+
 /**
  * Vista interativa da tela "Administracao".
  *
- * "Nova turma" (B3) e "Novo aluno" (B4) abrem modal, submetem e recarregam a
- * visao no sucesso. B5 fecha o CRUD: mudar turma e' direto (sem modal, so'
- * o select da linha) e excluir usa o ModalConfirmarExclusao (2 estagios,
- * por causa do 409 de historico). Os filhos (PainelTurmas/PainelAlunos) sao
- * "burros": so' recebem dados e callbacks, decisao fica toda aqui.
+ * CRUD completo de turmas e alunos. Turma e aluno usam o mesmo modal pra criar
+ * e editar (o `modo` decide POST vs. PUT). Exclusao usa modais de confirmacao
+ * com 409 tratado: aluno com historico de presenca entra num 2o estagio;
+ * turma com alunos entra num estado bloqueado. Os filhos
+ * (PainelTurmas/PainelAlunos) sao "burros": so' recebem dados e callbacks, a
+ * decisao fica toda aqui.
  */
 export function VistaAdministracao({ visaoInicial }: VistaAdministracaoProps) {
   const [visao, setVisao] = useState<VisaoAdmin>(visaoInicial);
   const [selecionadaId, setSelecionadaId] = useState<number | null>(
     visaoInicial.turmas[0]?.id ?? null,
   );
-  const [modalNovaTurmaAberto, setModalNovaTurmaAberto] = useState(false);
-  const [modalNovoAlunoAberto, setModalNovoAlunoAberto] = useState(false);
+  const [modalAluno, setModalAluno] = useState<EstadoModalAluno | null>(null);
+  const [modalTurma, setModalTurma] = useState<EstadoModalTurma | null>(null);
   const [alunoParaExcluir, setAlunoParaExcluir] = useState<AlunoAdmin | null>(null);
-  // Aviso quando a mutacao (POST/DELETE) deu certo mas a recarga da visao
+  const [turmaParaExcluir, setTurmaParaExcluir] = useState<TurmaAdmin | null>(null);
+  // Aviso quando a mutacao (POST/PUT/DELETE) deu certo mas a recarga da visao
   // (GET) falhou depois — sem isso o modal fecha "com sucesso" e a lista fica
-  // desatualizada; ex.: usuario acha que a turma nao foi criada e recria,
-  // gerando duplicata (a API nao tem DELETE de turma pra desfazer isso).
+  // desatualizada, e o usuario pode achar que a acao nao valeu e repeti-la.
   const [avisoRecarga, setAvisoRecarga] = useState<string | null>(null);
 
   /** Busca o retrato mais recente da API e substitui o estado local. */
@@ -85,90 +91,91 @@ export function VistaAdministracao({ visaoInicial }: VistaAdministracaoProps) {
       ? Math.round(visao.totais.alunos / visao.totais.turmas)
       : null;
 
-  /* --- Nova turma: primeira mutacao real da tela --- */
-  const aoNovaTurma = useCallback(() => {
-    setModalNovaTurmaAberto(true);
-  }, []);
+  /* --- Turma: criar/editar pelo mesmo modal --- */
+  const aoNovaTurma = useCallback(() => setModalTurma({ modo: "criar" }), []);
+  const aoEditarTurma = useCallback(
+    (turma: TurmaAdmin) => setModalTurma({ modo: "editar", turma }),
+    [],
+  );
 
-  const aoSalvarNovaTurma = useCallback(
+  const aoSalvarTurma = useCallback(
     async (dados: NovaTurma) => {
-      const resposta = await fetch("/api/admin/turmas", {
-        method: "POST",
+      if (!modalTurma) return;
+      const editando = modalTurma.modo === "editar";
+      const url = editando
+        ? `/api/admin/turmas/${modalTurma.turma!.id}`
+        : "/api/admin/turmas";
+
+      const resposta = await fetch(url, {
+        method: editando ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(dados),
       });
 
       if (!resposta.ok) {
-        // Shape de erro da rota (src/app/api/admin/turmas/route.ts):
-        // {erro, detalhe?}. `detalhe` e' o corpo cru repassado do FastAPI —
-        // vem como {detail: "mensagem"} (ValueError vira HTTPException com
-        // detail=str(erro) em cupcam/web/api.py), nao como string direto.
-        // Prioriza a mensagem de negocio (ex.: horario invalido) quando existe.
+        // Shape de erro das rotas de turma: {erro, detalhe?}. `detalhe` e' o
+        // corpo cru do FastAPI. No 409 de conflito vem {detail: {nome}}; no 422
+        // de validacao vem {detail: "mensagem"}. Prioriza a mensagem util.
         const corpo = (await resposta.json().catch(() => null)) as
-          | { erro?: string; detalhe?: { detail?: string } }
+          | { erro?: string; detalhe?: { detail?: string | { nome?: string } } }
           | null;
-        const mensagem = corpo?.detalhe?.detail ?? corpo?.erro ?? "Não foi possível criar a turma.";
+        const detail = corpo?.detalhe?.detail;
+        if (resposta.status === 409 && typeof detail === "object" && detail?.nome) {
+          throw new Error(`Conflito de horário com a turma "${detail.nome}".`);
+        }
+        const mensagem =
+          (typeof detail === "string" ? detail : undefined) ??
+          corpo?.erro ??
+          `Não foi possível ${editando ? "salvar" : "criar"} a turma.`;
         throw new Error(mensagem);
       }
 
-      setModalNovaTurmaAberto(false);
+      setModalTurma(null);
       await recarregar();
     },
-    [recarregar],
+    [modalTurma, recarregar],
   );
 
-  /* --- Novo aluno: mesma forma da Nova turma, com foto (multipart) --- */
-  const aoNovoAluno = useCallback(() => {
-    setModalNovoAlunoAberto(true);
-  }, []);
+  /* --- Aluno: criar/editar pelo mesmo modal (multipart) --- */
+  const aoNovoAluno = useCallback(() => setModalAluno({ modo: "criar" }), []);
+  const aoEditar = useCallback(
+    (aluno: AlunoAdmin) => setModalAluno({ modo: "editar", aluno }),
+    [],
+  );
 
-  const aoSalvarNovoAluno = useCallback(
+  const aoSalvarAluno = useCallback(
     async (form: FormData) => {
-      const resposta = await fetch("/api/admin/alunos", {
-        method: "POST",
+      if (!modalAluno) return;
+      const editando = modalAluno.modo === "editar";
+      const url = editando
+        ? `/api/admin/alunos/${encodeURIComponent(modalAluno.aluno!.ra)}`
+        : "/api/admin/alunos";
+
+      const resposta = await fetch(url, {
+        method: editando ? "PUT" : "POST",
         body: form,
       });
 
       if (!resposta.ok) {
-        // Mesma cadeia de erro da rota de turma (src/app/api/admin/alunos/route.ts):
-        // {erro, detalhe?}. `detalhe` e' {detail: string} do FastAPI — 422 cobre
+        // {erro, detalhe?}: `detalhe` e' {detail: string} do FastAPI — 422 cobre
         // sem rosto, 2+ rostos, foto ilegivel, tipo/tamanho invalido.
         const corpo = (await resposta.json().catch(() => null)) as
           | { erro?: string; detalhe?: { detail?: string } }
           | null;
         const mensagem =
-          corpo?.detalhe?.detail ?? corpo?.erro ?? "Não foi possível cadastrar o aluno.";
+          corpo?.detalhe?.detail ??
+          corpo?.erro ??
+          `Não foi possível ${editando ? "salvar" : "cadastrar"} o aluno.`;
         throw new Error(mensagem);
       }
 
-      setModalNovoAlunoAberto(false);
+      setModalAluno(null);
       await recarregar();
     },
-    [recarregar],
+    [modalAluno, recarregar],
   );
 
-  /* --- Mudar turma: select da linha dispara direto, sem confirmacao --- */
-  const aoMudarTurma = useCallback(
-    async (ra: string, turmaId: number) => {
-      const resposta = await fetch(`/api/admin/alunos/${encodeURIComponent(ra)}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ turma_id: turmaId }),
-      });
-
-      if (!resposta.ok) {
-        // Rota so' devolve {erro} pra POST (src/app/api/admin/alunos/[ra]/route.ts
-        // nao anexa `detalhe` nesse caminho, so' no DELETE 409).
-        const corpo = (await resposta.json().catch(() => null)) as { erro?: string } | null;
-        throw new Error(corpo?.erro ?? "Não foi possível mudar o aluno de turma.");
-      }
-
-      await recarregar();
-    },
-    [recarregar],
-  );
-
-  /* --- Excluir aluno: abre o modal de 2 estagios --- */
+  /* --- Excluir aluno: modal de 2 estagios (409 = historico) --- */
   const aoExcluir = useCallback((aluno: AlunoAdmin) => {
     setAlunoParaExcluir(aluno);
   }, []);
@@ -183,11 +190,8 @@ export function VistaAdministracao({ visaoInicial }: VistaAdministracaoProps) {
       );
 
       if (!resposta.ok) {
-        // Shape da rota (src/app/api/admin/alunos/[ra]/route.ts): {erro, detalhe?}.
-        // No 409 (historico de presenca), `detalhe` e' o corpo cru repassado do
-        // FastAPI: {detail: {nome, total_registros}} (confirmado em cupcam/web/api.py
-        // — a excecao HistoricoExistente vira HTTPException(detail={...})).
-        // O modal usa esse formato pra decidir se entra no estagio 2.
+        // No 409 (historico de presenca), `detalhe` e' {detail: {nome,
+        // total_registros}}. O modal usa esse formato pra decidir o estagio 2.
         const corpo = (await resposta.json().catch(() => null)) as
           | { erro?: string; detalhe?: { detail?: { nome?: string; total_registros?: number } } }
           | null;
@@ -211,6 +215,43 @@ export function VistaAdministracao({ visaoInicial }: VistaAdministracaoProps) {
     },
     [alunoParaExcluir, recarregar],
   );
+
+  /* --- Excluir turma: modal com estado bloqueado (409 = turma com alunos) --- */
+  const aoExcluirTurma = useCallback((turma: TurmaAdmin) => {
+    setTurmaParaExcluir(turma);
+  }, []);
+
+  const aoConfirmarExclusaoTurma = useCallback(async () => {
+    if (!turmaParaExcluir) return;
+
+    const resposta = await fetch(`/api/admin/turmas/${turmaParaExcluir.id}`, {
+      method: "DELETE",
+    });
+
+    if (!resposta.ok) {
+      // No 409 (turma com alunos), `detalhe` e' {detail: {nome, total_alunos}}.
+      // O modal usa esse formato pra entrar no estado bloqueado.
+      const corpo = (await resposta.json().catch(() => null)) as
+        | { erro?: string; detalhe?: { detail?: { nome?: string; total_alunos?: number } } }
+        | null;
+
+      if (resposta.status === 409 && corpo?.detalhe?.detail) {
+        const erro409 = new Error(corpo.erro ?? "A turma tem alunos matriculados.") as Error & {
+          turmaComAlunos?: { nome: string; total_alunos: number };
+        };
+        const { nome, total_alunos } = corpo.detalhe.detail;
+        if (typeof nome === "string" && typeof total_alunos === "number") {
+          erro409.turmaComAlunos = { nome, total_alunos };
+        }
+        throw erro409;
+      }
+
+      throw new Error(corpo?.erro ?? "Não foi possível excluir a turma.");
+    }
+
+    setTurmaParaExcluir(null);
+    await recarregar();
+  }, [turmaParaExcluir, recarregar]);
 
   return (
     <div className="flex flex-col gap-7">
@@ -279,29 +320,34 @@ export function VistaAdministracao({ visaoInicial }: VistaAdministracaoProps) {
           selecionadaId={selecionadaId}
           aoSelecionar={setSelecionadaId}
           aoNovaTurma={aoNovaTurma}
+          aoEditarTurma={aoEditarTurma}
+          aoExcluirTurma={aoExcluirTurma}
         />
         <PainelAlunos
           turma={turmaSelecionada}
           alunos={alunosDaTurma}
-          turmas={visao.turmas}
           aoNovoAluno={aoNovoAluno}
-          aoMudarTurma={aoMudarTurma}
+          aoEditar={aoEditar}
           aoExcluir={aoExcluir}
         />
       </div>
 
-      <ModalNovaTurma
-        aberto={modalNovaTurmaAberto}
-        aoFechar={() => setModalNovaTurmaAberto(false)}
-        aoSalvar={aoSalvarNovaTurma}
+      <ModalTurma
+        aberto={modalTurma !== null}
+        modo={modalTurma?.modo ?? "criar"}
+        turma={modalTurma?.turma ?? null}
+        aoFechar={() => setModalTurma(null)}
+        aoSalvar={aoSalvarTurma}
       />
 
-      <ModalNovoAluno
-        aberto={modalNovoAlunoAberto}
+      <ModalAluno
+        aberto={modalAluno !== null}
+        modo={modalAluno?.modo ?? "criar"}
         turmas={visao.turmas}
         turmaInicialId={turmaSelecionada?.id ?? null}
-        aoFechar={() => setModalNovoAlunoAberto(false)}
-        aoSalvar={aoSalvarNovoAluno}
+        aluno={modalAluno?.aluno ?? null}
+        aoFechar={() => setModalAluno(null)}
+        aoSalvar={aoSalvarAluno}
       />
 
       <ModalConfirmarExclusao
@@ -309,6 +355,13 @@ export function VistaAdministracao({ visaoInicial }: VistaAdministracaoProps) {
         aberto={alunoParaExcluir !== null}
         aoFechar={() => setAlunoParaExcluir(null)}
         aoConfirmar={aoConfirmarExclusao}
+      />
+
+      <ModalConfirmarExclusaoTurma
+        turma={turmaParaExcluir}
+        aberto={turmaParaExcluir !== null}
+        aoFechar={() => setTurmaParaExcluir(null)}
+        aoConfirmar={aoConfirmarExclusaoTurma}
       />
     </div>
   );

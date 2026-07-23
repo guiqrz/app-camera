@@ -1,27 +1,31 @@
 "use client";
 
-import { IconMais, IconTurma } from "@/components/ui/icons";
+import { IconLapis, IconLixeira, IconMais, IconTurma } from "@/components/ui/icons";
 import type { TurmaAdmin } from "@/lib/types";
 
 type PainelTurmasProps = {
   turmas: TurmaAdmin[];
   selecionadaId: number | null;
   aoSelecionar: (turmaId: number) => void;
-  /** Sem acao real nesta task — o botao renderiza inerte. */
   aoNovaTurma: () => void;
+  aoEditarTurma: (turma: TurmaAdmin) => void;
+  aoExcluirTurma: (turma: TurmaAdmin) => void;
 };
 
 /**
  * Lista de turmas cadastradas, a coluna esquerda da tela Administracao.
  *
  * Componente burro: so' recebe dados e callbacks da vista, nao busca nem
- * grava nada sozinho.
+ * grava nada sozinho. Cada turma seleciona ao clicar e traz dois botoes de
+ * acao (editar/excluir) que a vista abre em modal.
  */
 export function PainelTurmas({
   turmas,
   selecionadaId,
   aoSelecionar,
   aoNovaTurma,
+  aoEditarTurma,
+  aoExcluirTurma,
 }: PainelTurmasProps) {
   return (
     <div
@@ -60,26 +64,30 @@ export function PainelTurmas({
           {turmas.map((turma) => {
             const selecionada = turma.id === selecionadaId;
             return (
-              <li key={turma.id}>
+              <li
+                key={turma.id}
+                className="flex items-stretch gap-1 rounded-xl transition-colors"
+                style={{
+                  background: selecionada ? "var(--violet-100)" : "transparent",
+                  border: selecionada
+                    ? "1.5px solid var(--primary)"
+                    : "1.5px solid transparent",
+                }}
+              >
+                {/* Selecionar a turma — botao principal, ocupa a linha toda. */}
                 <button
                   type="button"
                   onClick={() => aoSelecionar(turma.id)}
                   aria-current={selecionada ? "true" : undefined}
-                  className="flex w-full flex-col gap-1 rounded-xl px-4 py-3 text-left transition-colors"
-                  style={{
-                    background: selecionada ? "var(--violet-100)" : "transparent",
-                    border: selecionada
-                      ? "1.5px solid var(--primary)"
-                      : "1.5px solid transparent",
-                  }}
+                  className="flex min-w-0 flex-1 flex-col gap-1 rounded-l-xl px-4 py-3 text-left"
                 >
                   <span
-                    className="text-sm font-extrabold"
+                    className="truncate text-sm font-extrabold"
                     style={{ color: selecionada ? "var(--text-brand)" : "var(--text)" }}
                   >
                     {turma.nome}
                   </span>
-                  <span className="text-text-muted text-xs">
+                  <span className="text-text-muted truncate text-xs">
                     {turma.dia_semana_nome} · {turma.hora_inicio}–{turma.hora_fim} · {turma.sala_id}
                   </span>
                   <span className="text-text-muted text-xs font-semibold">
@@ -87,6 +95,29 @@ export function PainelTurmas({
                     {turma.total_alunos === 1 ? "aluno matriculado" : "alunos matriculados"}
                   </span>
                 </button>
+
+                {/* Acoes da turma — fora do botao de selecao (botao dentro de
+                    botao e' HTML invalido). */}
+                <div className="flex flex-none items-center gap-0.5 pr-2">
+                  <button
+                    type="button"
+                    onClick={() => aoEditarTurma(turma)}
+                    aria-label={`Editar turma ${turma.nome}`}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors"
+                    style={{ color: "var(--text-muted)" }}
+                  >
+                    <IconLapis />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => aoExcluirTurma(turma)}
+                    aria-label={`Excluir turma ${turma.nome}`}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors"
+                    style={{ color: "var(--danger)" }}
+                  >
+                    <IconLixeira />
+                  </button>
+                </div>
               </li>
             );
           })}
