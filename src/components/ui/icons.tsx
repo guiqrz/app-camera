@@ -327,3 +327,47 @@ export function IconPessoaAusente({ size = 18, className }: IconProps) {
     </svg>
   );
 }
+
+/* --- Icones da tela Administracao --- */
+
+/** Grupo de pessoas — usado no stat card "Alunos matriculados". */
+export function IconPessoas({ size = 18, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <circle cx="8.5" cy="8" r="3" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M2 20c0-3 2.6-5 6.5-5s6.5 2 6.5 5" stroke="currentColor" strokeWidth="1.8" />
+      <circle cx="17" cy="8.5" r="2.3" stroke="currentColor" strokeWidth="1.8" />
+      <path
+        d="M15.7 13.4c2.7.4 4.8 2 4.8 4.6"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+/** Sinal de "+" — botao "Adicionar" (turma ou aluno). */
+export function IconMais({ size = 16, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** Lixeira — acao de excluir aluno na tabela. */
+export function IconLixeira({ size = 16, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <path
+        d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m3 0-.8 12.1a2 2 0 0 1-2 1.9H8.8a2 2 0 0 1-2-1.9L6 7"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M10 11v6M14 11v6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
