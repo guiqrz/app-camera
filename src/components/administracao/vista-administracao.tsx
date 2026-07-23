@@ -2,11 +2,12 @@
 
 import { useCallback, useMemo, useState } from "react";
 
+import { ModalNovaTurma } from "@/components/administracao/modal-nova-turma";
 import { PainelAlunos } from "@/components/administracao/painel-alunos";
 import { PainelTurmas } from "@/components/administracao/painel-turmas";
 import { IconPessoas, IconTendencia, IconTurma } from "@/components/ui/icons";
 import { StatCard } from "@/components/ui/stat-card";
-import type { VisaoAdmin } from "@/lib/types";
+import type { NovaTurma, VisaoAdmin } from "@/lib/types";
 
 type VistaAdministracaoProps = {
   /** Retrato inicial vindo do servidor no carregamento da pagina. */
@@ -16,9 +17,9 @@ type VistaAdministracaoProps = {
 /**
  * Vista interativa da tela "Administracao".
  *
- * Modo LEITURA nesta task: mantem `visao` em estado local e sabe recarregar
- * do zero via /api/admin/visao, mas os callbacks de mutacao (nova turma,
- * novo aluno, mudar turma, excluir) ainda nao gravam nada — isso chega nas
+ * "Nova turma" e' a primeira mutacao real (B3): abre o modal, submete pra
+ * /api/admin/turmas e recarrega a visao no sucesso. Os demais callbacks
+ * (novo aluno, mudar turma, excluir) ainda nao gravam nada — chegam nas
  * proximas tarefas da cadeia. Os filhos (PainelTurmas/PainelAlunos) sao
  * "burros": so' recebem dados e callbacks, decisao fica toda aqui.
  */
@@ -27,6 +28,7 @@ export function VistaAdministracao({ visaoInicial }: VistaAdministracaoProps) {
   const [selecionadaId, setSelecionadaId] = useState<number | null>(
     visaoInicial.turmas[0]?.id ?? null,
   );
+  const [modalNovaTurmaAberto, setModalNovaTurmaAberto] = useState(false);
 
   /** Busca o retrato mais recente da API e substitui o estado local. */
   const recarregar = useCallback(async () => {
@@ -65,10 +67,39 @@ export function VistaAdministracao({ visaoInicial }: VistaAdministracaoProps) {
       ? Math.round(visao.totais.alunos / visao.totais.turmas)
       : null;
 
-  /* --- Callbacks de mutacao: sem acao real nesta task --- */
+  /* --- Nova turma: primeira mutacao real da tela --- */
   const aoNovaTurma = useCallback(() => {
-    void recarregar();
-  }, [recarregar]);
+    setModalNovaTurmaAberto(true);
+  }, []);
+
+  const aoSalvarNovaTurma = useCallback(
+    async (dados: NovaTurma) => {
+      const resposta = await fetch("/api/admin/turmas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dados),
+      });
+
+      if (!resposta.ok) {
+        // Shape de erro da rota (src/app/api/admin/turmas/route.ts):
+        // {erro, detalhe?}. `detalhe` e' o corpo cru repassado do FastAPI —
+        // vem como {detail: "mensagem"} (ValueError vira HTTPException com
+        // detail=str(erro) em cupcam/web/api.py), nao como string direto.
+        // Prioriza a mensagem de negocio (ex.: horario invalido) quando existe.
+        const corpo = (await resposta.json().catch(() => null)) as
+          | { erro?: string; detalhe?: { detail?: string } }
+          | null;
+        const mensagem = corpo?.detalhe?.detail ?? corpo?.erro ?? "Não foi possível criar a turma.";
+        throw new Error(mensagem);
+      }
+
+      setModalNovaTurmaAberto(false);
+      await recarregar();
+    },
+    [recarregar],
+  );
+
+  /* --- Callbacks de mutacao: sem acao real nesta task --- */
   const aoNovoAluno = useCallback(() => {
     void recarregar();
   }, [recarregar]);
@@ -145,6 +176,12 @@ export function VistaAdministracao({ visaoInicial }: VistaAdministracaoProps) {
           aoExcluir={aoExcluir}
         />
       </div>
+
+      <ModalNovaTurma
+        aberto={modalNovaTurmaAberto}
+        aoFechar={() => setModalNovaTurmaAberto(false)}
+        aoSalvar={aoSalvarNovaTurma}
+      />
     </div>
   );
 }
