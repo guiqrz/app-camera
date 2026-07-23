@@ -169,3 +169,47 @@ export type ConfirmacaoPresencaResposta = {
   presente: boolean;
   confirmado: boolean;
 };
+
+/* ------------------------------------------------------------------ */
+/* Administracao                                                      */
+/* ------------------------------------------------------------------ */
+
+/** Uma turma na tela de Administracao (GET /admin/visao). */
+export type TurmaAdmin = {
+  id: number;
+  nome: string;
+  sala_id: string;
+  /** 0 = domingo ... 6 = sabado (convencao do strftime %w usada no backend). */
+  dia_semana: number;
+  /** Nome do dia em portugues, ja pronto pelo backend. */
+  dia_semana_nome: string;
+  hora_inicio: string;
+  hora_fim: string;
+  total_alunos: number;
+};
+
+/** Um aluno na tela de Administracao (GET /admin/visao). */
+export type AlunoAdmin = {
+  ra: string;
+  nome: string;
+  turma_id: number;
+};
+
+/** GET /admin/visao — visao completa que alimenta a tela de Administracao. */
+export type VisaoAdmin = {
+  turmas: TurmaAdmin[];
+  alunos: AlunoAdmin[];
+  totais: {
+    turmas: number;
+    alunos: number;
+  };
+};
+
+/** Corpo de POST /admin/turmas. */
+export type NovaTurma = {
+  nome: string;
+  sala_id: string;
+  dia_semana: number;
+  hora_inicio: string;
+  hora_fim: string;
+};

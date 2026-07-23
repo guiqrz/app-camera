@@ -42,3 +42,4 @@ next-env.d.ts
 
 # O modelo de configuracao deve ser versionado (nao contem segredo).
 !.env.example
+.superpowers/

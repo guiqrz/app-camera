@@ -19,12 +19,15 @@
 import "server-only";
 
 import type {
+  AlunoAdmin,
   AulasDaTurma,
   ChamadaDaSessao,
   ConfirmacaoPresencaResposta,
   EstatisticasDaTurma,
+  NovaTurma,
   RelatorioDaSessao,
   Turma,
+  VisaoAdmin,
 } from "./types";
 
 /** Erro de comunicacao com a API, com o status HTTP preservado. */
@@ -33,6 +36,13 @@ export class ApiError extends Error {
     message: string,
     readonly status: number,
     readonly rota: string,
+    /**
+     * Corpo de erro ja parseado, quando a API respondeu JSON (ex.: 422
+     * `{detail: string}` ou 409 `{detail: {nome, total_registros}}`).
+     * As rotas de admin usam este campo para repassar o detalhe estruturado
+     * pro navegador; quando a resposta nao era JSON, fica undefined.
+     */
+    readonly detalhe?: unknown,
   ) {
     super(message);
     this.name = "ApiError";
@@ -67,7 +77,8 @@ function lerConfiguracao(): { baseUrl: string; apiKey: string } {
 type OpcoesRequisicao = {
   /** Segundos ate revalidar o cache. 0 desliga o cache (dado ao vivo). */
   revalidate?: number;
-  method?: "GET" | "POST";
+  method?: "GET" | "POST" | "DELETE";
+  /** FormData vai crua (multipart); qualquer outra coisa vira JSON. */
   body?: unknown;
 };
 
@@ -77,18 +88,23 @@ async function requisitar<T>(
 ): Promise<T> {
   const { baseUrl, apiKey } = lerConfiguracao();
 
+  const eFormData = body instanceof FormData;
+  // Escrita (POST/DELETE) nunca e' cacheada; leitura revalida no intervalo pedido.
+  const eEscrita = method === "POST" || method === "DELETE";
+
   let resposta: Response;
   try {
     resposta = await fetch(`${baseUrl}${rota}`, {
       method,
       headers: {
         "X-API-Key": apiKey,
-        ...(body ? { "Content-Type": "application/json" } : {}),
+        // FormData: NAO setar Content-Type manualmente — o fetch monta o
+        // boundary do multipart sozinho. Setar aqui quebra o parse no backend.
+        ...(body && !eFormData ? { "Content-Type": "application/json" } : {}),
       },
-      body: body ? JSON.stringify(body) : undefined,
-      // Escrita nunca e' cacheada; leitura revalida no intervalo pedido.
-      next: method === "POST" ? undefined : { revalidate },
-      cache: method === "POST" ? "no-store" : undefined,
+      body: body ? (eFormData ? body : JSON.stringify(body)) : undefined,
+      next: eEscrita ? undefined : { revalidate },
+      cache: eEscrita ? "no-store" : undefined,
     });
   } catch {
     // Rede fora do ar, tunel caido ou notebook desligado.
@@ -100,11 +116,21 @@ async function requisitar<T>(
   }
 
   if (!resposta.ok) {
-    const detalhe = await resposta.text().catch(() => "");
+    // A API costuma responder JSON com {detail: ...} em erros de validacao
+    // (422) e conflito (409). Tenta parsear para preservar a estrutura;
+    // cai pro texto cru quando a resposta nao e' JSON.
+    const bruto = await resposta.text().catch(() => "");
+    let detalhe: unknown;
+    try {
+      detalhe = bruto ? JSON.parse(bruto) : undefined;
+    } catch {
+      detalhe = undefined;
+    }
     throw new ApiError(
-      `API respondeu ${resposta.status} em ${rota}. ${detalhe}`.trim(),
+      `API respondeu ${resposta.status} em ${rota}. ${bruto}`.trim(),
       resposta.status,
       rota,
+      detalhe,
     );
   }
 
@@ -163,5 +189,79 @@ export function confirmarPresenca(
   return requisitar<ConfirmacaoPresencaResposta>(
     `/sessoes/${sessaoId}/chamada/${encodeURIComponent(ra)}/confirmar`,
     { method: "POST", body: { presente } },
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Administracao                                                      */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Tela "Administracao" — turmas, alunos e totais.
+ *
+ * Sem cache: quem administra precisa ver o dado fresco assim que cadastra
+ * ou move alguem, sem esperar a janela de revalidacao.
+ */
+export function buscarVisaoAdmin(): Promise<VisaoAdmin> {
+  return requisitar<VisaoAdmin>("/admin/visao", { revalidate: 0 });
+}
+
+/** Cria uma turma nova. */
+export function criarTurma(dados: NovaTurma): Promise<{ id: number }> {
+  return requisitar<{ id: number }>("/admin/turmas", {
+    method: "POST",
+    body: dados,
+  });
+}
+
+/**
+ * Cadastra um aluno com foto (multipart: foto, ra, nome, turma_id).
+ *
+ * Repassa o FormData cru — quem monta os campos e' o chamador (a rota em
+ * app/api/admin/alunos, que recebe o multipart do navegador e so encaminha).
+ */
+export function criarAluno(
+  form: FormData,
+): Promise<{ ra: string; nome: string; turma_id: number }> {
+  return requisitar<{ ra: string; nome: string; turma_id: number }>(
+    "/admin/alunos",
+    { method: "POST", body: form },
+  );
+}
+
+/** Move um aluno para outra turma. */
+export function mudarTurmaDoAluno(
+  ra: string,
+  turmaId: number,
+): Promise<{
+  ra: string;
+  nome: string;
+  turma_anterior: number;
+  turma_id: number;
+}> {
+  return requisitar<{
+    ra: string;
+    nome: string;
+    turma_anterior: number;
+    turma_id: number;
+  }>(`/admin/alunos/${encodeURIComponent(ra)}/turma`, {
+    method: "POST",
+    body: { turma_id: turmaId },
+  });
+}
+
+/**
+ * Exclui um aluno. Sem `confirmarHistorico`, a API recusa (409) quando ha
+ * historico de presenca — o chamador reenvia com `true` apos o usuario
+ * confirmar no modal.
+ */
+export function excluirAluno(
+  ra: string,
+  confirmarHistorico: boolean,
+): Promise<Pick<AlunoAdmin, "ra" | "nome">> {
+  const query = confirmarHistorico ? "?confirmar_historico=true" : "";
+  return requisitar<Pick<AlunoAdmin, "ra" | "nome">>(
+    `/admin/alunos/${encodeURIComponent(ra)}${query}`,
+    { method: "DELETE" },
   );
 }
