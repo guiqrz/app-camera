@@ -47,6 +47,10 @@ export function VistaChamada({ inicial, sessaoId }: VistaChamadaProps) {
   // otimista que ainda nao chegou ao banco.
   const gravandoRef = useRef<Set<string>>(new Set());
 
+  // Janela de desfazer do "Marcar todos presentes": guarda quem foi alterado.
+  const [desfazer, setDesfazer] = useState<{ ras: string[] } | null>(null);
+  const timerDesfazer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // O aviso de erro some sozinho; o timer e' limpo se outro erro chegar antes.
   const timerAviso = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mostrarErro = useCallback((mensagem: string) => {
@@ -57,6 +61,7 @@ export function VistaChamada({ inicial, sessaoId }: VistaChamadaProps) {
   useEffect(() => {
     return () => {
       if (timerAviso.current) clearTimeout(timerAviso.current);
+      if (timerDesfazer.current) clearTimeout(timerDesfazer.current);
     };
   }, []);
 
@@ -150,12 +155,30 @@ export function VistaChamada({ inicial, sessaoId }: VistaChamadaProps) {
     return () => clearInterval(intervalo);
   }, [emAndamento, sessaoId]);
 
-  /** Marca presentes todos os que estao como ausentes, um POST por aluno. */
+  /**
+   * Marca presentes todos os que estao como ausentes, um POST por aluno, e
+   * abre a janela de desfazer: um clique em massa errado nao pode obrigar o
+   * professor a reverter aluno por aluno.
+   */
   const marcarTodosPresentes = useCallback(() => {
     const ausentes = alunos.filter((aluno) => aluno.presente === 0);
+    if (ausentes.length === 0) return;
+
+    setDesfazer({ ras: ausentes.map((aluno) => aluno.ra) });
+    if (timerDesfazer.current) clearTimeout(timerDesfazer.current);
+    timerDesfazer.current = setTimeout(() => setDesfazer(null), 8000);
+
     // Disparos em paralelo: cada um ja e' otimista e se desfaz sozinho.
     ausentes.forEach((aluno) => void marcar(aluno.ra, true));
   }, [alunos, marcar]);
+
+  /** Desfaz o "marcar todos": devolve pra ausente so' quem o clique mudou. */
+  const desfazerMarcarTodos = useCallback(() => {
+    if (!desfazer) return;
+    desfazer.ras.forEach((ra) => void marcar(ra, false));
+    setDesfazer(null);
+    if (timerDesfazer.current) clearTimeout(timerDesfazer.current);
+  }, [desfazer, marcar]);
 
   /* --- Numeros derivados do estado local (reagem a cada clique) --- */
 
@@ -234,6 +257,27 @@ export function VistaChamada({ inicial, sessaoId }: VistaChamadaProps) {
       </div>
 
       {avisoErro && <AvisoErro mensagem={avisoErro} />}
+
+      {desfazer && (
+        <div
+          role="status"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-xl px-4 py-3"
+          style={{ background: "var(--ok-bg)", color: "var(--ok-fg)" }}
+        >
+          <span className="text-sm font-semibold">
+            {desfazer.ras.length}{" "}
+            {desfazer.ras.length === 1 ? "aluno marcado" : "alunos marcados"}{" "}
+            como presentes.
+          </span>
+          <button
+            type="button"
+            onClick={desfazerMarcarTodos}
+            className="rounded-lg px-3 py-1.5 text-sm font-extrabold underline underline-offset-2"
+          >
+            Desfazer
+          </button>
+        </div>
+      )}
 
       {/* Cards de resumo — reagem a cada clique na lista. */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
