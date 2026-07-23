@@ -2,13 +2,14 @@
 
 import { useCallback, useMemo, useState } from "react";
 
+import { ModalConfirmarExclusao } from "@/components/administracao/modal-confirmar-exclusao";
 import { ModalNovaTurma } from "@/components/administracao/modal-nova-turma";
 import { ModalNovoAluno } from "@/components/administracao/modal-novo-aluno";
 import { PainelAlunos } from "@/components/administracao/painel-alunos";
 import { PainelTurmas } from "@/components/administracao/painel-turmas";
 import { IconPessoas, IconTendencia, IconTurma } from "@/components/ui/icons";
 import { StatCard } from "@/components/ui/stat-card";
-import type { NovaTurma, VisaoAdmin } from "@/lib/types";
+import type { AlunoAdmin, NovaTurma, VisaoAdmin } from "@/lib/types";
 
 type VistaAdministracaoProps = {
   /** Retrato inicial vindo do servidor no carregamento da pagina. */
@@ -18,10 +19,10 @@ type VistaAdministracaoProps = {
 /**
  * Vista interativa da tela "Administracao".
  *
- * "Nova turma" e' a primeira mutacao real (B3): abre o modal, submete pra
- * /api/admin/turmas e recarrega a visao no sucesso. Os demais callbacks
- * (novo aluno, mudar turma, excluir) ainda nao gravam nada — chegam nas
- * proximas tarefas da cadeia. Os filhos (PainelTurmas/PainelAlunos) sao
+ * "Nova turma" (B3) e "Novo aluno" (B4) abrem modal, submetem e recarregam a
+ * visao no sucesso. B5 fecha o CRUD: mudar turma e' direto (sem modal, so'
+ * o select da linha) e excluir usa o ModalConfirmarExclusao (2 estagios,
+ * por causa do 409 de historico). Os filhos (PainelTurmas/PainelAlunos) sao
  * "burros": so' recebem dados e callbacks, decisao fica toda aqui.
  */
 export function VistaAdministracao({ visaoInicial }: VistaAdministracaoProps) {
@@ -31,6 +32,7 @@ export function VistaAdministracao({ visaoInicial }: VistaAdministracaoProps) {
   );
   const [modalNovaTurmaAberto, setModalNovaTurmaAberto] = useState(false);
   const [modalNovoAlunoAberto, setModalNovoAlunoAberto] = useState(false);
+  const [alunoParaExcluir, setAlunoParaExcluir] = useState<AlunoAdmin | null>(null);
 
   /** Busca o retrato mais recente da API e substitui o estado local. */
   const recarregar = useCallback(async () => {
@@ -131,13 +133,70 @@ export function VistaAdministracao({ visaoInicial }: VistaAdministracaoProps) {
     [recarregar],
   );
 
-  /* --- Callbacks de mutacao: sem acao real nesta task --- */
-  const aoMudarTurma = useCallback((_ra: string, _turmaId: number) => {
-    void recarregar();
-  }, [recarregar]);
-  const aoExcluir = useCallback((_ra: string) => {
-    void recarregar();
-  }, [recarregar]);
+  /* --- Mudar turma: select da linha dispara direto, sem confirmacao --- */
+  const aoMudarTurma = useCallback(
+    async (ra: string, turmaId: number) => {
+      const resposta = await fetch(`/api/admin/alunos/${encodeURIComponent(ra)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ turma_id: turmaId }),
+      });
+
+      if (!resposta.ok) {
+        // Rota so' devolve {erro} pra POST (src/app/api/admin/alunos/[ra]/route.ts
+        // nao anexa `detalhe` nesse caminho, so' no DELETE 409).
+        const corpo = (await resposta.json().catch(() => null)) as { erro?: string } | null;
+        throw new Error(corpo?.erro ?? "Não foi possível mudar o aluno de turma.");
+      }
+
+      await recarregar();
+    },
+    [recarregar],
+  );
+
+  /* --- Excluir aluno: abre o modal de 2 estagios --- */
+  const aoExcluir = useCallback((aluno: AlunoAdmin) => {
+    setAlunoParaExcluir(aluno);
+  }, []);
+
+  const aoConfirmarExclusao = useCallback(
+    async (confirmarHistorico: boolean) => {
+      if (!alunoParaExcluir) return;
+
+      const resposta = await fetch(
+        `/api/admin/alunos/${encodeURIComponent(alunoParaExcluir.ra)}?confirmar_historico=${confirmarHistorico}`,
+        { method: "DELETE" },
+      );
+
+      if (!resposta.ok) {
+        // Shape da rota (src/app/api/admin/alunos/[ra]/route.ts): {erro, detalhe?}.
+        // No 409 (historico de presenca), `detalhe` e' o corpo cru repassado do
+        // FastAPI: {detail: {nome, total_registros}} (confirmado em cupcam/web/api.py
+        // — a excecao HistoricoExistente vira HTTPException(detail={...})).
+        // O modal usa esse formato pra decidir se entra no estagio 2.
+        const corpo = (await resposta.json().catch(() => null)) as
+          | { erro?: string; detalhe?: { detail?: { nome?: string; total_registros?: number } } }
+          | null;
+
+        if (resposta.status === 409 && corpo?.detalhe?.detail) {
+          const erro409 = new Error(corpo.erro ?? "Aluno tem histórico de presença.") as Error & {
+            historico?: { nome: string; total_registros: number };
+          };
+          const { nome, total_registros } = corpo.detalhe.detail;
+          if (typeof nome === "string" && typeof total_registros === "number") {
+            erro409.historico = { nome, total_registros };
+          }
+          throw erro409;
+        }
+
+        throw new Error(corpo?.erro ?? "Não foi possível excluir o aluno.");
+      }
+
+      setAlunoParaExcluir(null);
+      await recarregar();
+    },
+    [alunoParaExcluir, recarregar],
+  );
 
   return (
     <div className="flex flex-col gap-7">
@@ -218,6 +277,13 @@ export function VistaAdministracao({ visaoInicial }: VistaAdministracaoProps) {
         turmaInicialId={turmaSelecionada?.id ?? null}
         aoFechar={() => setModalNovoAlunoAberto(false)}
         aoSalvar={aoSalvarNovoAluno}
+      />
+
+      <ModalConfirmarExclusao
+        aluno={alunoParaExcluir}
+        aberto={alunoParaExcluir !== null}
+        aoFechar={() => setAlunoParaExcluir(null)}
+        aoConfirmar={aoConfirmarExclusao}
       />
     </div>
   );

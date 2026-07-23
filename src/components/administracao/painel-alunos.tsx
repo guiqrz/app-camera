@@ -13,10 +13,10 @@ type PainelAlunosProps = {
   alunos: AlunoAdmin[];
   /** Todas as turmas — alimenta o seletor de turma de cada linha. */
   turmas: TurmaAdmin[];
-  /** Sem acao real nesta task — os controles renderizam inertes. */
   aoNovoAluno: () => void;
-  aoMudarTurma: (ra: string, turmaId: number) => void;
-  aoExcluir: (ra: string) => void;
+  /** Rejeita com Error(mensagem) — o painel mostra o alerta e o select volta. */
+  aoMudarTurma: (ra: string, turmaId: number) => Promise<void>;
+  aoExcluir: (aluno: AlunoAdmin) => void;
 };
 
 /**
@@ -24,7 +24,11 @@ type PainelAlunosProps = {
  * de alunos matriculados.
  *
  * Componente burro: a vista decide qual turma esta selecionada e passa so'
- * os alunos dela; aqui so' filtramos por nome/RA no cliente.
+ * os alunos dela; aqui so' filtramos por nome/RA no cliente. A mudanca de
+ * turma acontece direto na linha (sem confirmacao nativa): o select dispara
+ * o POST, mostra um spinner enquanto espera, e volta pro valor anterior
+ * sozinho se der erro (o valor vem de `aluno.turma_id`, que so' muda depois
+ * que a vista recarrega a visao com sucesso).
  */
 export function PainelAlunos({
   turma,
@@ -35,6 +39,8 @@ export function PainelAlunos({
   aoExcluir,
 }: PainelAlunosProps) {
   const [busca, setBusca] = useState("");
+  const [raEmAndamento, setRaEmAndamento] = useState<string | null>(null);
+  const [erroMudancaTurma, setErroMudancaTurma] = useState<string | null>(null);
 
   const filtrados = useMemo(() => {
     const termo = busca.trim().toLowerCase();
@@ -45,6 +51,26 @@ export function PainelAlunos({
         aluno.ra.toLowerCase().includes(termo),
     );
   }, [alunos, busca]);
+
+  /**
+   * Dispara a mudanca de turma da linha. Nao ha confirmacao nativa — o select
+   * ja e' a confirmacao. Em caso de erro, o select "volta" sozinho: nunca
+   * atualizamos otimisticamente, entao `aluno.turma_id` (controlado pela vista)
+   * nunca mudou de verdade.
+   */
+  async function aoSelecionarTurma(ra: string, turmaId: number) {
+    setErroMudancaTurma(null);
+    setRaEmAndamento(ra);
+    try {
+      await aoMudarTurma(ra, turmaId);
+    } catch (causa) {
+      setErroMudancaTurma(
+        causa instanceof Error ? causa.message : "Não foi possível mudar o aluno de turma.",
+      );
+    } finally {
+      setRaEmAndamento(null);
+    }
+  }
 
   return (
     <div
@@ -99,6 +125,17 @@ export function PainelAlunos({
         </div>
       </div>
 
+      {/* Alerta inline: erro ao mudar aluno de turma (o select ja voltou sozinho). */}
+      {erroMudancaTurma && (
+        <p
+          role="alert"
+          className="mx-5 mt-4 rounded-xl px-4 py-3 text-sm font-semibold"
+          style={{ background: "var(--danger-bg)", color: "var(--danger-fg)" }}
+        >
+          {erroMudancaTurma}
+        </p>
+      )}
+
       {/* Corpo: estados vazios ou a lista. */}
       {!turma ? (
         <div className="flex flex-col items-center gap-2 px-6 py-14 text-center">
@@ -145,7 +182,8 @@ export function PainelAlunos({
                     <SeletorTurma
                       turmas={turmas}
                       valor={aluno.turma_id}
-                      aoMudar={(turmaId) => aoMudarTurma(aluno.ra, turmaId)}
+                      carregando={raEmAndamento === aluno.ra}
+                      aoMudar={(turmaId) => aoSelecionarTurma(aluno.ra, turmaId)}
                     />
                   </td>
                   <td className="px-6 py-3.5 text-right">
@@ -175,7 +213,8 @@ export function PainelAlunos({
                 <SeletorTurma
                   turmas={turmas}
                   valor={aluno.turma_id}
-                  aoMudar={(turmaId) => aoMudarTurma(aluno.ra, turmaId)}
+                  carregando={raEmAndamento === aluno.ra}
+                  aoMudar={(turmaId) => aoSelecionarTurma(aluno.ra, turmaId)}
                 />
               </li>
             ))}
@@ -186,45 +225,62 @@ export function PainelAlunos({
   );
 }
 
-/** Seletor de turma de uma linha — muda o aluno de turma. Inerte nesta task. */
+/**
+ * Seletor de turma de uma linha — dispara a mudanca de turma direto ao
+ * escolher (sem confirmacao nativa). Mostra um spinner pequeno ao lado
+ * enquanto o POST esta em voo e desabilita o proprio select nesse meio tempo,
+ * pra nao disparar duas mudancas em paralelo.
+ */
 function SeletorTurma({
   turmas,
   valor,
+  carregando,
   aoMudar,
 }: {
   turmas: TurmaAdmin[];
   valor: number;
+  carregando: boolean;
   aoMudar: (turmaId: number) => void;
 }) {
   return (
-    <select
-      value={valor}
-      onChange={(evento) => aoMudar(Number(evento.target.value))}
-      className="bg-surface-2 text-text w-full rounded-lg px-2.5 py-1.5 text-xs font-semibold outline-none"
-      style={{ border: "1px solid var(--border)" }}
-      aria-label="Mudar aluno de turma"
-    >
-      {turmas.map((turma) => (
-        <option key={turma.id} value={turma.id}>
-          {turma.nome}
-        </option>
-      ))}
-    </select>
+    <div className="flex items-center gap-2">
+      <select
+        value={valor}
+        onChange={(evento) => aoMudar(Number(evento.target.value))}
+        disabled={carregando}
+        className="bg-surface-2 text-text w-full rounded-lg px-2.5 py-1.5 text-xs font-semibold outline-none disabled:cursor-not-allowed disabled:opacity-60"
+        style={{ border: "1px solid var(--border)" }}
+        aria-label="Mudar aluno de turma"
+      >
+        {turmas.map((turma) => (
+          <option key={turma.id} value={turma.id}>
+            {turma.nome}
+          </option>
+        ))}
+      </select>
+      {carregando && (
+        <span
+          aria-hidden
+          className="h-3.5 w-3.5 flex-none animate-spin rounded-full border-2"
+          style={{ borderColor: "var(--border)", borderTopColor: "var(--primary)" }}
+        />
+      )}
+    </div>
   );
 }
 
-/** Botao de excluir — inerte nesta task, a mutacao vem nas proximas. */
+/** Botao de excluir — abre o modal de confirmacao (2 estagios) na vista. */
 function BotaoExcluir({
   aluno,
   aoExcluir,
 }: {
   aluno: AlunoAdmin;
-  aoExcluir: (ra: string) => void;
+  aoExcluir: (aluno: AlunoAdmin) => void;
 }) {
   return (
     <button
       type="button"
-      onClick={() => aoExcluir(aluno.ra)}
+      onClick={() => aoExcluir(aluno)}
       aria-label={`Excluir ${aluno.nome}`}
       className="inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors"
       style={{ color: "var(--danger)" }}
