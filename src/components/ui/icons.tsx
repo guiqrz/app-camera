@@ -356,6 +356,23 @@ export function IconMais({ size = 16, className }: IconProps) {
   );
 }
 
+/** Retrato numa moldura — area de upload de foto no modal "Novo aluno". */
+export function IconFoto({ size = 22, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="1.8" />
+      <circle cx="9" cy="10" r="2" stroke="currentColor" strokeWidth="1.8" />
+      <path
+        d="M3 16l5-4 3.5 3 4-3.5L21 16"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 /** Lixeira — acao de excluir aluno na tabela. */
 export function IconLixeira({ size = 16, className }: IconProps) {
   return (

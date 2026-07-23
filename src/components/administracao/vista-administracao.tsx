@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 
 import { ModalNovaTurma } from "@/components/administracao/modal-nova-turma";
+import { ModalNovoAluno } from "@/components/administracao/modal-novo-aluno";
 import { PainelAlunos } from "@/components/administracao/painel-alunos";
 import { PainelTurmas } from "@/components/administracao/painel-turmas";
 import { IconPessoas, IconTendencia, IconTurma } from "@/components/ui/icons";
@@ -29,6 +30,7 @@ export function VistaAdministracao({ visaoInicial }: VistaAdministracaoProps) {
     visaoInicial.turmas[0]?.id ?? null,
   );
   const [modalNovaTurmaAberto, setModalNovaTurmaAberto] = useState(false);
+  const [modalNovoAlunoAberto, setModalNovoAlunoAberto] = useState(false);
 
   /** Busca o retrato mais recente da API e substitui o estado local. */
   const recarregar = useCallback(async () => {
@@ -99,10 +101,37 @@ export function VistaAdministracao({ visaoInicial }: VistaAdministracaoProps) {
     [recarregar],
   );
 
-  /* --- Callbacks de mutacao: sem acao real nesta task --- */
+  /* --- Novo aluno: mesma forma da Nova turma, com foto (multipart) --- */
   const aoNovoAluno = useCallback(() => {
-    void recarregar();
-  }, [recarregar]);
+    setModalNovoAlunoAberto(true);
+  }, []);
+
+  const aoSalvarNovoAluno = useCallback(
+    async (form: FormData) => {
+      const resposta = await fetch("/api/admin/alunos", {
+        method: "POST",
+        body: form,
+      });
+
+      if (!resposta.ok) {
+        // Mesma cadeia de erro da rota de turma (src/app/api/admin/alunos/route.ts):
+        // {erro, detalhe?}. `detalhe` e' {detail: string} do FastAPI — 422 cobre
+        // sem rosto, 2+ rostos, foto ilegivel, tipo/tamanho invalido.
+        const corpo = (await resposta.json().catch(() => null)) as
+          | { erro?: string; detalhe?: { detail?: string } }
+          | null;
+        const mensagem =
+          corpo?.detalhe?.detail ?? corpo?.erro ?? "Não foi possível cadastrar o aluno.";
+        throw new Error(mensagem);
+      }
+
+      setModalNovoAlunoAberto(false);
+      await recarregar();
+    },
+    [recarregar],
+  );
+
+  /* --- Callbacks de mutacao: sem acao real nesta task --- */
   const aoMudarTurma = useCallback((_ra: string, _turmaId: number) => {
     void recarregar();
   }, [recarregar]);
@@ -181,6 +210,14 @@ export function VistaAdministracao({ visaoInicial }: VistaAdministracaoProps) {
         aberto={modalNovaTurmaAberto}
         aoFechar={() => setModalNovaTurmaAberto(false)}
         aoSalvar={aoSalvarNovaTurma}
+      />
+
+      <ModalNovoAluno
+        aberto={modalNovoAlunoAberto}
+        turmas={visao.turmas}
+        turmaInicialId={turmaSelecionada?.id ?? null}
+        aoFechar={() => setModalNovoAlunoAberto(false)}
+        aoSalvar={aoSalvarNovoAluno}
       />
     </div>
   );
