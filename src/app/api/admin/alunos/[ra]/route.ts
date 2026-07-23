@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { statusSeguro } from "@/app/api/admin/_lib/status-seguro";
-import { ApiError, excluirAluno, mudarTurmaDoAluno } from "@/lib/api";
+import { ApiError, editarAluno, excluirAluno, mudarTurmaDoAluno } from "@/lib/api";
 
 /**
  * Ponte de escrita "Mudar turma" e "Excluir aluno" da tela "Administracao".
@@ -49,6 +49,56 @@ export async function POST(requisicao: Request, { params }: Params) {
         return NextResponse.json(
           { erro: "Aluno ou turma não encontrado." },
           { status: 404 },
+        );
+      }
+      return NextResponse.json(
+        { erro: "Não foi possível falar com a API do CUPCAM. Tente novamente em instantes." },
+        { status: statusSeguro(causa) },
+      );
+    }
+    throw causa;
+  }
+}
+
+/**
+ * PUT /api/admin/alunos/{ra} — edita nome/turma/foto do aluno (multipart cru).
+ *
+ * O corpo e' o mesmo FormData que o navegador montou (nome, turma_id, e
+ * opcionalmente foto ou remover_foto); esta rota so' repassa pra API do CUPCAM.
+ */
+export async function PUT(requisicao: Request, { params }: Params) {
+  const { ra } = await params;
+  if (!ra.trim()) {
+    return NextResponse.json({ erro: "RA inválido." }, { status: 400 });
+  }
+
+  let form: FormData;
+  try {
+    form = await requisicao.formData();
+  } catch {
+    return NextResponse.json(
+      { erro: "Corpo da requisição inválido." },
+      { status: 400 },
+    );
+  }
+
+  try {
+    const resposta = await editarAluno(ra, form);
+    return NextResponse.json(resposta);
+  } catch (causa) {
+    if (causa instanceof ApiError) {
+      if (causa.isNotFound) {
+        return NextResponse.json(
+          { erro: "Aluno ou turma não encontrado." },
+          { status: 404 },
+        );
+      }
+      if (causa.status === 422) {
+        // Foto ilegivel, sem rosto ou com 2+ rostos: o detalhe ({detail: string})
+        // vai cru pro modal explicar ao usuario o que houve com a foto.
+        return NextResponse.json(
+          { erro: "Não foi possível processar a foto.", detalhe: causa.detalhe },
+          { status: 422 },
         );
       }
       return NextResponse.json(
