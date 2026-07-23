@@ -4,10 +4,15 @@ import { useEffect, useId, useRef, useState } from "react";
 
 import { useFocoPreso } from "@/components/administracao/usar-foco-preso";
 import { IconFechar } from "@/components/ui/icons";
-import type { NovaTurma } from "@/lib/types";
+import type { NovaTurma, TurmaAdmin } from "@/lib/types";
 
-type ModalNovaTurmaProps = {
+type ModoModal = "criar" | "editar";
+
+type ModalTurmaProps = {
   aberto: boolean;
+  modo: ModoModal;
+  /** Turma sendo editada (obrigatorio no modo "editar"; ignorado no "criar"). */
+  turma?: TurmaAdmin | null;
   aoFechar: () => void;
   /** Rejeita com Error(mensagem) — o modal mostra o texto e permanece aberto. */
   aoSalvar: (dados: NovaTurma) => Promise<void>;
@@ -33,20 +38,23 @@ const VALORES_INICIAIS = {
 };
 
 /**
- * Modal "Nova turma" — primeiro modal do app, pensado pra ser o molde dos
- * proximos (overlay escurecido + card centrado, Esc fecha, clique fora fecha,
- * foco inicial no primeiro campo).
+ * Modal de turma unificado — cria uma turma nova ou edita uma existente,
+ * decidido pelo prop `modo`. Overlay escurecido + card centrado, Esc fecha,
+ * clique fora fecha, foco inicial no primeiro campo, reset ao abrir.
  *
  * Validacao de fim > inicio replica a regra do backend
  * (`cupcam/gestao/turmas.py`): "HH:MM" compara certo como string porque tem
- * sempre 5 caracteres com zero a esquerda — mesmo truque, sem reimplementar
- * parsing de hora aqui.
+ * sempre 5 caracteres com zero a esquerda. O conflito de horario com outra
+ * turma so' o backend sabe validar (precisa das outras turmas da sala) — vira
+ * um 409 que a vista repassa como Error e cai no erro inline aqui.
  */
-export function ModalNovaTurma({ aberto, aoFechar, aoSalvar }: ModalNovaTurmaProps) {
+export function ModalTurma({ aberto, modo, turma, aoFechar, aoSalvar }: ModalTurmaProps) {
   const [valores, setValores] = useState(VALORES_INICIAIS);
   const [erroValidacao, setErroValidacao] = useState<string | null>(null);
   const [erroApi, setErroApi] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+
+  const editando = modo === "editar";
 
   // Espelha `aberto` so' pra detectar a transicao fechado->aberto durante a
   // renderizacao (padrao oficial "estado derivado de props/estado anterior",
@@ -56,7 +64,17 @@ export function ModalNovaTurma({ aberto, aoFechar, aoSalvar }: ModalNovaTurmaPro
   if (aberto !== abertoAnterior) {
     setAbertoAnterior(aberto);
     if (aberto) {
-      setValores(VALORES_INICIAIS);
+      if (editando && turma) {
+        setValores({
+          nome: turma.nome,
+          sala_id: turma.sala_id,
+          dia_semana: String(turma.dia_semana),
+          hora_inicio: turma.hora_inicio,
+          hora_fim: turma.hora_fim,
+        });
+      } else {
+        setValores(VALORES_INICIAIS);
+      }
       setErroValidacao(null);
       setErroApi(null);
       setEnviando(false);
@@ -67,14 +85,11 @@ export function ModalNovaTurma({ aberto, aoFechar, aoSalvar }: ModalNovaTurmaPro
   const idTitulo = useId();
   const refModal = useFocoPreso(aberto);
 
-  // Foco no primeiro campo assim que o modal monta — efeito de DOM, nao de
-  // estado, entao continua em useEffect (nao dispara o lint de setState).
   useEffect(() => {
     if (!aberto) return;
     primeiroCampoRef.current?.focus();
   }, [aberto]);
 
-  // Esc fecha — mesmo padrao da gaveta do menu (sidebar.tsx).
   useEffect(() => {
     if (!aberto) return;
 
@@ -86,7 +101,6 @@ export function ModalNovaTurma({ aberto, aoFechar, aoSalvar }: ModalNovaTurmaPro
     return () => document.removeEventListener("keydown", aoTeclar);
   }, [aberto, aoFechar]);
 
-  // Trava a rolagem do fundo enquanto o modal esta aberto.
   useEffect(() => {
     if (!aberto) return;
 
@@ -110,7 +124,6 @@ export function ModalNovaTurma({ aberto, aoFechar, aoSalvar }: ModalNovaTurmaPro
     evento.preventDefault();
     setErroApi(null);
 
-    // Validacao cliente: campos vazios primeiro, depois a regra de horario.
     const { nome, sala_id, dia_semana, hora_inicio, hora_fim } = valores;
     if (!nome.trim() || !sala_id.trim() || !hora_inicio || !hora_fim) {
       setErroValidacao("Preencha todos os campos.");
@@ -135,7 +148,11 @@ export function ModalNovaTurma({ aberto, aoFechar, aoSalvar }: ModalNovaTurmaPro
       await aoSalvar(dados);
       // Sucesso: quem chama (a vista) fecha e recarrega — nao mexe aqui.
     } catch (causa) {
-      setErroApi(causa instanceof Error ? causa.message : "Não foi possível criar a turma.");
+      setErroApi(
+        causa instanceof Error
+          ? causa.message
+          : `Não foi possível ${editando ? "salvar" : "criar"} a turma.`,
+      );
     } finally {
       setEnviando(false);
     }
@@ -167,13 +184,14 @@ export function ModalNovaTurma({ aberto, aoFechar, aoSalvar }: ModalNovaTurmaPro
             className="text-text text-lg font-extrabold"
             style={{ fontFamily: "var(--font-geologica)" }}
           >
-            Nova turma
+            {editando ? "Editar turma" : "Nova turma"}
           </h2>
           <button
             type="button"
             onClick={aoFechar}
             aria-label="Fechar"
             className="text-text-muted rounded-lg p-1"
+            disabled={enviando}
           >
             <IconFechar size={20} />
           </button>
@@ -279,7 +297,13 @@ export function ModalNovaTurma({ aberto, aoFechar, aoSalvar }: ModalNovaTurmaPro
                   className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white"
                 />
               )}
-              {enviando ? "Criando..." : "Criar turma"}
+              {enviando
+                ? editando
+                  ? "Salvando..."
+                  : "Criando..."
+                : editando
+                  ? "Salvar alterações"
+                  : "Criar turma"}
             </button>
           </div>
         </form>
