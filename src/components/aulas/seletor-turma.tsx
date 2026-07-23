@@ -9,6 +9,8 @@ import type { Turma } from "@/lib/types";
 type SeletorTurmaProps = {
   turmas: Turma[];
   turmaAtualId: number;
+  /** Rota que recebe o id da turma escolhida. Padrao: tela Minhas Aulas. */
+  baseRota?: string;
 };
 
 /**
@@ -18,7 +20,11 @@ type SeletorTurmaProps = {
  * a turma fica no endereco, o professor pode salvar o link e o botao voltar
  * do navegador funciona como esperado.
  */
-export function SeletorTurma({ turmas, turmaAtualId }: SeletorTurmaProps) {
+export function SeletorTurma({
+  turmas,
+  turmaAtualId,
+  baseRota = "/aulas",
+}: SeletorTurmaProps) {
   const router = useRouter();
   // useTransition marca a navegacao como nao urgente e expoe `pendente`,
   // para o seletor mostrar que esta carregando em vez de parecer travado.
@@ -42,7 +48,7 @@ export function SeletorTurma({ turmas, turmaAtualId }: SeletorTurmaProps) {
         disabled={pendente}
         onChange={(evento) => {
           const id = evento.target.value;
-          iniciarTransicao(() => router.push(`/aulas/${id}`));
+          iniciarTransicao(() => router.push(`${baseRota}/${id}`));
         }}
         className="text-text cursor-pointer appearance-none bg-transparent pr-1 text-sm font-bold outline-none"
       >
