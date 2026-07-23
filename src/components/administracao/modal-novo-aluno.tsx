@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 
+import { useFocoPreso } from "@/components/administracao/usar-foco-preso";
 import { IconFechar, IconFoto } from "@/components/ui/icons";
 import type { TurmaAdmin } from "@/lib/types";
 
@@ -44,43 +45,55 @@ export function ModalNovoAluno({
   const [valores, setValores] = useState(VALORES_INICIAIS);
   const [turmaId, setTurmaId] = useState<string>("");
   const [foto, setFoto] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [erroValidacao, setErroValidacao] = useState<string | null>(null);
   const [erroApi, setErroApi] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
 
+  // Espelha `aberto` so' pra detectar a transicao fechado->aberto durante a
+  // renderizacao (padrao oficial "estado derivado de props/estado anterior",
+  // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes)
+  // em vez de resetar via setState dentro de um useEffect.
+  const [abertoAnterior, setAbertoAnterior] = useState(aberto);
+  if (aberto !== abertoAnterior) {
+    setAbertoAnterior(aberto);
+    if (aberto) {
+      setValores(VALORES_INICIAIS);
+      setTurmaId(turmaInicialId !== null ? String(turmaInicialId) : "");
+      setFoto(null);
+      setErroValidacao(null);
+      setErroApi(null);
+      setEnviando(false);
+    }
+  }
+
   const primeiroCampoRef = useRef<HTMLInputElement>(null);
   const inputFotoRef = useRef<HTMLInputElement>(null);
   const idTitulo = useId();
+  const refModal = useFocoPreso(aberto);
 
-  // Reseta o formulario toda vez que o modal abre — nao carrega lixo da
-  // ultima tentativa (sucesso ou erro), e pre-seleciona a turma que estava
-  // aberta na tela.
+  // O preview e' derivado direto da foto (useMemo, sem estado proprio) — o
+  // object URL (blob:) e' recriado so' quando `foto` muda. Nao guardamos em
+  // state porque a criacao e' sincrona e barata, e assim nao precisamos de
+  // setState dentro de efeito nenhum.
+  const previewUrl = useMemo(() => (foto ? URL.createObjectURL(foto) : null), [foto]);
+
+  // Revoga o object URL anterior sempre que a foto muda ou o componente
+  // desmonta, senao vaza memoria. Como a foto nunca sai do navegador antes
+  // do envio, isso tambem garante que nao sobra rastro dela alem do
+  // FormData que vai pro fetch. Efeito so' de limpeza — nao chama setState.
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
+  // Limpa o valor do input de arquivo quando o modal reabre — efeito de DOM,
+  // nao de estado, entao continua em useEffect junto do foco inicial.
   useEffect(() => {
     if (!aberto) return;
-    setValores(VALORES_INICIAIS);
-    setTurmaId(turmaInicialId !== null ? String(turmaInicialId) : "");
-    setFoto(null);
-    setErroValidacao(null);
-    setErroApi(null);
-    setEnviando(false);
     if (inputFotoRef.current) inputFotoRef.current.value = "";
     primeiroCampoRef.current?.focus();
-  }, [aberto, turmaInicialId]);
-
-  // O preview e' um objeto do navegador (blob: URL) — precisa ser revogado
-  // sempre que a foto muda ou o componente desmonta, senao vaza memoria.
-  // Como a foto nunca sai do navegador antes do envio, isso tambem garante
-  // que nao sobra nenhum rastro dela alem do FormData que vai pro fetch.
-  useEffect(() => {
-    if (!foto) {
-      setPreviewUrl(null);
-      return;
-    }
-    const url = URL.createObjectURL(foto);
-    setPreviewUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [foto]);
+  }, [aberto]);
 
   // Esc fecha — mesmo padrao da gaveta do menu (sidebar.tsx).
   useEffect(() => {
@@ -164,6 +177,7 @@ export function ModalNovoAluno({
       aria-hidden={false}
     >
       <div
+        ref={refModal}
         role="dialog"
         aria-modal="true"
         aria-labelledby={idTitulo}

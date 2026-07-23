@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 
+import { useFocoPreso } from "@/components/administracao/usar-foco-preso";
 import { IconFechar } from "@/components/ui/icons";
 import type { NovaTurma } from "@/lib/types";
 
@@ -47,18 +48,29 @@ export function ModalNovaTurma({ aberto, aoFechar, aoSalvar }: ModalNovaTurmaPro
   const [erroApi, setErroApi] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
 
+  // Espelha `aberto` so' pra detectar a transicao fechado->aberto durante a
+  // renderizacao (padrao oficial "estado derivado de props/estado anterior",
+  // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes)
+  // em vez de resetar via setState dentro de um useEffect.
+  const [abertoAnterior, setAbertoAnterior] = useState(aberto);
+  if (aberto !== abertoAnterior) {
+    setAbertoAnterior(aberto);
+    if (aberto) {
+      setValores(VALORES_INICIAIS);
+      setErroValidacao(null);
+      setErroApi(null);
+      setEnviando(false);
+    }
+  }
+
   const primeiroCampoRef = useRef<HTMLInputElement>(null);
   const idTitulo = useId();
+  const refModal = useFocoPreso(aberto);
 
-  // Reseta o formulario toda vez que o modal abre — nao carrega lixo da
-  // ultima tentativa (sucesso ou erro).
+  // Foco no primeiro campo assim que o modal monta — efeito de DOM, nao de
+  // estado, entao continua em useEffect (nao dispara o lint de setState).
   useEffect(() => {
     if (!aberto) return;
-    setValores(VALORES_INICIAIS);
-    setErroValidacao(null);
-    setErroApi(null);
-    setEnviando(false);
-    // Foco no primeiro campo assim que o modal monta.
     primeiroCampoRef.current?.focus();
   }, [aberto]);
 
@@ -138,6 +150,7 @@ export function ModalNovaTurma({ aberto, aoFechar, aoSalvar }: ModalNovaTurmaPro
       aria-hidden={false}
     >
       <div
+        ref={refModal}
         role="dialog"
         aria-modal="true"
         aria-labelledby={idTitulo}

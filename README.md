@@ -128,10 +128,52 @@ passar a existir.
 | Tela | Situação |
 |---|---|
 | Fundação (tokens, tema, cliente da API) | ✅ pronta |
-| Fazer Chamada | 🔲 a fazer |
-| Minhas Aulas | 🔲 a fazer |
-| Relatório | 🔲 a fazer |
-| Administração | 🔲 a fazer (depende de rotas novas na API) |
+| Minhas Aulas | ✅ pronta |
+| Fazer Chamada | ✅ pronta |
+| Relatórios | ✅ pronta |
+| Administração | ✅ pronta |
+
+---
+
+## 🗂️ Tela: Administração
+
+Onde o professor mantém a base do CUPCAM em dia — sem essa tela, turma e aluno
+só entram no sistema mexendo direto no banco.
+
+**O que dá pra fazer:**
+
+- 🏫 **Cadastrar turma** — nome, sala, dia da semana e horário. O botão "Nova
+  turma" abre um modal; a validação de horário (fim depois do início) roda no
+  navegador e de novo no backend.
+- 🧑‍🎓 **Matricular aluno** — nome, RA e uma foto de rosto. A foto vira o
+  reconhecimento facial que a câmera usa nas próximas chamadas, então o
+  cadastro demora um pouco mais que o normal (o aviso "Gerando reconhecimento
+  facial…" é de propósito, não é bug).
+- 🔁 **Mudar aluno de turma** — direto no seletor da linha, sem confirmação
+  extra: o próprio select já é a confirmação.
+- 🗑️ **Excluir aluno** — em duas etapas quando o aluno já tem chamadas
+  registradas. Primeiro pede confirmação simples; se houver histórico de
+  presença, troca para um aviso vermelho explícito de que a exclusão vai
+  apagar esse histórico também.
+
+**Como foi construída:**
+
+- `VistaAdministracao` é o orquestrador — guarda o estado, fala com
+  `/api/admin/*` e decide o que cada modal faz. `PainelTurmas` e
+  `PainelAlunos` são "burros": só recebem dados e callbacks.
+- Os três modais (`ModalNovaTurma`, `ModalNovoAluno`, `ModalConfirmarExclusao`)
+  seguem o mesmo molde: overlay escurecido, `Esc` fecha, clique fora fecha,
+  foco preso dentro do modal enquanto ele está aberto (o hook
+  `useFocoPreso`, em `components/administracao/usar-foco-preso.ts`, cuida
+  disso pelos três) e o foco volta pro botão que abriu o modal ao fechar.
+- Responsiva: a lista de alunos vira tabela no computador e cartões
+  empilhados no celular; os painéis de turmas e alunos empilham verticalmente
+  abaixo de `lg`.
+
+**Uma limitação conhecida:** a API do CUPCAM ainda não tem uma rota para
+excluir turma — só criar (`POST /admin/turmas`) e listar. Uma turma de teste
+criada durante a validação desta tela ficou no banco por causa disso (veja
+`.superpowers/sdd/task-B6-report.md` para o relato completo).
 
 ---
 

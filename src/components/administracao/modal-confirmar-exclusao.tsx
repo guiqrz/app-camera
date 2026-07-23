@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 
+import { useFocoPreso } from "@/components/administracao/usar-foco-preso";
 import { IconFechar } from "@/components/ui/icons";
 import type { AlunoAdmin } from "@/lib/types";
 
@@ -49,14 +50,29 @@ export function ModalConfirmarExclusao({
 
   const botaoConfirmarRef = useRef<HTMLButtonElement>(null);
   const idTitulo = useId();
+  const refModal = useFocoPreso(aberto);
 
-  // Reseta o estagio toda vez que o modal abre — nunca comeca no estagio 2
-  // de uma tentativa anterior, mesmo excluindo outro aluno em seguida.
+  // Espelha (aberto, aluno.ra) so' pra detectar a transicao durante a
+  // renderizacao (padrao oficial "estado derivado de props/estado anterior",
+  // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes)
+  // em vez de resetar via setState dentro de um useEffect. Reseta o estagio
+  // toda vez que o modal abre — nunca comeca no estagio 2 de uma tentativa
+  // anterior, mesmo excluindo outro aluno em seguida.
+  const chaveAtual = `${aberto}:${aluno?.ra ?? ""}`;
+  const [chaveAnterior, setChaveAnterior] = useState(chaveAtual);
+  if (chaveAtual !== chaveAnterior) {
+    setChaveAnterior(chaveAtual);
+    if (aberto) {
+      setHistorico(null);
+      setErroApi(null);
+      setEnviando(false);
+    }
+  }
+
+  // Foco no botao de confirmar assim que o modal monta — efeito de DOM, nao
+  // de estado, entao continua em useEffect (nao dispara o lint de setState).
   useEffect(() => {
     if (!aberto) return;
-    setHistorico(null);
-    setErroApi(null);
-    setEnviando(false);
     botaoConfirmarRef.current?.focus();
   }, [aberto, aluno?.ra]);
 
@@ -117,6 +133,7 @@ export function ModalConfirmarExclusao({
       aria-hidden={false}
     >
       <div
+        ref={refModal}
         role="dialog"
         aria-modal="true"
         aria-labelledby={idTitulo}
