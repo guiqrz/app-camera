@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { statusSeguro } from "@/app/api/admin/_lib/status-seguro";
 import { ApiError, excluirAluno, mudarTurmaDoAluno } from "@/lib/api";
 
 /**
@@ -51,8 +52,8 @@ export async function POST(requisicao: Request, { params }: Params) {
         );
       }
       return NextResponse.json(
-        { erro: "Não foi possível falar com a API do CUPCAM." },
-        { status: causa.status === 0 ? 502 : causa.status },
+        { erro: "Não foi possível falar com a API do CUPCAM. Tente novamente em instantes." },
+        { status: statusSeguro(causa) },
       );
     }
     throw causa;
@@ -93,8 +94,8 @@ export async function DELETE(requisicao: Request, { params }: Params) {
         );
       }
       return NextResponse.json(
-        { erro: "Não foi possível falar com a API do CUPCAM." },
-        { status: causa.status === 0 ? 502 : causa.status },
+        { erro: "Não foi possível falar com a API do CUPCAM. Tente novamente em instantes." },
+        { status: statusSeguro(causa) },
       );
     }
     throw causa;

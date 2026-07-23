@@ -230,6 +230,11 @@ export function PainelAlunos({
  * escolher (sem confirmacao nativa). Mostra um spinner pequeno ao lado
  * enquanto o POST esta em voo e desabilita o proprio select nesse meio tempo,
  * pra nao disparar duas mudancas em paralelo.
+ *
+ * A reversao visual em caso de erro depende do select ser controlado
+ * (`value={valor}`, nunca `defaultValue`): `valor` vem de `aluno.turma_id`,
+ * que so' muda quando a vista recarrega com sucesso, entao um POST que falha
+ * nunca chega a mudar o que a tela mostra — nao precisa de "desfazer" manual.
  */
 function SeletorTurma({
   turmas,

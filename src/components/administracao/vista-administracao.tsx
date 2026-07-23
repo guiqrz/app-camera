@@ -33,12 +33,22 @@ export function VistaAdministracao({ visaoInicial }: VistaAdministracaoProps) {
   const [modalNovaTurmaAberto, setModalNovaTurmaAberto] = useState(false);
   const [modalNovoAlunoAberto, setModalNovoAlunoAberto] = useState(false);
   const [alunoParaExcluir, setAlunoParaExcluir] = useState<AlunoAdmin | null>(null);
+  // Aviso quando a mutacao (POST/DELETE) deu certo mas a recarga da visao
+  // (GET) falhou depois — sem isso o modal fecha "com sucesso" e a lista fica
+  // desatualizada; ex.: usuario acha que a turma nao foi criada e recria,
+  // gerando duplicata (a API nao tem DELETE de turma pra desfazer isso).
+  const [avisoRecarga, setAvisoRecarga] = useState<string | null>(null);
 
   /** Busca o retrato mais recente da API e substitui o estado local. */
   const recarregar = useCallback(async () => {
     try {
       const resposta = await fetch("/api/admin/visao", { cache: "no-store" });
-      if (!resposta.ok) return;
+      if (!resposta.ok) {
+        setAvisoRecarga(
+          "Salvo, mas não foi possível atualizar a lista — recarregue a página.",
+        );
+        return;
+      }
       const dados = (await resposta.json()) as VisaoAdmin;
       setVisao(dados);
       // Mantem a selecao se a turma ainda existir; senao cai na primeira.
@@ -48,8 +58,12 @@ export function VistaAdministracao({ visaoInicial }: VistaAdministracaoProps) {
         }
         return dados.turmas[0]?.id ?? null;
       });
+      setAvisoRecarga(null);
     } catch (causa) {
       console.error("[cupcam] falha ao recarregar visao admin:", causa);
+      setAvisoRecarga(
+        "Salvo, mas não foi possível atualizar a lista — recarregue a página.",
+      );
     }
   }, []);
 
@@ -211,6 +225,17 @@ export function VistaAdministracao({ visaoInicial }: VistaAdministracaoProps) {
           Cadastre turmas, matricule alunos e gerencie a base do CUPCAM.
         </p>
       </div>
+
+      {/* Aviso: a mutacao deu certo, mas a recarga da lista falhou depois. */}
+      {avisoRecarga && (
+        <p
+          role="alert"
+          className="rounded-xl px-4 py-3 text-sm font-semibold"
+          style={{ background: "var(--warn-bg)", color: "var(--warn-fg)" }}
+        >
+          {avisoRecarga}
+        </p>
+      )}
 
       {/* Cards de resumo. */}
       <div className="grid gap-4 sm:grid-cols-3">

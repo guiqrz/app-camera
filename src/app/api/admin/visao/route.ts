@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { statusSeguro } from "@/app/api/admin/_lib/status-seguro";
 import { ApiError, buscarVisaoAdmin } from "@/lib/api";
 
 /**
@@ -11,6 +12,12 @@ import { ApiError, buscarVisaoAdmin } from "@/lib/api";
  * nunca aparece no JavaScript do usuario.
  */
 
+// Forca a rota a rodar por requisicao. A leitura ja e' "ao vivo" na pratica
+// (buscarVisaoAdmin usa revalidate: 0 em lib/api.ts), mas isso fica dois
+// arquivos de distancia — explicitar aqui imuniza contra um refactor futuro
+// que mude o cache de lib/api.ts sem perceber que esta rota dependia disso.
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
     const visao = await buscarVisaoAdmin();
@@ -18,8 +25,8 @@ export async function GET() {
   } catch (causa) {
     if (causa instanceof ApiError) {
       return NextResponse.json(
-        { erro: "Não foi possível falar com a API do CUPCAM." },
-        { status: causa.status === 0 ? 502 : causa.status },
+        { erro: "Não foi possível falar com a API do CUPCAM. Tente novamente em instantes." },
+        { status: statusSeguro(causa) },
       );
     }
     throw causa;

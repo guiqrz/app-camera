@@ -29,7 +29,13 @@ export function useFocoPreso(aberto: boolean) {
       return;
     }
 
-    refElementoAnterior.current?.focus();
+    // isConnected evita focar um elemento que ja saiu do DOM (ex.: exclusao
+    // removeu a linha que tinha o foco antes do modal abrir) — sem essa
+    // guarda, focus() em no' desconectado e' inocuo, mas silenciosamente nao
+    // devolve o foco a lugar nenhum, deixando o teclado "perdido" no body.
+    if (refElementoAnterior.current?.isConnected) {
+      refElementoAnterior.current.focus();
+    }
     refElementoAnterior.current = null;
   }, [aberto]);
 
