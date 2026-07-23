@@ -388,3 +388,18 @@ export function IconLixeira({ size = 16, className }: IconProps) {
     </svg>
   );
 }
+
+export function IconLapis({ size = 16, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <path
+        d="M4 20h4L18.5 9.5a2 2 0 0 0 0-2.8l-1.2-1.2a2 2 0 0 0-2.8 0L4 16v4Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="m13.5 6.5 4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}

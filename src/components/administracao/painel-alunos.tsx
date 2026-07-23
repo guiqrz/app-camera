@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 
 import { AvatarAluno } from "@/components/chamada/avatar-aluno";
-import { IconBusca, IconLixeira, IconMais, IconPessoas } from "@/components/ui/icons";
+import { IconBusca, IconLapis, IconLixeira, IconMais, IconPessoas } from "@/components/ui/icons";
 import type { AlunoAdmin, TurmaAdmin } from "@/lib/types";
 
 type PainelAlunosProps = {
@@ -11,11 +11,9 @@ type PainelAlunosProps = {
   turma: TurmaAdmin | null;
   /** Alunos ja filtrados pela turma selecionada (a vista faz esse recorte). */
   alunos: AlunoAdmin[];
-  /** Todas as turmas — alimenta o seletor de turma de cada linha. */
-  turmas: TurmaAdmin[];
   aoNovoAluno: () => void;
-  /** Rejeita com Error(mensagem) — o painel mostra o alerta e o select volta. */
-  aoMudarTurma: (ra: string, turmaId: number) => Promise<void>;
+  /** Abre o modal de edicao do aluno (nome/turma/foto) na vista. */
+  aoEditar: (aluno: AlunoAdmin) => void;
   aoExcluir: (aluno: AlunoAdmin) => void;
 };
 
@@ -24,23 +22,18 @@ type PainelAlunosProps = {
  * de alunos matriculados.
  *
  * Componente burro: a vista decide qual turma esta selecionada e passa so'
- * os alunos dela; aqui so' filtramos por nome/RA no cliente. A mudanca de
- * turma acontece direto na linha (sem confirmacao nativa): o select dispara
- * o POST, mostra um spinner enquanto espera, e volta pro valor anterior
- * sozinho se der erro (o valor vem de `aluno.turma_id`, que so' muda depois
- * que a vista recarrega a visao com sucesso).
+ * os alunos dela; aqui so' filtramos por nome/RA no cliente. A turma de um
+ * aluno agora muda pelo modal de edicao (o antigo select inline saiu), entao
+ * cada linha so' exibe o aluno e oferece editar/excluir.
  */
 export function PainelAlunos({
   turma,
   alunos,
-  turmas,
   aoNovoAluno,
-  aoMudarTurma,
+  aoEditar,
   aoExcluir,
 }: PainelAlunosProps) {
   const [busca, setBusca] = useState("");
-  const [raEmAndamento, setRaEmAndamento] = useState<string | null>(null);
-  const [erroMudancaTurma, setErroMudancaTurma] = useState<string | null>(null);
 
   const filtrados = useMemo(() => {
     const termo = busca.trim().toLowerCase();
@@ -51,26 +44,6 @@ export function PainelAlunos({
         aluno.ra.toLowerCase().includes(termo),
     );
   }, [alunos, busca]);
-
-  /**
-   * Dispara a mudanca de turma da linha. Nao ha confirmacao nativa — o select
-   * ja e' a confirmacao. Em caso de erro, o select "volta" sozinho: nunca
-   * atualizamos otimisticamente, entao `aluno.turma_id` (controlado pela vista)
-   * nunca mudou de verdade.
-   */
-  async function aoSelecionarTurma(ra: string, turmaId: number) {
-    setErroMudancaTurma(null);
-    setRaEmAndamento(ra);
-    try {
-      await aoMudarTurma(ra, turmaId);
-    } catch (causa) {
-      setErroMudancaTurma(
-        causa instanceof Error ? causa.message : "Não foi possível mudar o aluno de turma.",
-      );
-    } finally {
-      setRaEmAndamento(null);
-    }
-  }
 
   return (
     <div
@@ -125,17 +98,6 @@ export function PainelAlunos({
         </div>
       </div>
 
-      {/* Alerta inline: erro ao mudar aluno de turma (o select ja voltou sozinho). */}
-      {erroMudancaTurma && (
-        <p
-          role="alert"
-          className="mx-5 mt-4 rounded-xl px-4 py-3 text-sm font-semibold"
-          style={{ background: "var(--danger-bg)", color: "var(--danger-fg)" }}
-        >
-          {erroMudancaTurma}
-        </p>
-      )}
-
       {/* Corpo: estados vazios ou a lista. */}
       {!turma ? (
         <div className="flex flex-col items-center gap-2 px-6 py-14 text-center">
@@ -162,7 +124,6 @@ export function PainelAlunos({
               >
                 <th className="px-6 py-3.5 font-extrabold">Aluno</th>
                 <th className="px-3 py-3.5 font-extrabold">RA</th>
-                <th className="px-3 py-3.5 font-extrabold">Turma</th>
                 <th className="px-6 py-3.5 text-right font-extrabold">Ações</th>
               </tr>
             </thead>
@@ -171,23 +132,19 @@ export function PainelAlunos({
                 <tr key={aluno.ra} style={{ borderTop: "1px solid var(--border)" }}>
                   <td className="px-6 py-3.5">
                     <div className="flex items-center gap-3">
-                      <AvatarAluno nome={aluno.nome} ra={aluno.ra} tamanho={36} />
+                      <FotoOuAvatar aluno={aluno} tamanho={36} />
                       <span className="text-text text-sm font-bold">{aluno.nome}</span>
+                      <BadgeSemReconhecimento aluno={aluno} />
                     </div>
                   </td>
                   <td className="px-3 py-3.5">
                     <span className="text-text-body text-sm">{aluno.ra}</span>
                   </td>
-                  <td className="px-3 py-3.5">
-                    <SeletorTurma
-                      turmas={turmas}
-                      valor={aluno.turma_id}
-                      carregando={raEmAndamento === aluno.ra}
-                      aoMudar={(turmaId) => aoSelecionarTurma(aluno.ra, turmaId)}
-                    />
-                  </td>
                   <td className="px-6 py-3.5 text-right">
-                    <BotaoExcluir aluno={aluno} aoExcluir={aoExcluir} />
+                    <div className="flex items-center justify-end gap-1">
+                      <BotaoEditar aluno={aluno} aoEditar={aoEditar} />
+                      <BotaoExcluir aluno={aluno} aoExcluir={aoExcluir} />
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -199,23 +156,19 @@ export function PainelAlunos({
             {filtrados.map((aluno) => (
               <li
                 key={aluno.ra}
-                className="flex flex-col gap-3 px-5 py-4"
+                className="flex items-center gap-3 px-5 py-4"
                 style={{ borderTop: "1px solid var(--border)" }}
               >
-                <div className="flex items-center gap-3">
-                  <AvatarAluno nome={aluno.nome} ra={aluno.ra} tamanho={40} />
-                  <div className="min-w-0 flex-1">
+                <FotoOuAvatar aluno={aluno} tamanho={40} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
                     <p className="text-text truncate text-sm font-bold">{aluno.nome}</p>
-                    <p className="text-text-muted text-xs">Matrícula {aluno.ra}</p>
+                    <BadgeSemReconhecimento aluno={aluno} />
                   </div>
-                  <BotaoExcluir aluno={aluno} aoExcluir={aoExcluir} />
+                  <p className="text-text-muted text-xs">Matrícula {aluno.ra}</p>
                 </div>
-                <SeletorTurma
-                  turmas={turmas}
-                  valor={aluno.turma_id}
-                  carregando={raEmAndamento === aluno.ra}
-                  aoMudar={(turmaId) => aoSelecionarTurma(aluno.ra, turmaId)}
-                />
+                <BotaoEditar aluno={aluno} aoEditar={aoEditar} />
+                <BotaoExcluir aluno={aluno} aoExcluir={aoExcluir} />
               </li>
             ))}
           </ul>
@@ -226,51 +179,64 @@ export function PainelAlunos({
 }
 
 /**
- * Seletor de turma de uma linha — dispara a mudanca de turma direto ao
- * escolher (sem confirmacao nativa). Mostra um spinner pequeno ao lado
- * enquanto o POST esta em voo e desabilita o proprio select nesse meio tempo,
- * pra nao disparar duas mudancas em paralelo.
+ * Mostra a miniatura do rosto do aluno quando ele tem reconhecimento; senao
+ * (ou se a imagem falhar) cai pro avatar de iniciais.
  *
- * A reversao visual em caso de erro depende do select ser controlado
- * (`value={valor}`, nunca `defaultValue`): `valor` vem de `aluno.turma_id`,
- * que so' muda quando a vista recarrega com sucesso, entao um POST que falha
- * nunca chega a mudar o que a tela mostra — nao precisa de "desfazer" manual.
+ * A thumb vem da ponte /api/admin/alunos/{ra}/foto (nao e' asset remoto pro
+ * next/image, por isso o <img> cru). onError cobre o caso raro de a rota
+ * responder 404/erro mesmo com tem_reconhecimento=true (dado dessincronizado).
  */
-function SeletorTurma({
-  turmas,
-  valor,
-  carregando,
-  aoMudar,
+function FotoOuAvatar({ aluno, tamanho }: { aluno: AlunoAdmin; tamanho: number }) {
+  const [erro, setErro] = useState(false);
+  if (!aluno.tem_reconhecimento || erro) {
+    return <AvatarAluno nome={aluno.nome} ra={aluno.ra} tamanho={tamanho} />;
+  }
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- thumb servida pela rota /api/admin/alunos/{ra}/foto (nao e' asset remoto pro next/image)
+    <img
+      src={`/api/admin/alunos/${encodeURIComponent(aluno.ra)}/foto`}
+      alt={`Foto de ${aluno.nome}`}
+      width={tamanho}
+      height={tamanho}
+      onError={() => setErro(true)}
+      className="flex-none rounded-full object-cover"
+      style={{ width: tamanho, height: tamanho }}
+    />
+  );
+}
+
+/** Etiqueta de aviso quando o aluno nao tem foto — a camera nao o reconhece. */
+function BadgeSemReconhecimento({ aluno }: { aluno: AlunoAdmin }) {
+  if (aluno.tem_reconhecimento) return null;
+  return (
+    <span
+      className="flex-none rounded-full px-2 py-0.5 text-[10px] font-bold"
+      style={{ background: "var(--warn-bg)", color: "var(--warn-fg)" }}
+      title="Este aluno não tem foto — a câmera não o reconhece automaticamente."
+    >
+      Sem reconhecimento facial
+    </span>
+  );
+}
+
+/** Botao de editar — abre o modal de edicao (nome/turma/foto) na vista. */
+function BotaoEditar({
+  aluno,
+  aoEditar,
 }: {
-  turmas: TurmaAdmin[];
-  valor: number;
-  carregando: boolean;
-  aoMudar: (turmaId: number) => void;
+  aluno: AlunoAdmin;
+  aoEditar: (aluno: AlunoAdmin) => void;
 }) {
   return (
-    <div className="flex items-center gap-2">
-      <select
-        value={valor}
-        onChange={(evento) => aoMudar(Number(evento.target.value))}
-        disabled={carregando}
-        className="bg-surface-2 text-text w-full rounded-lg px-2.5 py-1.5 text-xs font-semibold outline-none disabled:cursor-not-allowed disabled:opacity-60"
-        style={{ border: "1px solid var(--border)" }}
-        aria-label="Mudar aluno de turma"
-      >
-        {turmas.map((turma) => (
-          <option key={turma.id} value={turma.id}>
-            {turma.nome}
-          </option>
-        ))}
-      </select>
-      {carregando && (
-        <span
-          aria-hidden
-          className="h-3.5 w-3.5 flex-none animate-spin rounded-full border-2"
-          style={{ borderColor: "var(--border)", borderTopColor: "var(--primary)" }}
-        />
-      )}
-    </div>
+    <button
+      type="button"
+      onClick={() => aoEditar(aluno)}
+      aria-label={`Editar ${aluno.nome}`}
+      className="inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors"
+      style={{ color: "var(--text-muted)" }}
+    >
+      <IconLapis />
+    </button>
   );
 }
 
