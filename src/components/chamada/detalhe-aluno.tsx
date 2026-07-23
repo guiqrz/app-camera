@@ -109,7 +109,9 @@ export function DetalheAluno({
           valor={presente ? "Presente" : "Ausente"}
           apoio={
             confirmado
-              ? "Confirmado pelo professor"
+              ? aluno.presente !== aluno.detectado_automaticamente
+                ? "Confirmado pelo professor, corrigindo a câmera"
+                : "Confirmado pelo professor"
               : "Ainda sem confirmação manual"
           }
           icone={

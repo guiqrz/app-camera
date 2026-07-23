@@ -29,6 +29,12 @@ function corFrequencia(pct: number | null): string {
 export function LinhaAluno({ aluno, aoMarcar, aoAbrirDetalhe }: LinhaAlunoProps) {
   const presente = aluno.presente === 1;
 
+  // O professor contrariou a camera: confirmou um estado diferente do
+  // detectado. A marca deixa visivel onde a Cupcam errou nesta aula.
+  const corrigido =
+    aluno.confirmado_professor === 1 &&
+    aluno.presente !== aluno.detectado_automaticamente;
+
   return (
     <li
       className="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-3 px-5 py-4 sm:grid-cols-[1fr_150px_130px_110px] sm:px-6"
@@ -47,6 +53,15 @@ export function LinhaAluno({ aluno, aoMarcar, aoAbrirDetalhe }: LinhaAlunoProps)
                 style={{ color: "var(--text-brand)" }}
               >
                 · Detectado pela Cupcam
+              </span>
+            )}
+            {corrigido && (
+              <span
+                className="ml-2 rounded-full px-2 py-0.5 text-[10px] font-extrabold tracking-wide uppercase"
+                style={{ background: "var(--warn-bg)", color: "var(--warn-fg)" }}
+                title="O professor confirmou um estado diferente do que a câmera detectou"
+              >
+                Corrigido
               </span>
             )}
           </p>

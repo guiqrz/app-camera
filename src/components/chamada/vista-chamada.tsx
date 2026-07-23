@@ -265,9 +265,9 @@ export function VistaChamada({ inicial, sessaoId }: VistaChamadaProps) {
           style={{ background: "var(--ok-bg)", color: "var(--ok-fg)" }}
         >
           <span className="text-sm font-semibold">
-            {desfazer.ras.length}{" "}
-            {desfazer.ras.length === 1 ? "aluno marcado" : "alunos marcados"}{" "}
-            como presentes.
+            {desfazer.ras.length === 1
+              ? "1 aluno marcado como presente."
+              : `${desfazer.ras.length} alunos marcados como presentes.`}
           </span>
           <button
             type="button"
