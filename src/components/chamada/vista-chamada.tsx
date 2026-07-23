@@ -39,6 +39,13 @@ export function VistaChamada({ inicial, sessaoId }: VistaChamadaProps) {
   const [filtro, setFiltro] = useState<Filtro>("todos");
   const [raAberto, setRaAberto] = useState<string | null>(null);
   const [avisoErro, setAvisoErro] = useState<string | null>(null);
+  const [emAndamento, setEmAndamento] = useState(
+    inicial.sessao.encerrada_em === null,
+  );
+
+  // RAs com gravacao em voo: o poll ao vivo nao pode sobrescrever um clique
+  // otimista que ainda nao chegou ao banco.
+  const gravandoRef = useRef<Set<string>>(new Set());
 
   // O aviso de erro some sozinho; o timer e' limpo se outro erro chegar antes.
   const timerAviso = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -64,6 +71,7 @@ export function VistaChamada({ inicial, sessaoId }: VistaChamadaProps) {
     async (ra: string, presente: boolean) => {
       let anterior: AlunoChamada | undefined;
 
+      gravandoRef.current.add(ra);
       setAlunos((atuais) =>
         atuais.map((aluno) => {
           if (aluno.ra !== ra) return aluno;
@@ -86,6 +94,7 @@ export function VistaChamada({ inicial, sessaoId }: VistaChamadaProps) {
           },
         );
         if (!resposta.ok) throw new Error(`status ${resposta.status}`);
+        return true;
       } catch (causa) {
         console.error("[cupcam] falha ao gravar presenca:", causa);
         // Desfaz o clique: devolve o aluno ao estado anterior.
@@ -97,10 +106,49 @@ export function VistaChamada({ inicial, sessaoId }: VistaChamadaProps) {
         mostrarErro(
           "Não foi possível salvar a presença. Verifique a conexão e tente de novo.",
         );
+        return false;
+      } finally {
+        gravandoRef.current.delete(ra);
       }
     },
     [sessaoId, mostrarErro],
   );
+
+  /**
+   * Chamada ao vivo: enquanto a aula esta em andamento, busca o retrato novo
+   * a cada 15s — a camera vai detectando alunos e a lista acompanha sozinha.
+   *
+   * O dado do servidor vence, EXCETO para alunos com clique otimista em voo
+   * (gravandoRef), que mantem o estado local ate a gravacao terminar.
+   */
+  useEffect(() => {
+    if (!emAndamento) return;
+
+    const intervalo = setInterval(async () => {
+      try {
+        const resposta = await fetch(`/api/chamada/${sessaoId}`);
+        if (!resposta.ok) return; // falha de rede: tenta de novo no proximo tique
+        const dados = (await resposta.json()) as ChamadaDaSessao;
+
+        setAlunos((locais) =>
+          dados.alunos.map((doServidor) => {
+            if (!gravandoRef.current.has(doServidor.ra)) return doServidor;
+            return (
+              locais.find((aluno) => aluno.ra === doServidor.ra) ?? doServidor
+            );
+          }),
+        );
+
+        // A aula encerrou no meio do caminho: para o poll.
+        if (dados.sessao.encerrada_em !== null) setEmAndamento(false);
+      } catch (causa) {
+        // Sem aviso na tela: e' atualizacao de fundo, o professor nao pediu.
+        console.error("[cupcam] falha na atualizacao ao vivo:", causa);
+      }
+    }, 15_000);
+
+    return () => clearInterval(intervalo);
+  }, [emAndamento, sessaoId]);
 
   /** Marca presentes todos os que estao como ausentes, um POST por aluno. */
   const marcarTodosPresentes = useCallback(() => {
@@ -167,8 +215,21 @@ export function VistaChamada({ inicial, sessaoId }: VistaChamadaProps) {
         >
           Fazer Chamada
         </h1>
-        <p className="text-text-body mt-1.5 text-sm">
+        <p className="text-text-body mt-1.5 flex flex-wrap items-center gap-2 text-sm">
           {inicial.sessao.turma} · {dataAula}. Cada marcação é salva na hora.
+          {emAndamento && (
+            <span
+              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-extrabold tracking-wide uppercase"
+              style={{ background: "var(--ok-bg)", color: "var(--ok-fg)" }}
+            >
+              <span
+                className="h-1.5 w-1.5 animate-pulse rounded-full"
+                style={{ background: "var(--ok)" }}
+                aria-hidden
+              />
+              Ao vivo
+            </span>
+          )}
         </p>
       </div>
 
