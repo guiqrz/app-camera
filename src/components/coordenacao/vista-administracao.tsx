@@ -2,12 +2,12 @@
 
 import { useCallback, useMemo, useState } from "react";
 
-import { ModalAluno } from "@/components/administracao/modal-aluno";
-import { ModalConfirmarExclusao } from "@/components/administracao/modal-confirmar-exclusao";
-import { ModalConfirmarExclusaoTurma } from "@/components/administracao/modal-confirmar-exclusao-turma";
-import { ModalTurma } from "@/components/administracao/modal-turma";
-import { PainelAlunos } from "@/components/administracao/painel-alunos";
-import { PainelTurmas } from "@/components/administracao/painel-turmas";
+import { ModalAluno } from "@/components/coordenacao/modal-aluno";
+import { ModalConfirmarExclusao } from "@/components/coordenacao/modal-confirmar-exclusao";
+import { ModalConfirmarExclusaoTurma } from "@/components/coordenacao/modal-confirmar-exclusao-turma";
+import { ModalTurma } from "@/components/coordenacao/modal-turma";
+import { PainelAlunos } from "@/components/coordenacao/painel-alunos";
+import { PainelTurmas } from "@/components/coordenacao/painel-turmas";
 import { IconPessoas, IconTendencia, IconTurma } from "@/components/ui/icons";
 import { StatCard } from "@/components/ui/stat-card";
 import type { AlunoAdmin, NovaTurma, TurmaAdmin, VisaoAdmin } from "@/lib/types";
@@ -260,7 +260,7 @@ export function VistaAdministracao({ visaoInicial }: VistaAdministracaoProps) {
           className="text-text text-2xl font-extrabold sm:text-3xl"
           style={{ fontFamily: "var(--font-geologica)" }}
         >
-          Administração
+          Coordenação
         </h1>
         <p className="text-text-body mt-1.5 text-sm">
           Cadastre turmas, matricule alunos e gerencie a base do CUPCAM.

@@ -1,4 +1,4 @@
-import { VistaAdministracao } from "@/components/administracao/vista-administracao";
+import { VistaAdministracao } from "@/components/coordenacao/vista-administracao";
 import { AppShell } from "@/components/layout/app-shell";
 import { buscarVisaoAdmin } from "@/lib/api";
 
@@ -19,7 +19,7 @@ export default async function AdministracaoPage() {
   const visao = await buscarVisaoAdmin();
 
   return (
-    <AppShell titulo="Administração">
+    <AppShell titulo="Coordenação">
       <VistaAdministracao visaoInicial={visao} />
     </AppShell>
   );
