@@ -222,7 +222,10 @@ export type NovaTurma = {
 
 /** Estado ao vivo da captura, espelha o estado_camera.json do backend. */
 export type EstadoCamera =
-  | { rodando: false }
+  // Parada, ou iniciando: `iniciando` = o processo subiu mas o boot dos modelos
+  // ainda nao escreveu o primeiro estado (dura alguns segundos). Em ambos os
+  // casos rodando=false — a UI so' mostra os numeros no ramo rodando:true.
+  | { rodando: false; iniciando?: boolean }
   | {
       rodando: true;
       atualizado_em: string;

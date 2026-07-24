@@ -306,9 +306,17 @@ export function lerEstadoCamera(): Promise<EstadoCamera> {
   return requisitar<EstadoCamera>("/camera/estado", { revalidate: 0 });
 }
 
-/** Liga a captura. Lanca ApiError 409 (via requisitar) se ja houver camera rodando. */
-export function ligarCamera(): Promise<{ iniciando: boolean }> {
-  return requisitar<{ iniciando: boolean }>("/camera/ligar", { method: "POST" });
+/**
+ * Liga a captura. Lanca ApiError 409 (via requisitar) se ja houver camera rodando.
+ *
+ * turmaId opcional: turma escolhida a mao na tela de Camera. Sem ela, o backend
+ * escolhe a turma automatico pelo horario.
+ */
+export function ligarCamera(turmaId?: number): Promise<{ iniciando: boolean }> {
+  return requisitar<{ iniciando: boolean }>("/camera/ligar", {
+    method: "POST",
+    body: turmaId != null ? { turma_id: turmaId } : undefined,
+  });
 }
 
 /** Para a captura. Idempotente no backend. */
