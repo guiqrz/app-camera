@@ -49,7 +49,7 @@ export default async function RelatorioGeralPage({ params }: Props) {
       {/* No celular os controles aparecem no corpo, onde ha espaco. */}
       <div className="mb-6 flex flex-wrap gap-2 lg:hidden">{controles}</div>
 
-      <VistaRelatorioGeral resumo={resumo} nomeTurma={aulas.turma.nome} />
+      <VistaRelatorioGeral resumo={resumo} nomeTurma={aulas.turma.nome} turmaId={id} />
     </AppShell>
   );
 }

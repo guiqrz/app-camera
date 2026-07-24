@@ -11,6 +11,13 @@ const INTERVALO_MS = 3000;
 /** Limiar do backend para o alerta de dispersao — so' documenta o que ja vem pronto em `alerta_atencao`. */
 const LIMIAR_ALERTA_PCT = 20;
 
+type CardAoVivoProps = {
+  /** Turma da pagina de relatorio atual. O card so' aparece se a aula ao vivo
+   *  for DESTA turma — em outra turma ele fica oculto, mesmo com a camera
+   *  rodando noutra sala. */
+  turmaId: number;
+};
+
 /**
  * Card "Aula acontecendo agora" no topo de Relatorios.
  *
@@ -20,10 +27,11 @@ const LIMIAR_ALERTA_PCT = 20;
  * dado que so' a rota de relatorio da sessao tem, e este card nao busca essa
  * rota. Mostra apenas os numeros que o estado da camera ja devolve.
  *
- * Auto-oculta (retorna null) quando nao ha aula em curso, entao nao altera o
- * layout normal de Relatorios fora desse caso.
+ * Auto-oculta (retorna null) quando nao ha aula em curso OU quando a aula ao
+ * vivo e' de outra turma que nao a da pagina atual — assim o card so' aparece
+ * no relatorio da turma que esta sendo filmada agora.
  */
-export function CardAoVivo() {
+export function CardAoVivo({ turmaId }: CardAoVivoProps) {
   const [estado, setEstado] = useState<EstadoCamera | null>(null);
 
   const buscar = useCallback(async () => {
@@ -54,12 +62,24 @@ export function CardAoVivo() {
     };
   }, [buscar]);
 
-  if (!estado?.rodando || estado.sessao_id === null || estado.turma === null) {
+  // `== null` (nao `=== null`) cobre tambem `undefined`: num render transitorio
+  // logo apos ligar, turma/sessao_id podem chegar ausentes antes de nulos, e o
+  // acesso a .id/.nome abaixo estouraria se so' checassemos `=== null`.
+  if (!estado?.rodando || estado.sessao_id == null || estado.turma == null) {
     return null;
   }
 
-  // pct_desatento vem como fracao 0-1; * 100 vira porcentagem
-  const pctDispersao = Math.round(estado.pct_desatento * 100);
+  // So' mostra o card na pagina da turma que esta sendo filmada agora. Numa
+  // outra turma, a aula ao vivo existe mas nao pertence a esta tela.
+  if (estado.turma.id !== turmaId) {
+    return null;
+  }
+
+  // pct_desatento vem como fracao 0-1; * 100 vira porcentagem. `?? 0` protege
+  // contra um estado parcial que tenha turma/sessao mas ainda sem os numeros.
+  const pctDispersao = Math.round((estado.pct_desatento ?? 0) * 100);
+  const presentes = estado.chamada?.presentes ?? 0;
+  const total = estado.chamada?.total ?? 0;
 
   return (
     <div className="border-border-default bg-surface shadow-card flex flex-col gap-5 rounded-2xl border p-5 sm:p-6">
@@ -98,7 +118,7 @@ export function CardAoVivo() {
         <StatCard
           variante="brand"
           rotulo="Chamada"
-          valor={`${estado.chamada.presentes}/${estado.chamada.total}`}
+          valor={`${presentes}/${total}`}
           apoio="Presentes / total da turma"
           icone={<IconPessoas />}
         />
