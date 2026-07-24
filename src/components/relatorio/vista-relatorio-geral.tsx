@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { CardAoVivo } from "@/components/relatorio/card-ao-vivo";
 import { GraficoTendencia } from "@/components/relatorio/grafico-tendencia";
 import {
   IconAulas,
@@ -41,6 +42,8 @@ export function VistaRelatorioGeral({ resumo, nomeTurma }: VistaRelatorioGeralPr
 
   return (
     <div className="flex flex-col gap-7">
+      <CardAoVivo />
+
       <div>
         <h1
           className="text-text text-2xl font-extrabold sm:text-3xl"
