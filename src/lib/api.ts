@@ -23,6 +23,7 @@ import type {
   AulasDaTurma,
   ChamadaDaSessao,
   ConfirmacaoPresencaResposta,
+  EstadoCamera,
   EstatisticasDaTurma,
   NovaTurma,
   RelatorioDaSessao,
@@ -294,4 +295,23 @@ export function excluirTurma(id: number): Promise<{ id: number; nome: string }> 
   return requisitar<{ id: number; nome: string }>(`/admin/turmas/${id}`, {
     method: "DELETE",
   });
+}
+
+/* ------------------------------------------------------------------ */
+/* Camera                                                              */
+/* ------------------------------------------------------------------ */
+
+/** Estado ao vivo da captura. Sempre responde, mesmo com a camera parada. */
+export function lerEstadoCamera(): Promise<EstadoCamera> {
+  return requisitar<EstadoCamera>("/camera/estado", { revalidate: 0 });
+}
+
+/** Liga a captura. Lanca ApiError 409 (via requisitar) se ja houver camera rodando. */
+export function ligarCamera(): Promise<{ iniciando: boolean }> {
+  return requisitar<{ iniciando: boolean }>("/camera/ligar", { method: "POST" });
+}
+
+/** Para a captura. Idempotente no backend. */
+export function desligarCamera(): Promise<{ parado: boolean }> {
+  return requisitar<{ parado: boolean }>("/camera/desligar", { method: "POST" });
 }

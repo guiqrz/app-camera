@@ -215,3 +215,23 @@ export type NovaTurma = {
   hora_inicio: string;
   hora_fim: string;
 };
+
+/* ------------------------------------------------------------------ */
+/* Camera                                                              */
+/* ------------------------------------------------------------------ */
+
+/** Estado ao vivo da captura, espelha o estado_camera.json do backend. */
+export type EstadoCamera =
+  | { rodando: false }
+  | {
+      rodando: true;
+      atualizado_em: string;
+      turma: { id: number; nome: string } | null;
+      sessao_id: number | null;
+      chamada: { presentes: number; total: number };
+      pct_desatento: number;
+      media_pessoas: number;
+      fps: number | null;
+      mqtt: boolean;
+      alerta_atencao: boolean;
+    };
