@@ -11,6 +11,8 @@ type PainelAlunosProps = {
   turma: TurmaAdmin | null;
   /** Alunos ja filtrados pela turma selecionada (a vista faz esse recorte). */
   alunos: AlunoAdmin[];
+  /** Contador que a vista incrementa a cada recarga — fura o cache da miniatura. */
+  versaoFotos: number;
   aoNovoAluno: () => void;
   /** Abre o modal de edicao do aluno (nome/turma/foto) na vista. */
   aoEditar: (aluno: AlunoAdmin) => void;
@@ -29,6 +31,7 @@ type PainelAlunosProps = {
 export function PainelAlunos({
   turma,
   alunos,
+  versaoFotos,
   aoNovoAluno,
   aoEditar,
   aoExcluir,
@@ -132,7 +135,7 @@ export function PainelAlunos({
                 <tr key={aluno.ra} style={{ borderTop: "1px solid var(--border)" }}>
                   <td className="px-6 py-3.5">
                     <div className="flex items-center gap-3">
-                      <FotoOuAvatar aluno={aluno} tamanho={36} />
+                      <FotoOuAvatar aluno={aluno} tamanho={36} versaoFotos={versaoFotos} />
                       <span className="text-text text-sm font-bold">{aluno.nome}</span>
                       <BadgeSemReconhecimento aluno={aluno} />
                     </div>
@@ -159,7 +162,7 @@ export function PainelAlunos({
                 className="flex items-center gap-3 px-5 py-4"
                 style={{ borderTop: "1px solid var(--border)" }}
               >
-                <FotoOuAvatar aluno={aluno} tamanho={40} />
+                <FotoOuAvatar aluno={aluno} tamanho={40} versaoFotos={versaoFotos} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <p className="text-text truncate text-sm font-bold">{aluno.nome}</p>
@@ -186,19 +189,35 @@ export function PainelAlunos({
  * next/image, por isso o <img> cru). onError cobre o caso raro de a rota
  * responder 404/erro mesmo com tem_reconhecimento=true (dado dessincronizado).
  */
-function FotoOuAvatar({ aluno, tamanho }: { aluno: AlunoAdmin; tamanho: number }) {
+function FotoOuAvatar({
+  aluno,
+  tamanho,
+  versaoFotos,
+}: {
+  aluno: AlunoAdmin;
+  tamanho: number;
+  versaoFotos: number;
+}) {
   const [erro, setErro] = useState(false);
-  if (!aluno.tem_reconhecimento || erro) {
+  // Uma falha anterior nao pode prender o avatar depois que a lista recarregou (o
+  // aluno pode ter ganhado foto no meio-tempo): cada versao nova zera o erro.
+  const [versaoDoErro, setVersaoDoErro] = useState(versaoFotos);
+  const falhou = erro && versaoDoErro === versaoFotos;
+
+  if (!aluno.tem_reconhecimento || falhou) {
     return <AvatarAluno nome={aluno.nome} ra={aluno.ra} tamanho={tamanho} />;
   }
   return (
     // eslint-disable-next-line @next/next/no-img-element -- thumb servida pela rota /api/admin/alunos/{ra}/foto (nao e' asset remoto pro next/image)
     <img
-      src={`/api/admin/alunos/${encodeURIComponent(aluno.ra)}/foto`}
+      src={`/api/admin/alunos/${encodeURIComponent(aluno.ra)}/foto?v=${versaoFotos}`}
       alt={`Foto de ${aluno.nome}`}
       width={tamanho}
       height={tamanho}
-      onError={() => setErro(true)}
+      onError={() => {
+        setErro(true);
+        setVersaoDoErro(versaoFotos);
+      }}
       className="flex-none rounded-full object-cover"
       style={{ width: tamanho, height: tamanho }}
     />
