@@ -4,35 +4,69 @@ import { useEffect, useId, useRef, useState } from "react";
 
 import { useFocoPreso } from "@/components/coordenacao/usar-foco-preso";
 import { IconFechar } from "@/components/ui/icons";
-import type { NovaTurma, TurmaAdmin } from "@/lib/types";
+import type { Aula, Materia, NovaAula } from "@/lib/types";
 
 type ModoModal = "criar" | "editar";
 
-type ModalTurmaProps = {
+type ModalAulaProps = {
   aberto: boolean;
   modo: ModoModal;
-  /** Turma sendo editada (obrigatorio no modo "editar"; ignorado no "criar"). */
-  turma?: TurmaAdmin | null;
+  /** Aula sendo editada (obrigatorio no modo "editar"; ignorado no "criar"). */
+  aula?: Aula | null;
+  /** Materias cadastradas, pra popular o dropdown. Lista vazia e' valida. */
+  materias: Materia[];
   aoFechar: () => void;
   /** Rejeita com Error(mensagem) — o modal mostra o texto e permanece aberto. */
-  aoSalvar: (dados: NovaTurma) => Promise<void>;
+  aoSalvar: (dados: NovaAula) => Promise<void>;
 };
 
+/** 0 = domingo ... 6 = sabado, mesma convencao de `Aula.dia_semana`. */
+const DIAS_DA_SEMANA = [
+  "Domingo",
+  "Segunda-feira",
+  "Terça-feira",
+  "Quarta-feira",
+  "Quinta-feira",
+  "Sexta-feira",
+  "Sábado",
+];
+
+/** Valor do <option> "Sem matéria" — vira `materia_id: null` no envio. */
+const SEM_MATERIA = "";
+
 const VALORES_INICIAIS = {
-  nome: "",
-  sala_id: "",
+  dia_semana: "1",
+  hora_inicio: "",
+  hora_fim: "",
+  materia_id: SEM_MATERIA,
 };
 
 /**
- * Modal de turma unificado — cria uma turma nova ou edita uma existente,
- * decidido pelo prop `modo`. Overlay escurecido + card centrado, Esc fecha,
- * clique fora fecha, foco inicial no primeiro campo, reset ao abrir.
+ * Modal de aula unificado — cria uma aula nova na turma ou edita uma
+ * existente, decidido pelo prop `modo`. Mesmo molde do `ModalTurma`: overlay
+ * escurecido + card centrado, Esc fecha, clique fora fecha, foco inicial no
+ * primeiro campo, reset ao abrir.
  *
- * Turma e' so' identidade: nome + sala. A agenda (dia e horario) saiu daqui e
- * virou a entidade Aula, gerenciada pelo `PainelAulas`/`ModalAula` — inclusive
- * o conflito de horario, que agora e' entre aulas, nunca entre turmas.
+ * Validacao de fim > inicio replica a regra do backend
+ * (`cupcam/gestao/aulas.py`) so' pra dar feedback rapido: "HH:MM" compara
+ * certo como string porque tem sempre 5 caracteres com zero a esquerda. Ja o
+ * conflito de horario com outra turma so' o backend sabe validar (precisa das
+ * outras aulas da mesma sala) — vira um 409 que a vista repassa como Error e
+ * cai no erro inline aqui.
+ *
+ * ATENCAO no modo editar: o PUT do backend e' substituicao TOTAL do recurso —
+ * omitir `materia_id` LIMPA a materia da aula. Por isso o dropdown ja abre
+ * pre-preenchido com a materia atual e o envio sempre manda `materia_id`
+ * explicito (o id ou null), nunca omitido.
  */
-export function ModalTurma({ aberto, modo, turma, aoFechar, aoSalvar }: ModalTurmaProps) {
+export function ModalAula({
+  aberto,
+  modo,
+  aula,
+  materias,
+  aoFechar,
+  aoSalvar,
+}: ModalAulaProps) {
   const [valores, setValores] = useState(VALORES_INICIAIS);
   const [erroValidacao, setErroValidacao] = useState<string | null>(null);
   const [erroApi, setErroApi] = useState<string | null>(null);
@@ -48,8 +82,15 @@ export function ModalTurma({ aberto, modo, turma, aoFechar, aoSalvar }: ModalTur
   if (aberto !== abertoAnterior) {
     setAbertoAnterior(aberto);
     if (aberto) {
-      if (editando && turma) {
-        setValores({ nome: turma.nome, sala_id: turma.sala_id });
+      if (editando && aula) {
+        setValores({
+          dia_semana: String(aula.dia_semana),
+          hora_inicio: aula.hora_inicio,
+          hora_fim: aula.hora_fim,
+          // Pre-preencher a materia atual nao e' cosmetico: sem isso o PUT
+          // apagaria a materia da aula em silencio (substituicao total).
+          materia_id: aula.materia_id === null ? SEM_MATERIA : String(aula.materia_id),
+        });
       } else {
         setValores(VALORES_INICIAIS);
       }
@@ -59,7 +100,7 @@ export function ModalTurma({ aberto, modo, turma, aoFechar, aoSalvar }: ModalTur
     }
   }
 
-  const primeiroCampoRef = useRef<HTMLInputElement>(null);
+  const primeiroCampoRef = useRef<HTMLSelectElement>(null);
   const idTitulo = useId();
   const refModal = useFocoPreso(aberto);
 
@@ -102,14 +143,24 @@ export function ModalTurma({ aberto, modo, turma, aoFechar, aoSalvar }: ModalTur
     evento.preventDefault();
     setErroApi(null);
 
-    const { nome, sala_id } = valores;
-    if (!nome.trim() || !sala_id.trim()) {
-      setErroValidacao("Preencha todos os campos.");
+    const { dia_semana, hora_inicio, hora_fim, materia_id } = valores;
+    if (!hora_inicio || !hora_fim) {
+      setErroValidacao("Preencha o horário de início e de fim.");
+      return;
+    }
+    if (hora_fim <= hora_inicio) {
+      setErroValidacao("O horário de fim precisa ser depois do horário de início.");
       return;
     }
     setErroValidacao(null);
 
-    const dados: NovaTurma = { nome: nome.trim(), sala_id: sala_id.trim() };
+    const dados: NovaAula = {
+      dia_semana: Number(dia_semana),
+      hora_inicio,
+      hora_fim,
+      // Sempre explicito, inclusive null — ver o aviso no JSDoc do componente.
+      materia_id: materia_id === SEM_MATERIA ? null : Number(materia_id),
+    };
 
     setEnviando(true);
     try {
@@ -119,7 +170,7 @@ export function ModalTurma({ aberto, modo, turma, aoFechar, aoSalvar }: ModalTur
       setErroApi(
         causa instanceof Error
           ? causa.message
-          : `Não foi possível ${editando ? "salvar" : "criar"} a turma.`,
+          : `Não foi possível ${editando ? "salvar" : "criar"} a aula.`,
       );
     } finally {
       setEnviando(false);
@@ -152,7 +203,7 @@ export function ModalTurma({ aberto, modo, turma, aoFechar, aoSalvar }: ModalTur
             className="text-text text-lg font-extrabold"
             style={{ fontFamily: "var(--font-geologica)" }}
           >
-            {editando ? "Editar turma" : "Nova turma"}
+            {editando ? "Editar aula" : "Nova aula"}
           </h2>
           <button
             type="button"
@@ -166,39 +217,64 @@ export function ModalTurma({ aberto, modo, turma, aoFechar, aoSalvar }: ModalTur
         </div>
 
         <form onSubmit={aoSubmeter} className="flex flex-col gap-4" noValidate>
-          <Campo rotulo="Nome da turma">
-            <input
+          <Campo rotulo="Dia da semana">
+            <select
               ref={primeiroCampoRef}
-              type="text"
-              required
-              value={valores.nome}
-              onChange={(evento) => atualizarCampo("nome", evento.target.value)}
-              placeholder="Turma 8A"
+              value={valores.dia_semana}
+              onChange={(evento) => atualizarCampo("dia_semana", evento.target.value)}
               className="text-text w-full rounded-lg bg-transparent px-3 py-2 text-sm outline-none"
               style={{ border: "1px solid var(--border)" }}
               disabled={enviando}
-            />
+            >
+              {DIAS_DA_SEMANA.map((nomeDia, indice) => (
+                <option key={indice} value={indice}>
+                  {nomeDia}
+                </option>
+              ))}
+            </select>
           </Campo>
 
-          <Campo rotulo="Sala">
-            <input
-              type="text"
-              required
-              value={valores.sala_id}
-              onChange={(evento) => atualizarCampo("sala_id", evento.target.value)}
-              placeholder="sala_32A"
+          <div className="grid grid-cols-2 gap-3">
+            <Campo rotulo="Início">
+              <input
+                type="time"
+                required
+                value={valores.hora_inicio}
+                onChange={(evento) => atualizarCampo("hora_inicio", evento.target.value)}
+                className="text-text w-full rounded-lg bg-transparent px-3 py-2 text-sm outline-none"
+                style={{ border: "1px solid var(--border)" }}
+                disabled={enviando}
+              />
+            </Campo>
+            <Campo rotulo="Fim">
+              <input
+                type="time"
+                required
+                value={valores.hora_fim}
+                onChange={(evento) => atualizarCampo("hora_fim", evento.target.value)}
+                className="text-text w-full rounded-lg bg-transparent px-3 py-2 text-sm outline-none"
+                style={{ border: "1px solid var(--border)" }}
+                disabled={enviando}
+              />
+            </Campo>
+          </div>
+
+          <Campo rotulo="Matéria (opcional)">
+            <select
+              value={valores.materia_id}
+              onChange={(evento) => atualizarCampo("materia_id", evento.target.value)}
               className="text-text w-full rounded-lg bg-transparent px-3 py-2 text-sm outline-none"
               style={{ border: "1px solid var(--border)" }}
               disabled={enviando}
-            />
+            >
+              <option value={SEM_MATERIA}>Sem matéria</option>
+              {materias.map((materia) => (
+                <option key={materia.id} value={materia.id}>
+                  {materia.nome}
+                </option>
+              ))}
+            </select>
           </Campo>
-
-          {/* Os horarios da turma sao cadastrados como aulas, no painel
-              "Aulas da turma" — uma turma pode ter varios encontros na semana. */}
-          <p className="text-text-muted text-xs leading-relaxed">
-            Os dias e horários da turma são cadastrados em <strong>Aulas da turma</strong>,
-            no painel ao lado da lista de alunos.
-          </p>
 
           {erroExibido && (
             <p
@@ -237,7 +313,7 @@ export function ModalTurma({ aberto, modo, turma, aoFechar, aoSalvar }: ModalTur
                   : "Criando..."
                 : editando
                   ? "Salvar alterações"
-                  : "Criar turma"}
+                  : "Criar aula"}
             </button>
           </div>
         </form>

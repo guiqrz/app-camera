@@ -87,9 +87,9 @@ export function PainelTurmas({
                   >
                     {turma.nome}
                   </span>
-                  <span className="text-text-muted truncate text-xs">
-                    {turma.dia_semana_nome} · {turma.hora_inicio}–{turma.hora_fim} · {turma.sala_id}
-                  </span>
+                  {/* Turma e' so' identidade: nome + sala. Dia e horario agora
+                      vivem nas aulas dela, no painel "Aulas da turma". */}
+                  <span className="text-text-muted truncate text-xs">{turma.sala_id}</span>
                   <span className="text-text-muted text-xs font-semibold">
                     {turma.total_alunos}{" "}
                     {turma.total_alunos === 1 ? "aluno matriculado" : "alunos matriculados"}
