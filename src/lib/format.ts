@@ -92,12 +92,21 @@ export function formatarDiaSemana(dia: string): string {
 }
 
 /**
- * Monta "8:00 - 9:30" a partir das horas da turma.
+ * Monta "8:00 - 9:30" a partir das horas da aula.
  *
  * Remove o zero a esquerda como no desenho das telas, mas preserva
  * "00:00" — sem essa excecao a meia-noite virava "0:00".
+ *
+ * Devolve `null` quando falta qualquer uma das pontas: uma sessao iniciada com
+ * a camera na mao (ou cuja aula foi excluida depois) nao tem horario nenhum, e
+ * a tela deve OMITIR o pedaco em vez de inventar um placeholder — "—:—" leria
+ * como se o horario existisse e nao tivesse sido carregado.
  */
-export function formatarIntervalo(inicio: string, fim: string): string {
+export function formatarIntervalo(
+  inicio: string | null,
+  fim: string | null,
+): string | null {
+  if (!inicio || !fim) return null;
   const limpar = (hora: string) =>
     hora.startsWith("00:") ? hora : hora.replace(/^0/, "");
   return `${limpar(inicio)} - ${limpar(fim)}`;

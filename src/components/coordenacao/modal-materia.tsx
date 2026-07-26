@@ -4,35 +4,39 @@ import { useEffect, useId, useRef, useState } from "react";
 
 import { useFocoPreso } from "@/components/coordenacao/usar-foco-preso";
 import { IconFechar } from "@/components/ui/icons";
-import type { NovaTurma, TurmaAdmin } from "@/lib/types";
+import type { Materia, NovaMateria } from "@/lib/types";
 
 type ModoModal = "criar" | "editar";
 
-type ModalTurmaProps = {
+type ModalMateriaProps = {
   aberto: boolean;
   modo: ModoModal;
-  /** Turma sendo editada (obrigatorio no modo "editar"; ignorado no "criar"). */
-  turma?: TurmaAdmin | null;
+  /** Materia sendo editada (obrigatorio no modo "editar"; ignorado no "criar"). */
+  materia?: Materia | null;
   aoFechar: () => void;
   /** Rejeita com Error(mensagem) — o modal mostra o texto e permanece aberto. */
-  aoSalvar: (dados: NovaTurma) => Promise<void>;
+  aoSalvar: (dados: NovaMateria) => Promise<void>;
 };
 
-const VALORES_INICIAIS = {
-  nome: "",
-  sala_id: "",
-};
+const VALORES_INICIAIS = { nome: "" };
 
 /**
- * Modal de turma unificado — cria uma turma nova ou edita uma existente,
- * decidido pelo prop `modo`. Overlay escurecido + card centrado, Esc fecha,
- * clique fora fecha, foco inicial no primeiro campo, reset ao abrir.
+ * Modal de materia unificado — cria uma materia nova ou renomeia uma
+ * existente, decidido pelo prop `modo`. Mesmo molde do `ModalTurma`: overlay
+ * escurecido + card centrado, Esc fecha, clique fora fecha, foco inicial no
+ * campo, reset ao abrir.
  *
- * Turma e' so' identidade: nome + sala. A agenda (dia e horario) saiu daqui e
- * virou a entidade Aula, gerenciada pelo `PainelAulas`/`ModalAula` — inclusive
- * o conflito de horario, que agora e' entre aulas, nunca entre turmas.
+ * Materia e' global (nao pertence a turma nenhuma) e tem um campo so'. A
+ * unicidade do nome quem valida e' o backend — vira um 422 que a vista repassa
+ * como Error e cai no erro inline aqui.
  */
-export function ModalTurma({ aberto, modo, turma, aoFechar, aoSalvar }: ModalTurmaProps) {
+export function ModalMateria({
+  aberto,
+  modo,
+  materia,
+  aoFechar,
+  aoSalvar,
+}: ModalMateriaProps) {
   const [valores, setValores] = useState(VALORES_INICIAIS);
   const [erroValidacao, setErroValidacao] = useState<string | null>(null);
   const [erroApi, setErroApi] = useState<string | null>(null);
@@ -48,11 +52,7 @@ export function ModalTurma({ aberto, modo, turma, aoFechar, aoSalvar }: ModalTur
   if (aberto !== abertoAnterior) {
     setAbertoAnterior(aberto);
     if (aberto) {
-      if (editando && turma) {
-        setValores({ nome: turma.nome, sala_id: turma.sala_id });
-      } else {
-        setValores(VALORES_INICIAIS);
-      }
+      setValores(editando && materia ? { nome: materia.nome } : VALORES_INICIAIS);
       setErroValidacao(null);
       setErroApi(null);
       setEnviando(false);
@@ -91,35 +91,26 @@ export function ModalTurma({ aberto, modo, turma, aoFechar, aoSalvar }: ModalTur
 
   if (!aberto) return null;
 
-  function atualizarCampo<K extends keyof typeof VALORES_INICIAIS>(
-    campo: K,
-    valor: (typeof VALORES_INICIAIS)[K],
-  ) {
-    setValores((atuais) => ({ ...atuais, [campo]: valor }));
-  }
-
   async function aoSubmeter(evento: React.FormEvent<HTMLFormElement>) {
     evento.preventDefault();
     setErroApi(null);
 
-    const { nome, sala_id } = valores;
-    if (!nome.trim() || !sala_id.trim()) {
-      setErroValidacao("Preencha todos os campos.");
+    const nome = valores.nome.trim();
+    if (!nome) {
+      setErroValidacao("Informe o nome da matéria.");
       return;
     }
     setErroValidacao(null);
 
-    const dados: NovaTurma = { nome: nome.trim(), sala_id: sala_id.trim() };
-
     setEnviando(true);
     try {
-      await aoSalvar(dados);
+      await aoSalvar({ nome });
       // Sucesso: quem chama (a vista) fecha e recarrega — nao mexe aqui.
     } catch (causa) {
       setErroApi(
         causa instanceof Error
           ? causa.message
-          : `Não foi possível ${editando ? "salvar" : "criar"} a turma.`,
+          : `Não foi possível ${editando ? "renomear" : "criar"} a matéria.`,
       );
     } finally {
       setEnviando(false);
@@ -152,7 +143,7 @@ export function ModalTurma({ aberto, modo, turma, aoFechar, aoSalvar }: ModalTur
             className="text-text text-lg font-extrabold"
             style={{ fontFamily: "var(--font-geologica)" }}
           >
-            {editando ? "Editar turma" : "Nova turma"}
+            {editando ? "Renomear matéria" : "Nova matéria"}
           </h2>
           <button
             type="button"
@@ -166,39 +157,30 @@ export function ModalTurma({ aberto, modo, turma, aoFechar, aoSalvar }: ModalTur
         </div>
 
         <form onSubmit={aoSubmeter} className="flex flex-col gap-4" noValidate>
-          <Campo rotulo="Nome da turma">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-text-muted text-xs font-bold">Nome da matéria</span>
             <input
               ref={primeiroCampoRef}
               type="text"
               required
               value={valores.nome}
-              onChange={(evento) => atualizarCampo("nome", evento.target.value)}
-              placeholder="Turma 8A"
+              onChange={(evento) => setValores({ nome: evento.target.value })}
+              placeholder="História"
               className="text-text w-full rounded-lg bg-transparent px-3 py-2 text-sm outline-none"
               style={{ border: "1px solid var(--border)" }}
               disabled={enviando}
             />
-          </Campo>
+          </label>
 
-          <Campo rotulo="Sala">
-            <input
-              type="text"
-              required
-              value={valores.sala_id}
-              onChange={(evento) => atualizarCampo("sala_id", evento.target.value)}
-              placeholder="sala_32A"
-              className="text-text w-full rounded-lg bg-transparent px-3 py-2 text-sm outline-none"
-              style={{ border: "1px solid var(--border)" }}
-              disabled={enviando}
-            />
-          </Campo>
-
-          {/* Os horarios da turma sao cadastrados como aulas, no painel
-              "Aulas da turma" — uma turma pode ter varios encontros na semana. */}
-          <p className="text-text-muted text-xs leading-relaxed">
-            Os dias e horários da turma são cadastrados em <strong>Aulas da turma</strong>,
-            no painel abaixo da lista de alunos.
-          </p>
+          {/* Renomear vale pra grade inteira: a materia e' global, nao uma
+              copia por aula. Sem esse aviso o usuario pode achar que so' a
+              turma aberta seria afetada. */}
+          {editando && (
+            <p className="text-text-muted text-xs leading-relaxed">
+              A matéria é usada por todas as turmas — o novo nome aparece em
+              todas as aulas que a utilizam.
+            </p>
+          )}
 
           {erroExibido && (
             <p
@@ -237,20 +219,11 @@ export function ModalTurma({ aberto, modo, turma, aoFechar, aoSalvar }: ModalTur
                   : "Criando..."
                 : editando
                   ? "Salvar alterações"
-                  : "Criar turma"}
+                  : "Criar matéria"}
             </button>
           </div>
         </form>
       </div>
     </div>
-  );
-}
-
-function Campo({ rotulo, children }: { rotulo: string; children: React.ReactNode }) {
-  return (
-    <label className="flex flex-col gap-1.5">
-      <span className="text-text-muted text-xs font-bold">{rotulo}</span>
-      {children}
-    </label>
   );
 }

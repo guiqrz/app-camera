@@ -6,9 +6,11 @@ import { ModalAluno } from "@/components/coordenacao/modal-aluno";
 import { ModalAula } from "@/components/coordenacao/modal-aula";
 import { ModalConfirmarExclusao } from "@/components/coordenacao/modal-confirmar-exclusao";
 import { ModalConfirmarExclusaoTurma } from "@/components/coordenacao/modal-confirmar-exclusao-turma";
+import { ModalMateria } from "@/components/coordenacao/modal-materia";
 import { ModalTurma } from "@/components/coordenacao/modal-turma";
 import { PainelAlunos } from "@/components/coordenacao/painel-alunos";
 import { PainelAulas } from "@/components/coordenacao/painel-aulas";
+import { PainelMaterias } from "@/components/coordenacao/painel-materias";
 import { PainelTurmas } from "@/components/coordenacao/painel-turmas";
 import { IconPessoas, IconTendencia, IconTurma } from "@/components/ui/icons";
 import { StatCard } from "@/components/ui/stat-card";
@@ -17,6 +19,7 @@ import type {
   Aula,
   Materia,
   NovaAula,
+  NovaMateria,
   NovaTurma,
   TurmaAdmin,
   VisaoAdmin,
@@ -27,15 +30,21 @@ type VistaAdministracaoProps = {
   visaoInicial: VisaoAdmin;
 };
 
-/** Estado dos modais de aluno, turma e aula — modo mais o item sendo editado. */
+/** Estado dos modais — modo mais o item sendo editado. */
 type EstadoModalAluno = { modo: "criar" | "editar"; aluno?: AlunoAdmin };
 type EstadoModalTurma = { modo: "criar" | "editar"; turma?: TurmaAdmin };
 type EstadoModalAula = { modo: "criar" | "editar"; aula?: Aula };
+type EstadoModalMateria = { modo: "criar" | "editar"; materia?: Materia };
 
-/** Corpo de erro comum aos proxies /api/admin/*: {erro, detalhe?}. */
+/**
+ * Corpo de erro comum aos proxies /api/admin/*: {erro, detalhe?}, onde
+ * `detalhe` e' o corpo cru do FastAPI. No 422 `detail` e' string; no 409 e' um
+ * objeto cujos campos variam por rota (`nome` da turma em conflito de horario,
+ * `total_aulas` na materia em uso).
+ */
 type CorpoErro = {
   erro?: string;
-  detalhe?: { detail?: string | { nome?: string } };
+  detalhe?: { detail?: string | { nome?: string; total_aulas?: number } };
 } | null;
 
 /**
@@ -59,6 +68,7 @@ export function VistaAdministracao({ visaoInicial }: VistaAdministracaoProps) {
   const [modalAluno, setModalAluno] = useState<EstadoModalAluno | null>(null);
   const [modalTurma, setModalTurma] = useState<EstadoModalTurma | null>(null);
   const [modalAula, setModalAula] = useState<EstadoModalAula | null>(null);
+  const [modalMateria, setModalMateria] = useState<EstadoModalMateria | null>(null);
   const [alunoParaExcluir, setAlunoParaExcluir] = useState<AlunoAdmin | null>(null);
   const [turmaParaExcluir, setTurmaParaExcluir] = useState<TurmaAdmin | null>(null);
 
@@ -66,6 +76,8 @@ export function VistaAdministracao({ visaoInicial }: VistaAdministracaoProps) {
   // cliente pelos proxies /api/admin/*, que carregam a X-API-Key no servidor
   // (componente "use client" nunca fala com lib/api.ts direto).
   const [materias, setMaterias] = useState<Materia[]>([]);
+  const [carregandoMaterias, setCarregandoMaterias] = useState(true);
+  const [erroMaterias, setErroMaterias] = useState<string | null>(null);
   const [aulas, setAulas] = useState<Aula[]>([]);
   const [carregandoAulas, setCarregandoAulas] = useState(false);
   const [erroAulas, setErroAulas] = useState<string | null>(null);
@@ -174,25 +186,63 @@ export function VistaAdministracao({ visaoInicial }: VistaAdministracaoProps) {
     return () => clearTimeout(id);
   }, [selecionadaId, recarregarAulas]);
 
+  // Mesmo papel do contador de aulas: o CRUD de materia dispara uma releitura
+  // que pode cruzar com outra ja em voo — so' a mais recente escreve no estado.
+  const requisicaoMateriasRef = useRef(0);
+
+  /**
+   * Busca a lista global de materias e substitui o estado local.
+   *
+   * Materia nao depende da turma selecionada, mas a lista alimenta DOIS
+   * lugares: o painel de materias e o dropdown do `ModalAula`. Por isso todo
+   * CRUD de materia chama isto — sem a releitura, o dropdown continuaria
+   * oferecendo uma materia que acabou de ser excluida.
+   *
+   * `silencioso` (usado depois de um CRUD) troca a mensagem de erro pra deixar
+   * claro que a acao VALEU e so' a releitura falhou.
+   */
+  const recarregarMaterias = useCallback(async (silencioso = false) => {
+    const sequencia = ++requisicaoMateriasRef.current;
+    setCarregandoMaterias(true);
+    try {
+      const resposta = await fetch("/api/admin/materias", { cache: "no-store" });
+      // Resposta obsoleta: descarta inteira, sem tocar em lista nem em erro.
+      if (sequencia !== requisicaoMateriasRef.current) return;
+
+      if (!resposta.ok) {
+        const corpo = (await resposta.json().catch(() => null)) as CorpoErro;
+        setErroMaterias(
+          silencioso
+            ? "Salvo, mas não foi possível atualizar a lista de matérias — recarregue a página."
+            : (corpo?.erro ?? "Não foi possível carregar as matérias."),
+        );
+        return;
+      }
+
+      setMaterias((await resposta.json()) as Materia[]);
+      setErroMaterias(null);
+    } catch (causa) {
+      if (sequencia !== requisicaoMateriasRef.current) return;
+      console.error("[cupcam] falha ao carregar materias:", causa);
+      setErroMaterias(
+        silencioso
+          ? "Salvo, mas não foi possível atualizar a lista de matérias — recarregue a página."
+          : "Não foi possível carregar as matérias.",
+      );
+    } finally {
+      if (sequencia === requisicaoMateriasRef.current) setCarregandoMaterias(false);
+    }
+  }, []);
+
   // Materias sao globais (nao dependem da turma) — busca uma vez ao montar.
   // Falhar aqui nao trava a tela: o dropdown do ModalAula fica so' com "Sem
   // matéria", que continua sendo uma aula valida.
+  //
+  // setTimeout(0) pelo mesmo motivo do efeito das aulas acima.
   useEffect(() => {
-    let ativo = true;
-    (async () => {
-      try {
-        const resposta = await fetch("/api/admin/materias", { cache: "no-store" });
-        if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
-        const dados = (await resposta.json()) as Materia[];
-        if (ativo) setMaterias(dados);
-      } catch (causa) {
-        console.error("[cupcam] falha ao carregar materias:", causa);
-      }
-    })();
-    return () => {
-      ativo = false;
-    };
-  }, []);
+    const id = setTimeout(() => void recarregarMaterias(), 0);
+    return () => clearTimeout(id);
+  }, [recarregarMaterias]);
 
   const turmaSelecionada = useMemo(
     () => visao.turmas.find((turma) => turma.id === selecionadaId) ?? null,
@@ -325,6 +375,102 @@ export function VistaAdministracao({ visaoInicial }: VistaAdministracaoProps) {
       }
     },
     [turmaSelecionada, recarregarAulas],
+  );
+
+  /* --- Materia: catalogo global, criar/renomear pelo mesmo modal --- */
+  const aoNovaMateria = useCallback(() => setModalMateria({ modo: "criar" }), []);
+  const aoEditarMateria = useCallback(
+    (materia: Materia) => setModalMateria({ modo: "editar", materia }),
+    [],
+  );
+
+  const aoSalvarMateria = useCallback(
+    async (dados: NovaMateria) => {
+      if (!modalMateria) return;
+      const editando = modalMateria.modo === "editar";
+      const url = editando
+        ? `/api/admin/materias/${modalMateria.materia!.id}`
+        : "/api/admin/materias";
+
+      const resposta = await fetch(url, {
+        method: editando ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dados),
+      });
+
+      if (!resposta.ok) {
+        // {erro, detalhe?}: no 422 (nome vazio ou ja cadastrado) o `detalhe` e'
+        // {detail: "mensagem"}. Criar/renomear materia nao tem 409.
+        const corpo = (await resposta.json().catch(() => null)) as CorpoErro;
+        const detail = corpo?.detalhe?.detail;
+        const mensagem =
+          (typeof detail === "string" ? detail : undefined) ??
+          corpo?.erro ??
+          `Não foi possível ${editando ? "renomear" : "criar"} a matéria.`;
+        throw new Error(mensagem);
+      }
+
+      setModalMateria(null);
+      await recarregarMaterias(true);
+      // Renomear muda o texto que a grade ja' mostra em `materia_nome`, entao
+      // a grade da turma aberta tambem precisa ser relida.
+      if (editando && turmaSelecionada) await recarregarAulas(turmaSelecionada.id, true);
+    },
+    [modalMateria, turmaSelecionada, recarregarMaterias, recarregarAulas],
+  );
+
+  /**
+   * Exclui a materia direto (o `PainelMaterias` ja confirmou inline).
+   *
+   * Diferente da aula, aqui o DELETE pode ser barrado: 409 quando alguma aula
+   * usa a materia. Sem modal pra mostrar o erro, a falha vira a mensagem do
+   * proprio painel — e no 409 ela precisa dizer QUANTAS aulas usam, senao o
+   * usuario nao sabe o tamanho do trabalho de liberar a materia.
+   */
+  const aoExcluirMateria = useCallback(
+    async (materia: Materia) => {
+      try {
+        const resposta = await fetch(`/api/admin/materias/${materia.id}`, {
+          method: "DELETE",
+        });
+
+        if (!resposta.ok) {
+          const corpo = (await resposta.json().catch(() => null)) as CorpoErro;
+          const detail = corpo?.detalhe?.detail;
+
+          // Mesmo no 404 vale reler antes de avisar: a materia pode ter sido
+          // excluida em outra aba. A recarga limpa `erroMaterias` no sucesso,
+          // entao o aviso vem DEPOIS dela — senao a mensagem sumiria sozinha.
+          await recarregarMaterias(true);
+
+          if (
+            resposta.status === 409 &&
+            typeof detail === "object" &&
+            typeof detail?.total_aulas === "number"
+          ) {
+            const total = detail.total_aulas;
+            setErroMaterias(
+              `A matéria "${materia.nome}" está em uso por ${total} aula${
+                total === 1 ? "" : "s"
+              } — remova a matéria dessas aulas antes de excluí-la.`,
+            );
+            return;
+          }
+
+          setErroMaterias(corpo?.erro ?? "Não foi possível excluir a matéria.");
+          return;
+        }
+
+        // Sucesso nao mexe na grade de aulas de proposito: o backend so' deixa
+        // excluir materia com ZERO aulas vinculadas (senao e' o 409 acima),
+        // entao nenhuma aula na tela podia estar apontando pra ela.
+        await recarregarMaterias(true);
+      } catch (causa) {
+        console.error("[cupcam] falha ao excluir materia:", causa);
+        setErroMaterias("Não foi possível excluir a matéria.");
+      }
+    },
+    [recarregarMaterias],
   );
 
   /* --- Aluno: criar/editar pelo mesmo modal (multipart) --- */
@@ -523,7 +669,12 @@ export function VistaAdministracao({ visaoInicial }: VistaAdministracaoProps) {
             aoEditar={aoEditar}
             aoExcluir={aoExcluir}
           />
+          {/* `key` na turma remonta o painel a cada troca. Sem isso o estado
+              local "aula armada pra excluir" sobrevive a troca de turma, e uma
+              aula da turma nova com o mesmo id numerico apareceria pre-armada —
+              um clique so' apagaria uma aula que o usuario nunca armou. */}
           <PainelAulas
+            key={turmaSelecionada?.id}
             turma={turmaSelecionada}
             aulas={aulas}
             carregando={carregandoAulas}
@@ -534,6 +685,17 @@ export function VistaAdministracao({ visaoInicial }: VistaAdministracaoProps) {
           />
         </div>
       </div>
+
+      {/* Materias sao globais: nao pertencem a turma selecionada, entao ficam
+          numa secao propria de largura cheia, fora do grid acima. */}
+      <PainelMaterias
+        materias={materias}
+        carregando={carregandoMaterias}
+        erro={erroMaterias}
+        aoNovaMateria={aoNovaMateria}
+        aoEditarMateria={aoEditarMateria}
+        aoExcluirMateria={aoExcluirMateria}
+      />
 
       <ModalTurma
         aberto={modalTurma !== null}
@@ -550,6 +712,14 @@ export function VistaAdministracao({ visaoInicial }: VistaAdministracaoProps) {
         materias={materias}
         aoFechar={() => setModalAula(null)}
         aoSalvar={aoSalvarAula}
+      />
+
+      <ModalMateria
+        aberto={modalMateria !== null}
+        modo={modalMateria?.modo ?? "criar"}
+        materia={modalMateria?.materia ?? null}
+        aoFechar={() => setModalMateria(null)}
+        aoSalvar={aoSalvarMateria}
       />
 
       <ModalAluno

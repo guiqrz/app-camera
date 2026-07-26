@@ -13,7 +13,12 @@ import {
   IconTendencia,
 } from "@/components/ui/icons";
 import { StatCard } from "@/components/ui/stat-card";
-import { dataDoTimestamp, formatarDataExtensa, formatarPct } from "@/lib/format";
+import {
+  dataDoTimestamp,
+  formatarDataExtensa,
+  formatarIntervalo,
+  formatarPct,
+} from "@/lib/format";
 import type { AlunoChamada, ChamadaDaSessao } from "@/lib/types";
 
 type Filtro = "todos" | "presentes" | "ausentes";
@@ -223,6 +228,18 @@ export function VistaChamada({ inicial, sessaoId }: VistaChamadaProps) {
 
   const dataAula = formatarDataExtensa(dataDoTimestamp(inicial.sessao.iniciada_em));
 
+  // Materia e horario vem da aula da grade e sao nulos quando a sessao nao tem
+  // aula associada (camera ligada na mao, ou aula excluida depois): a linha
+  // encolhe pra turma + data, sem placeholder no lugar do dado ausente.
+  const identificacao = [
+    inicial.sessao.turma,
+    inicial.sessao.materia,
+    formatarIntervalo(inicial.sessao.hora_inicio, inicial.sessao.hora_fim),
+    dataAula,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
   const FILTROS: { chave: Filtro; rotulo: string }[] = [
     { chave: "todos", rotulo: "Todos" },
     { chave: "presentes", rotulo: "Presentes" },
@@ -239,7 +256,7 @@ export function VistaChamada({ inicial, sessaoId }: VistaChamadaProps) {
           Fazer Chamada
         </h1>
         <p className="text-text-body mt-1.5 flex flex-wrap items-center gap-2 text-sm">
-          {inicial.sessao.turma} · {dataAula}. Cada marcação é salva na hora.
+          {identificacao}. Cada marcação é salva na hora.
           {emAndamento && (
             <span
               className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-extrabold tracking-wide uppercase"

@@ -24,14 +24,25 @@ type CardAulaProps = {
  *
  * Uma aula sem leitura de engajamento mostra "Sem dados", nunca "0%": zero
  * significaria turma inteiramente desatenta, que e' outra afirmacao.
+ *
+ * Horario e materia vem da aula da grade e sao nulos quando a sessao nao tem
+ * aula associada (camera ligada na mao, ou aula excluida depois). Nesse caso a
+ * legenda encolhe pra dia + data — nada de placeholder no lugar do horario.
  */
 export function CardAula({ aula, nomeTurma }: CardAulaProps) {
   const aparencia = aparenciaDoStatus(aula.status);
   const temDados = aula.engajamento_pct !== null;
 
-  const legenda = `${formatarDiaSemana(aula.dia_semana)} · ${formatarDataCurta(
-    aula.data,
-  )} · ${formatarIntervalo(aula.hora_inicio, aula.hora_fim)}`;
+  // Montada por partes porque as duas ultimas podem faltar; `filter(Boolean)`
+  // tira o separador junto com o pedaco ausente.
+  const legenda = [
+    formatarDiaSemana(aula.dia_semana),
+    formatarDataCurta(aula.data),
+    formatarIntervalo(aula.hora_inicio, aula.hora_fim),
+    aula.materia,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <article className="border-border-default bg-surface shadow-card flex overflow-hidden rounded-2xl border">

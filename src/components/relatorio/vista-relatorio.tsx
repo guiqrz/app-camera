@@ -10,7 +10,12 @@ import {
   IconTendencia,
 } from "@/components/ui/icons";
 import { StatCard } from "@/components/ui/stat-card";
-import { dataDoTimestamp, formatarDataExtensa, formatarPct } from "@/lib/format";
+import {
+  dataDoTimestamp,
+  formatarDataExtensa,
+  formatarIntervalo,
+  formatarPct,
+} from "@/lib/format";
 import type { RelatorioDaSessao } from "@/lib/types";
 
 type VistaRelatorioProps = {
@@ -40,6 +45,17 @@ export function VistaRelatorio({ relatorio }: VistaRelatorioProps) {
   const variacao = descreverVariacao(relatorio.variacao_vs_historico_pct);
   const data = formatarDataExtensa(dataDoTimestamp(relatorio.sessao.iniciada_em));
 
+  // Materia e horario vem da aula da grade e sao nulos quando a sessao nao tem
+  // aula associada (camera ligada na mao, ou aula excluida depois). A linha de
+  // identificacao encolhe pra so' o que existe — sem placeholder no lugar.
+  const identificacao = [
+    relatorio.sessao.turma,
+    relatorio.sessao.materia,
+    formatarIntervalo(relatorio.sessao.hora_inicio, relatorio.sessao.hora_fim),
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
   return (
     <div className="flex flex-col gap-7">
       {/* Cabecalho da tela */}
@@ -54,6 +70,7 @@ export function VistaRelatorio({ relatorio }: VistaRelatorioProps) {
           <p className="text-text-body mt-1.5 text-sm">
             Resumo da atenção e do engajamento coletivo em {data}.
           </p>
+          <p className="text-text-muted mt-1 text-sm font-semibold">{identificacao}</p>
         </div>
 
         {relatorio.sessao.em_andamento && (
