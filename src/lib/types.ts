@@ -19,11 +19,6 @@ export type Turma = {
   id: number;
   nome: string;
   sala_id: string;
-  /** 0 = domingo ... 6 = sabado (convencao do strftime %w usada no backend). */
-  dia_semana: number;
-  /** "HH:MM", sempre com zero a esquerda. */
-  hora_inicio: string;
-  hora_fim: string;
 };
 
 /** Identificacao curta de turma, embutida em varias respostas. */
@@ -37,10 +32,13 @@ export type AulaCard = {
   sessao_id: number;
   /** "AAAA-MM-DD". */
   data: string;
-  /** Nome do dia em portugues, ja pronto ("sexta"). */
+  /** Nome do dia em portugues, ja pronto ("sexta"). Derivado do timestamp da sessao, nunca nulo. */
   dia_semana: string;
-  hora_inicio: string;
-  hora_fim: string;
+  /** Nulo quando a sessao nao tem aula associada (camera ligada na mao, ou aula excluida depois). */
+  hora_inicio: string | null;
+  hora_fim: string | null;
+  /** Nulo pelo mesmo motivo de hora_inicio/hora_fim. */
+  materia: string | null;
   /** 0-100. Nulo enquanto a aula nao tem leitura de engajamento. */
   engajamento_pct: number | null;
   /** Nulo pelo mesmo motivo de engajamento_pct. */
@@ -85,6 +83,11 @@ export type SessaoResumo = {
   iniciada_em: string;
   /** Nulo enquanto a aula esta em curso. */
   encerrada_em: string | null;
+  /** Nulo quando a sessao nao tem aula associada (camera ligada na mao, ou aula excluida depois). */
+  hora_inicio: string | null;
+  hora_fim: string | null;
+  /** Nulo pelo mesmo motivo de hora_inicio/hora_fim. */
+  materia: string | null;
 };
 
 /** GET /sessoes/{sessao_id}/chamada */
@@ -179,12 +182,6 @@ export type TurmaAdmin = {
   id: number;
   nome: string;
   sala_id: string;
-  /** 0 = domingo ... 6 = sabado (convencao do strftime %w usada no backend). */
-  dia_semana: number;
-  /** Nome do dia em portugues, ja pronto pelo backend. */
-  dia_semana_nome: string;
-  hora_inicio: string;
-  hora_fim: string;
   total_alunos: number;
 };
 
@@ -211,9 +208,33 @@ export type VisaoAdmin = {
 export type NovaTurma = {
   nome: string;
   sala_id: string;
+};
+
+/** GET /admin/materias */
+export type Materia = { id: number; nome: string };
+
+/** Corpo de POST/PUT /admin/materias. */
+export type NovaMateria = { nome: string };
+
+/** Uma aula da grade de uma turma (GET /admin/turmas/{id}/aulas). */
+export type Aula = {
+  id: number;
+  turma_id: number;
+  /** 0 = domingo ... 6 = sabado. */
+  dia_semana: number;
+  dia_semana_nome: string;
+  hora_inicio: string;
+  hora_fim: string;
+  materia_id: number | null;
+  materia_nome: string | null;
+};
+
+/** Corpo de POST/PUT de aula. */
+export type NovaAula = {
   dia_semana: number;
   hora_inicio: string;
   hora_fim: string;
+  materia_id: number | null;
 };
 
 /* ------------------------------------------------------------------ */
