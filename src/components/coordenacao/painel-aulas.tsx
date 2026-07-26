@@ -10,6 +10,7 @@ import {
   IconLixeira,
   IconMais,
 } from "@/components/ui/icons";
+import { formatarDiaSemana } from "@/lib/format";
 import type { Aula, TurmaAdmin } from "@/lib/types";
 
 type PainelAulasProps = {
@@ -217,7 +218,10 @@ export function PainelAulas({
 
 /** Texto curto que identifica a aula nos `aria-label` dos botoes de acao. */
 function rotuloAula(aula: Aula): string {
-  return `${aula.dia_semana_nome} ${aula.hora_inicio} às ${aula.hora_fim}`;
+  // formatarDiaSemana acentua: o backend grava "terca"/"sabado" sem acento, e
+  // um leitor de tela le a string literal ("aula de terca"). As telas de Aulas
+  // e Chamada ja usam esse mesmo formatador.
+  return `${formatarDiaSemana(aula.dia_semana_nome)} ${aula.hora_inicio} às ${aula.hora_fim}`;
 }
 
 /**
@@ -237,7 +241,9 @@ function agruparPorDia(aulas: Aula[]) {
     .map(([dia, aulasDoDia]) => ({
       dia,
       // O nome do dia vem pronto do backend — usa o da primeira aula do grupo.
-      nome: aulasDoDia[0].dia_semana_nome,
+      // Acentuado aqui tambem: o cabecalho do grupo mostrava "TERCA" cru (o
+      // uppercase e' so' CSS, nao arruma o acento que o backend nao gravou).
+      nome: formatarDiaSemana(aulasDoDia[0].dia_semana_nome),
       aulasDoDia: [...aulasDoDia].sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio)),
     }));
 }
