@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 
 import { statusSeguro } from "@/app/api/admin/_lib/status-seguro";
-import { ApiError, editarTurma, excluirTurma } from "@/lib/api";
-import type { NovaTurma } from "@/lib/types";
+import { ApiError, editarMateria, excluirMateria } from "@/lib/api";
+import type { NovaMateria } from "@/lib/types";
 
 /**
- * Ponte de "Editar turma" (PUT) e "Excluir turma" (DELETE) da tela
- * "Administracao". O navegador chama AQUI; esta rota, no servidor, repassa pra
+ * Ponte de "Renomear materia" (PUT) e "Excluir materia" (DELETE) da tela
+ * "Coordenacao". O navegador chama AQUI; esta rota, no servidor, repassa pra
  * API do CUPCAM com a X-API-Key. Mesmo motivo das outras pontes: "use client"
  * nao pode importar lib/api.ts (server-only).
  */
@@ -17,27 +17,17 @@ function idValido(bruto: string): number | null {
   return Number.isInteger(n) && n > 0 ? n : null;
 }
 
-/**
- * Turma agora e' so' nome + sala: a agenda (dia/hora) mudou pras aulas
- * (`/admin/turmas/{id}/aulas`). Validar horario aqui rejeitaria com 400 todo
- * corpo valido que a tela manda.
- */
-function validarNovaTurma(dados: unknown): dados is NovaTurma {
+function validarNovaMateria(dados: unknown): dados is NovaMateria {
   if (typeof dados !== "object" || dados === null) return false;
   const d = dados as Record<string, unknown>;
-  return (
-    typeof d.nome === "string" &&
-    d.nome.trim() !== "" &&
-    typeof d.sala_id === "string" &&
-    d.sala_id.trim() !== ""
-  );
+  return typeof d.nome === "string" && d.nome.trim() !== "";
 }
 
 export async function PUT(requisicao: Request, { params }: Params) {
   const { id } = await params;
   const idNum = idValido(id);
   if (idNum === null) {
-    return NextResponse.json({ erro: "ID de turma inválido." }, { status: 400 });
+    return NextResponse.json({ erro: "ID de matéria inválido." }, { status: 400 });
   }
 
   let dados: unknown;
@@ -49,26 +39,25 @@ export async function PUT(requisicao: Request, { params }: Params) {
       { status: 400 },
     );
   }
-  if (!validarNovaTurma(dados)) {
+  if (!validarNovaMateria(dados)) {
     return NextResponse.json(
-      { erro: "Dados da turma incompletos ou inválidos." },
+      { erro: "Dados da matéria incompletos ou inválidos." },
       { status: 400 },
     );
   }
 
   try {
-    const resposta = await editarTurma(idNum, dados);
+    const resposta = await editarMateria(idNum, dados);
     return NextResponse.json(resposta);
   } catch (causa) {
     if (causa instanceof ApiError) {
       if (causa.isNotFound) {
-        return NextResponse.json({ erro: "Turma não encontrada." }, { status: 404 });
+        return NextResponse.json({ erro: "Matéria não encontrada." }, { status: 404 });
       }
       if (causa.status === 422) {
-        // Nome ou sala vazios. Conflito de horario nao acontece mais aqui: a
-        // agenda saiu da turma e o 409 mora em PUT /admin/aulas/{id}.
+        // Validacao da API (nome vazio ou ja usado por outra materia).
         return NextResponse.json(
-          { erro: "Não foi possível editar a turma.", detalhe: causa.detalhe },
+          { erro: "Não foi possível renomear a matéria.", detalhe: causa.detalhe },
           { status: 422 },
         );
       }
@@ -85,22 +74,22 @@ export async function DELETE(_requisicao: Request, { params }: Params) {
   const { id } = await params;
   const idNum = idValido(id);
   if (idNum === null) {
-    return NextResponse.json({ erro: "ID de turma inválido." }, { status: 400 });
+    return NextResponse.json({ erro: "ID de matéria inválido." }, { status: 400 });
   }
 
   try {
-    const resposta = await excluirTurma(idNum);
+    const resposta = await excluirMateria(idNum);
     return NextResponse.json(resposta);
   } catch (causa) {
     if (causa instanceof ApiError) {
       if (causa.isNotFound) {
-        return NextResponse.json({ erro: "Turma não encontrada." }, { status: 404 });
+        return NextResponse.json({ erro: "Matéria não encontrada." }, { status: 404 });
       }
       if (causa.status === 409) {
-        // Turma tem alunos: {detail: {nome, total_alunos}} vai cru pro modal
-        // entrar no estado bloqueado e pedir pra mover/excluir os alunos antes.
+        // Materia em uso por alguma aula: {detail: {nome, total_aulas}} vai cru
+        // pro modal dizer QUANTAS aulas usam a materia antes de bloquear.
         return NextResponse.json(
-          { erro: "A turma tem alunos matriculados.", detalhe: causa.detalhe },
+          { erro: "A matéria está em uso por aulas cadastradas.", detalhe: causa.detalhe },
           { status: 409 },
         );
       }

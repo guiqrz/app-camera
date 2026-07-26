@@ -36,19 +36,11 @@ export async function POST(requisicao: Request) {
     return NextResponse.json(criada, { status: 201 });
   } catch (causa) {
     if (causa instanceof ApiError) {
-      if (causa.status === 409) {
-        // Conflito de horario: outra turma ja ocupa a mesma sala/dia nesse
-        // intervalo. O detalhe ({detail: {nome}}) vai cru pro modal apontar
-        // com qual turma o horario colide.
-        return NextResponse.json(
-          { erro: "Conflito de horário com outra turma.", detalhe: causa.detalhe },
-          { status: 409 },
-        );
-      }
       if (causa.status === 422) {
-        // Erro de validacao da API (ex.: horario invalido, fim antes do inicio).
-        // O detalhe vem estruturado ({detail: string}) — repassa cru pro
-        // modal mostrar a mensagem exata.
+        // Erro de validacao da API (nome ou sala vazios). O detalhe vem
+        // estruturado ({detail: string}) — repassa cru pro modal mostrar a
+        // mensagem exata. Conflito de horario nao acontece mais aqui: a agenda
+        // saiu da turma e o 409 mora em POST /admin/turmas/{id}/aulas.
         return NextResponse.json(
           { erro: "Não foi possível criar a turma.", detalhe: causa.detalhe },
           { status: 422 },
@@ -63,6 +55,11 @@ export async function POST(requisicao: Request) {
   }
 }
 
+/**
+ * Turma agora e' so' nome + sala: a agenda (dia/hora) mudou pras aulas
+ * (`/admin/turmas/{id}/aulas`). Validar horario aqui rejeitaria com 400 todo
+ * corpo valido que a tela manda.
+ */
 function validarNovaTurma(dados: unknown): dados is NovaTurma {
   if (typeof dados !== "object" || dados === null) return false;
   const d = dados as Record<string, unknown>;
@@ -70,14 +67,6 @@ function validarNovaTurma(dados: unknown): dados is NovaTurma {
     typeof d.nome === "string" &&
     d.nome.trim() !== "" &&
     typeof d.sala_id === "string" &&
-    d.sala_id.trim() !== "" &&
-    typeof d.dia_semana === "number" &&
-    Number.isInteger(d.dia_semana) &&
-    d.dia_semana >= 0 &&
-    d.dia_semana <= 6 &&
-    typeof d.hora_inicio === "string" &&
-    d.hora_inicio.trim() !== "" &&
-    typeof d.hora_fim === "string" &&
-    d.hora_fim.trim() !== ""
+    d.sala_id.trim() !== ""
   );
 }
