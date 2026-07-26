@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { statusSeguro } from "@/app/api/admin/_lib/status-seguro";
 import { ApiError, confirmarPresenca } from "@/lib/api";
 
 /**
@@ -59,10 +60,12 @@ export async function POST(requisicao: Request, { params }: Params) {
           { status: 404 },
         );
       }
-      // status 0 = rede fora do ar (tunel caido, notebook desligado).
+      // statusSeguro: 401/403 (nossa CUPCAM_API_KEY errada) e 0 (rede fora do
+      // ar) viram 502 — repassar cru faria o navegador achar que o usuario nao
+      // esta autenticado, quando ele nem tem sessao com a API do CUPCAM.
       return NextResponse.json(
         { erro: "Não foi possível falar com a API do CUPCAM." },
-        { status: causa.status === 0 ? 502 : causa.status },
+        { status: statusSeguro(causa) },
       );
     }
     throw causa;
