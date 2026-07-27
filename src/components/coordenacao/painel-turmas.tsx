@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { IconLapis, IconLixeira, IconMais, IconTurma } from "@/components/ui/icons";
 import type { TurmaAdmin } from "@/lib/types";
 
@@ -8,23 +10,25 @@ type PainelTurmasProps = {
   selecionadaId: number | null;
   aoSelecionar: (turmaId: number) => void;
   aoNovaTurma: () => void;
-  aoEditarTurma: (turma: TurmaAdmin) => void;
   aoExcluirTurma: (turma: TurmaAdmin) => void;
 };
 
 /**
- * Lista de turmas cadastradas, a coluna esquerda da tela Administracao.
+ * Lista de turmas cadastradas, a coluna esquerda da tela Coordenacao.
  *
  * Componente burro: so' recebe dados e callbacks da vista, nao busca nem
- * grava nada sozinho. Cada turma seleciona ao clicar e traz dois botoes de
- * acao (editar/excluir) que a vista abre em modal.
+ * grava nada sozinho. Cada turma seleciona ao clicar e traz duas acoes.
+ *
+ * Editar e' um LINK, nao um callback: a edicao virou pagina propria
+ * (`/coordenacao/turmas/{id}`), onde a turma aparece junto da grade semanal de
+ * aulas. Como link de verdade, ganha de graca o "abrir em nova aba" e o
+ * prefetch do Next — que um botao com router.push nao daria.
  */
 export function PainelTurmas({
   turmas,
   selecionadaId,
   aoSelecionar,
   aoNovaTurma,
-  aoEditarTurma,
   aoExcluirTurma,
 }: PainelTurmasProps) {
   return (
@@ -96,18 +100,17 @@ export function PainelTurmas({
                   </span>
                 </button>
 
-                {/* Acoes da turma — fora do botao de selecao (botao dentro de
-                    botao e' HTML invalido). */}
+                {/* Acoes da turma — fora do botao de selecao (link ou botao
+                    dentro de botao e' HTML invalido). */}
                 <div className="flex flex-none items-center gap-0.5 pr-2">
-                  <button
-                    type="button"
-                    onClick={() => aoEditarTurma(turma)}
-                    aria-label={`Editar turma ${turma.nome}`}
+                  <Link
+                    href={`/coordenacao/turmas/${turma.id}`}
+                    aria-label={`Editar turma ${turma.nome} e sua grade de aulas`}
                     className="inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors"
                     style={{ color: "var(--text-muted)" }}
                   >
                     <IconLapis />
-                  </button>
+                  </Link>
                   <button
                     type="button"
                     onClick={() => aoExcluirTurma(turma)}

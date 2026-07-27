@@ -3,16 +3,12 @@
 import { useEffect, useId, useRef, useState } from "react";
 
 import { useFocoPreso } from "@/components/coordenacao/usar-foco-preso";
+import { CampoComExemplo } from "@/components/ui/campo-com-exemplo";
 import { IconFechar } from "@/components/ui/icons";
-import type { NovaTurma, TurmaAdmin } from "@/lib/types";
-
-type ModoModal = "criar" | "editar";
+import type { NovaTurma } from "@/lib/types";
 
 type ModalTurmaProps = {
   aberto: boolean;
-  modo: ModoModal;
-  /** Turma sendo editada (obrigatorio no modo "editar"; ignorado no "criar"). */
-  turma?: TurmaAdmin | null;
   aoFechar: () => void;
   /** Rejeita com Error(mensagem) — o modal mostra o texto e permanece aberto. */
   aoSalvar: (dados: NovaTurma) => Promise<void>;
@@ -24,21 +20,23 @@ const VALORES_INICIAIS = {
 };
 
 /**
- * Modal de turma unificado — cria uma turma nova ou edita uma existente,
- * decidido pelo prop `modo`. Overlay escurecido + card centrado, Esc fecha,
- * clique fora fecha, foco inicial no primeiro campo, reset ao abrir.
+ * Modal de turma NOVA. Overlay escurecido + card centrado, Esc fecha, clique
+ * fora fecha, foco inicial no primeiro campo, reset ao abrir.
  *
- * Turma e' so' identidade: nome + sala. A agenda (dia e horario) saiu daqui e
- * virou a entidade Aula, gerenciada pelo `PainelAulas`/`ModalAula` — inclusive
- * o conflito de horario, que agora e' entre aulas, nunca entre turmas.
+ * So' cria: editar turma virou a pagina `/coordenacao/turmas/{id}`, onde os
+ * dados aparecem junto da grade semanal de aulas. Criar continua em modal
+ * porque sao dois campos e o coordenador volta pra lista logo em seguida —
+ * mandar ele pra outra pagina pra digitar um nome seria caminho longo demais.
+ *
+ * Turma e' so' identidade: nome + sala. A agenda (dia e horario) e' a entidade
+ * Aula, cadastrada na grade da pagina da turma — inclusive o conflito de
+ * horario, que e' entre aulas, nunca entre turmas.
  */
-export function ModalTurma({ aberto, modo, turma, aoFechar, aoSalvar }: ModalTurmaProps) {
+export function ModalTurma({ aberto, aoFechar, aoSalvar }: ModalTurmaProps) {
   const [valores, setValores] = useState(VALORES_INICIAIS);
   const [erroValidacao, setErroValidacao] = useState<string | null>(null);
   const [erroApi, setErroApi] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
-
-  const editando = modo === "editar";
 
   // Espelha `aberto` so' pra detectar a transicao fechado->aberto durante a
   // renderizacao (padrao oficial "estado derivado de props/estado anterior",
@@ -48,11 +46,7 @@ export function ModalTurma({ aberto, modo, turma, aoFechar, aoSalvar }: ModalTur
   if (aberto !== abertoAnterior) {
     setAbertoAnterior(aberto);
     if (aberto) {
-      if (editando && turma) {
-        setValores({ nome: turma.nome, sala_id: turma.sala_id });
-      } else {
-        setValores(VALORES_INICIAIS);
-      }
+      setValores(VALORES_INICIAIS);
       setErroValidacao(null);
       setErroApi(null);
       setEnviando(false);
@@ -117,9 +111,7 @@ export function ModalTurma({ aberto, modo, turma, aoFechar, aoSalvar }: ModalTur
       // Sucesso: quem chama (a vista) fecha e recarrega — nao mexe aqui.
     } catch (causa) {
       setErroApi(
-        causa instanceof Error
-          ? causa.message
-          : `Não foi possível ${editando ? "salvar" : "criar"} a turma.`,
+        causa instanceof Error ? causa.message : "Não foi possível criar a turma.",
       );
     } finally {
       setEnviando(false);
@@ -152,7 +144,7 @@ export function ModalTurma({ aberto, modo, turma, aoFechar, aoSalvar }: ModalTur
             className="text-text text-lg font-extrabold"
             style={{ fontFamily: "var(--font-geologica)" }}
           >
-            {editando ? "Editar turma" : "Nova turma"}
+            Nova turma
           </h2>
           <button
             type="button"
@@ -166,38 +158,28 @@ export function ModalTurma({ aberto, modo, turma, aoFechar, aoSalvar }: ModalTur
         </div>
 
         <form onSubmit={aoSubmeter} className="flex flex-col gap-4" noValidate>
-          <Campo rotulo="Nome da turma">
-            <input
-              ref={primeiroCampoRef}
-              type="text"
-              required
-              value={valores.nome}
-              onChange={(evento) => atualizarCampo("nome", evento.target.value)}
-              placeholder="Turma 8A"
-              className="text-text w-full rounded-lg bg-transparent px-3 py-2 text-sm outline-none"
-              style={{ border: "1px solid var(--border)" }}
-              disabled={enviando}
-            />
-          </Campo>
+          <CampoComExemplo
+            ref={primeiroCampoRef}
+            rotulo="Nome da turma"
+            valor={valores.nome}
+            aoMudar={(valor) => atualizarCampo("nome", valor)}
+            exemplo="Turma 8A"
+            disabled={enviando}
+          />
 
-          <Campo rotulo="Sala">
-            <input
-              type="text"
-              required
-              value={valores.sala_id}
-              onChange={(evento) => atualizarCampo("sala_id", evento.target.value)}
-              placeholder="sala_32A"
-              className="text-text w-full rounded-lg bg-transparent px-3 py-2 text-sm outline-none"
-              style={{ border: "1px solid var(--border)" }}
-              disabled={enviando}
-            />
-          </Campo>
+          <CampoComExemplo
+            rotulo="Sala"
+            valor={valores.sala_id}
+            aoMudar={(valor) => atualizarCampo("sala_id", valor)}
+            exemplo="sala_32A"
+            disabled={enviando}
+          />
 
-          {/* Os horarios da turma sao cadastrados como aulas, no painel
-              "Aulas da turma" — uma turma pode ter varios encontros na semana. */}
+          {/* Os horarios sao cadastrados como aulas, na grade semanal da
+              pagina da turma — uma turma tem varios encontros na semana. */}
           <p className="text-text-muted text-xs leading-relaxed">
-            Os dias e horários da turma são cadastrados em <strong>Aulas da turma</strong>,
-            no painel abaixo da lista de alunos.
+            Depois de criar, abra a turma para montar a <strong>grade semanal</strong> com
+            os dias e horários das aulas.
           </p>
 
           {erroExibido && (
@@ -231,26 +213,11 @@ export function ModalTurma({ aberto, modo, turma, aoFechar, aoSalvar }: ModalTur
                   className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white"
                 />
               )}
-              {enviando
-                ? editando
-                  ? "Salvando..."
-                  : "Criando..."
-                : editando
-                  ? "Salvar alterações"
-                  : "Criar turma"}
+              {enviando ? "Criando..." : "Criar turma"}
             </button>
           </div>
         </form>
       </div>
     </div>
-  );
-}
-
-function Campo({ rotulo, children }: { rotulo: string; children: React.ReactNode }) {
-  return (
-    <label className="flex flex-col gap-1.5">
-      <span className="text-text-muted text-xs font-bold">{rotulo}</span>
-      {children}
-    </label>
   );
 }

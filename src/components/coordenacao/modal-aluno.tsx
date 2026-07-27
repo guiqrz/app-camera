@@ -3,6 +3,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { useFocoPreso } from "@/components/coordenacao/usar-foco-preso";
+import { CampoComExemplo } from "@/components/ui/campo-com-exemplo";
 import { IconFechar, IconFoto } from "@/components/ui/icons";
 import type { AlunoAdmin, TurmaAdmin } from "@/lib/types";
 
@@ -332,43 +333,30 @@ export function ModalAluno({
             )}
           </div>
 
-          <Campo rotulo="Nome do aluno">
-            <input
-              ref={primeiroCampoRef}
-              type="text"
-              required
-              value={valores.nome}
-              onChange={(evento) =>
-                setValores((atuais) => ({ ...atuais, nome: evento.target.value }))
-              }
-              placeholder="Ana Beatriz Silva"
-              className="text-text w-full rounded-lg bg-transparent px-3 py-2 text-sm outline-none"
-              style={{ border: "1px solid var(--border)" }}
-              disabled={enviando}
-            />
-          </Campo>
+          <CampoComExemplo
+            ref={primeiroCampoRef}
+            rotulo="Nome do aluno"
+            valor={valores.nome}
+            aoMudar={(nome) => setValores((atuais) => ({ ...atuais, nome }))}
+            exemplo="Ana Beatriz Silva"
+            required
+            disabled={enviando}
+          />
 
-          <Campo rotulo="RA">
-            <input
-              type="text"
-              required={!editando}
-              readOnly={editando}
-              value={valores.ra}
-              onChange={(evento) =>
-                setValores((atuais) => ({ ...atuais, ra: evento.target.value }))
-              }
-              placeholder="202400123"
-              aria-describedby={editando ? `${idTitulo}-ra-nota` : undefined}
-              className="text-text w-full rounded-lg bg-transparent px-3 py-2 text-sm outline-none read-only:opacity-60"
-              style={{ border: "1px solid var(--border)" }}
-              disabled={enviando}
-            />
-            {editando && (
-              <span id={`${idTitulo}-ra-nota`} className="text-text-muted text-[11px]">
-                O RA não pode ser alterado.
-              </span>
-            )}
-          </Campo>
+          {/* No modo editar o RA e' somente leitura: `exemplo` fica de fora
+              pra que o Tab nao tente preencher um campo que nem aceita
+              digitacao, e a dica explica por que ele esta travado. */}
+          <CampoComExemplo
+            rotulo="RA"
+            valor={valores.ra}
+            aoMudar={(ra) => setValores((atuais) => ({ ...atuais, ra }))}
+            exemplo={editando ? undefined : "202400123"}
+            dica={editando ? "O RA não pode ser alterado." : undefined}
+            required={!editando}
+            readOnly={editando}
+            className="read-only:opacity-60"
+            disabled={enviando}
+          />
 
           <Campo rotulo="Turma">
             <select
