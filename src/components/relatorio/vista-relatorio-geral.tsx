@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { CardAoVivo } from "@/components/relatorio/card-ao-vivo";
 import { GraficoTendencia } from "@/components/relatorio/grafico-tendencia";
 import {
   IconAulas,
@@ -21,6 +22,9 @@ import type { ResumoTurma } from "@/lib/consolidar";
 type VistaRelatorioGeralProps = {
   resumo: ResumoTurma;
   nomeTurma: string;
+  /** Id da turma desta pagina — o card ao vivo so' aparece se a aula em curso
+   *  for desta turma. */
+  turmaId: number;
 };
 
 /**
@@ -30,7 +34,7 @@ type VistaRelatorioGeralProps = {
  * grafico e' engajamento por aula (nao minuto a minuto). Reusa os mesmos
  * cartoes e cores para manter a familia visual.
  */
-export function VistaRelatorioGeral({ resumo, nomeTurma }: VistaRelatorioGeralProps) {
+export function VistaRelatorioGeral({ resumo, nomeTurma, turmaId }: VistaRelatorioGeralProps) {
   const engajamento = formatarPct(resumo.engajamentoMedio);
   const periodo =
     resumo.periodo.primeira && resumo.periodo.ultima
@@ -41,6 +45,8 @@ export function VistaRelatorioGeral({ resumo, nomeTurma }: VistaRelatorioGeralPr
 
   return (
     <div className="flex flex-col gap-7">
+      <CardAoVivo turmaId={turmaId} />
+
       <div>
         <h1
           className="text-text text-2xl font-extrabold sm:text-3xl"

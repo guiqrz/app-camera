@@ -7,6 +7,7 @@ import { useEffect, type ComponentType } from "react";
 import {
   IconAdministracao,
   IconAulas,
+  IconCamera,
   IconChamada,
   IconConfiguracoes,
   IconFechar,
@@ -26,8 +27,9 @@ const ITENS: ItemMenu[] = [
   { rotulo: "Minhas Aulas", href: "/aulas", Icone: IconAulas },
   { rotulo: "Chamada", href: "/chamada", Icone: IconChamada },
   { rotulo: "Relatórios", href: "/relatorios", Icone: IconRelatorios },
+  { rotulo: "Câmera", href: "/camera", Icone: IconCamera },
   { rotulo: "Inteligência Artificial", href: "/ia", Icone: IconIA, emBreve: true },
-  { rotulo: "Administração", href: "/administracao", Icone: IconAdministracao },
+  { rotulo: "Coordenação", href: "/coordenacao", Icone: IconAdministracao },
   { rotulo: "Configurações", href: "/configuracoes", Icone: IconConfiguracoes, emBreve: true },
 ];
 

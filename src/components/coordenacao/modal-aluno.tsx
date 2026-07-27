@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 
-import { useFocoPreso } from "@/components/administracao/usar-foco-preso";
+import { useFocoPreso } from "@/components/coordenacao/usar-foco-preso";
 import { IconFechar, IconFoto } from "@/components/ui/icons";
 import type { AlunoAdmin, TurmaAdmin } from "@/lib/types";
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 
-import { useFocoPreso } from "@/components/administracao/usar-foco-preso";
+import { useFocoPreso } from "@/components/coordenacao/usar-foco-preso";
 import { IconFechar } from "@/components/ui/icons";
 import type { NovaTurma, TurmaAdmin } from "@/lib/types";
 
