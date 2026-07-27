@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 
 import { statusSeguro } from "@/app/api/admin/_lib/status-seguro";
+import { validarNovaMateria } from "@/app/api/admin/_lib/validar-materia";
 import { ApiError, editarMateria, excluirMateria } from "@/lib/api";
-import type { NovaMateria } from "@/lib/types";
 
 /**
- * Ponte de "Renomear materia" (PUT) e "Excluir materia" (DELETE) da tela
+ * Ponte de "Editar materia" (PUT) e "Excluir materia" (DELETE) da tela
  * "Coordenacao". O navegador chama AQUI; esta rota, no servidor, repassa pra
  * API do CUPCAM com a X-API-Key. Mesmo motivo das outras pontes: "use client"
  * nao pode importar lib/api.ts (server-only).
@@ -15,12 +15,6 @@ type Params = { params: Promise<{ id: string }> };
 function idValido(bruto: string): number | null {
   const n = Number(bruto);
   return Number.isInteger(n) && n > 0 ? n : null;
-}
-
-function validarNovaMateria(dados: unknown): dados is NovaMateria {
-  if (typeof dados !== "object" || dados === null) return false;
-  const d = dados as Record<string, unknown>;
-  return typeof d.nome === "string" && d.nome.trim() !== "";
 }
 
 export async function PUT(requisicao: Request, { params }: Params) {

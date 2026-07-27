@@ -2,14 +2,8 @@
 
 import { useState } from "react";
 
-import {
-  IconAulas,
-  IconCheck,
-  IconFechar,
-  IconLapis,
-  IconLixeira,
-  IconMais,
-} from "@/components/ui/icons";
+import { EtiquetaMateria } from "@/components/ui/etiqueta-materia";
+import { IconCheck, IconFechar, IconLapis, IconLixeira, IconMais } from "@/components/ui/icons";
 import type { Materia } from "@/lib/types";
 
 type PainelMateriasProps = {
@@ -29,8 +23,9 @@ type PainelMateriasProps = {
  * Painel "Matérias" — a lista global de materias da escola.
  *
  * Materia nao pertence a turma nenhuma: e' um catalogo compartilhado que
- * alimenta o dropdown do `ModalAula`. Por isso o painel fica numa secao
- * propria, fora da coluna da turma selecionada.
+ * alimenta o dropdown do `FormularioAula`, na grade semanal da pagina da
+ * turma. Por isso o painel fica numa secao propria, fora da coluna da turma
+ * selecionada.
  *
  * Componente burro no que importa: nao busca nem grava nada, so' recebe a
  * lista e devolve as intencoes por callback. O unico estado local e' de UI
@@ -39,6 +34,11 @@ type PainelMateriasProps = {
  * Diferente da aula, o DELETE de materia PODE falhar (409 quando alguma aula
  * usa a materia). A confirmacao inline continua valendo, mas a mensagem de
  * bloqueio volta pela prop `erro`, montada pela vista com o total de aulas.
+ *
+ * PESO VISUAL de proposito baixo: materia e' um catalogo que o coordenador
+ * mexe raramente, entao a secao nao usa card com sombra nem botao solido —
+ * isso a deixava competindo com turmas e alunos, que sao o trabalho do dia a
+ * dia. Aqui e' uma lista de chips, so' com um filete separando do resto.
  */
 export function PainelMaterias({
   materias,
@@ -51,32 +51,24 @@ export function PainelMaterias({
   const [materiaParaExcluirId, setMateriaParaExcluirId] = useState<number | null>(null);
 
   return (
-    <div
-      className="flex flex-col rounded-2xl"
-      style={{
-        background: "var(--surface)",
-        border: "1px solid var(--border)",
-        boxShadow: "var(--shadow-card)",
-      }}
-    >
-      <div
-        className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
-        style={{ borderBottom: "1px solid var(--border)" }}
-      >
-        <div>
-          <h2 className="text-text text-base font-extrabold">Matérias</h2>
-          <p className="text-text-muted text-xs">
-            Usadas por todas as turmas ao cadastrar uma aula
-          </p>
+    <section className="flex flex-col gap-3 pt-1" style={{ borderTop: "1px solid var(--border)" }}>
+      <div className="flex flex-wrap items-center justify-between gap-2 pt-3">
+        <div className="flex items-baseline gap-2">
+          <h2 className="text-text-muted text-xs font-extrabold tracking-wide uppercase">
+            Matérias
+          </h2>
+          <span className="text-text-muted text-xs">
+            usadas por todas as turmas ao cadastrar uma aula
+          </span>
         </div>
 
         <button
           type="button"
           onClick={aoNovaMateria}
-          className="flex flex-none items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-extrabold text-white transition-opacity"
-          style={{ background: "var(--primary)" }}
+          className="flex flex-none items-center gap-1 rounded-lg px-2 py-1 text-xs font-extrabold transition-colors"
+          style={{ color: "var(--text-brand)" }}
         >
-          <IconMais size={14} />
+          <IconMais size={13} />
           Nova matéria
         </button>
       </div>
@@ -87,7 +79,7 @@ export function PainelMaterias({
       {erro && (
         <p
           role="alert"
-          className="mx-5 mt-4 rounded-xl px-4 py-3 text-sm font-semibold"
+          className="rounded-xl px-4 py-3 text-sm font-semibold"
           style={{ background: "var(--danger-bg)", color: "var(--danger-fg)" }}
         >
           {erro}
@@ -95,98 +87,92 @@ export function PainelMaterias({
       )}
 
       {carregando && materias.length === 0 ? (
-        <p className="text-text-muted px-6 py-12 text-center text-sm">
-          Carregando matérias...
-        </p>
+        <p className="text-text-muted py-2 text-xs">Carregando matérias...</p>
       ) : materias.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 px-6 py-12 text-center">
-          <span className="text-text-muted" aria-hidden>
-            <IconAulas size={28} />
-          </span>
-          <p className="text-text text-sm font-bold">Nenhuma matéria cadastrada.</p>
-          <p className="text-text-muted text-xs">
-            Cadastre as matérias para poder vinculá-las às aulas da grade.
-          </p>
-        </div>
+        <p className="text-text-muted py-2 text-xs">
+          Nenhuma matéria cadastrada. Cadastre-as para poder vinculá-las às aulas da grade.
+        </p>
       ) : (
         <ul
-          className="grid gap-2 p-5 sm:grid-cols-2 lg:grid-cols-3"
+          className="flex flex-wrap gap-1.5"
           // Enquanto recarrega, a lista antiga fica visivel mas apagada — o
           // usuario ve que o conteudo esta sendo atualizado.
           style={{ opacity: carregando ? 0.55 : 1 }}
         >
-          {materias.map((materia) => (
-            <li
-              key={materia.id}
-              className="flex items-center gap-2 rounded-xl px-4 py-3"
-              style={{
-                background: "var(--surface-2)",
-                border:
-                  materiaParaExcluirId === materia.id
-                    ? "1.5px solid var(--danger)"
-                    : "1.5px solid transparent",
-              }}
-            >
-              <p className="text-text min-w-0 flex-1 truncate text-sm font-extrabold">
-                {materia.nome}
-              </p>
+          {materias.map((materia) => {
+            const armada = materiaParaExcluirId === materia.id;
+            return (
+              <li
+                key={materia.id}
+                className="flex items-center gap-1 rounded-lg py-1 pr-1 pl-2"
+                style={{
+                  background: "var(--surface-2)",
+                  border: armada ? "1.5px solid var(--danger)" : "1.5px solid transparent",
+                }}
+              >
+                <EtiquetaMateria
+                  nome={materia.nome}
+                  cor={materia.cor}
+                  className="text-xs"
+                />
 
-              {materiaParaExcluirId === materia.id ? (
-                <div className="flex flex-none items-center gap-1.5">
-                  <span
-                    className="hidden text-xs font-bold sm:inline"
-                    style={{ color: "var(--danger)" }}
-                  >
-                    Excluir?
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMateriaParaExcluirId(null);
-                      aoExcluirMateria(materia);
-                    }}
-                    aria-label={`Confirmar exclusão da matéria ${materia.nome}`}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-white"
-                    style={{ background: "var(--danger)" }}
-                  >
-                    <IconCheck size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMateriaParaExcluirId(null)}
-                    aria-label="Cancelar exclusão"
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg"
-                    style={{ color: "var(--text-muted)" }}
-                  >
-                    <IconFechar size={16} />
-                  </button>
-                </div>
-              ) : (
-                <div className="flex flex-none items-center gap-0.5">
-                  <button
-                    type="button"
-                    onClick={() => aoEditarMateria(materia)}
-                    aria-label={`Renomear matéria ${materia.nome}`}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors"
-                    style={{ color: "var(--text-muted)" }}
-                  >
-                    <IconLapis />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMateriaParaExcluirId(materia.id)}
-                    aria-label={`Excluir matéria ${materia.nome}`}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors"
-                    style={{ color: "var(--danger)" }}
-                  >
-                    <IconLixeira />
-                  </button>
-                </div>
-              )}
-            </li>
-          ))}
+                {armada ? (
+                  <>
+                    <span
+                      className="ml-1 text-[11px] font-bold"
+                      style={{ color: "var(--danger)" }}
+                    >
+                      Excluir?
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMateriaParaExcluirId(null);
+                        aoExcluirMateria(materia);
+                      }}
+                      aria-label={`Confirmar exclusão da matéria ${materia.nome}`}
+                      className="inline-flex h-6 w-6 items-center justify-center rounded text-white"
+                      style={{ background: "var(--danger)" }}
+                    >
+                      <IconCheck size={13} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMateriaParaExcluirId(null)}
+                      aria-label="Cancelar exclusão"
+                      className="inline-flex h-6 w-6 items-center justify-center rounded"
+                      style={{ color: "var(--text-muted)" }}
+                    >
+                      <IconFechar size={13} />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => aoEditarMateria(materia)}
+                      aria-label={`Editar matéria ${materia.nome}`}
+                      className="inline-flex h-6 w-6 items-center justify-center rounded transition-colors"
+                      style={{ color: "var(--text-muted)" }}
+                    >
+                      <IconLapis size={13} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMateriaParaExcluirId(materia.id)}
+                      aria-label={`Excluir matéria ${materia.nome}`}
+                      className="inline-flex h-6 w-6 items-center justify-center rounded transition-colors"
+                      style={{ color: "var(--danger)" }}
+                    >
+                      <IconLixeira size={13} />
+                    </button>
+                  </>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
-    </div>
+    </section>
   );
 }

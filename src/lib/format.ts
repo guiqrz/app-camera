@@ -4,7 +4,47 @@
  * Centralizado aqui para que toda tela mostre o mesmo dado do mesmo jeito.
  */
 
-import type { StatusEngajamento } from "./types";
+import type { CorMateria, StatusEngajamento } from "./types";
+
+/**
+ * Cores de materia, na ordem em que aparecem no seletor.
+ *
+ * `id` e' o que vai pro banco (espelha CORES_MATERIA em
+ * cupcam/gestao/materias.py); `fundo`/`texto` sao os tokens que o tema claro e
+ * o escuro definem em styles/semantic.css. Nenhum valor de cor e' escrito
+ * direto no componente — trocar a paleta acontece no CSS, num lugar so'.
+ */
+export const CORES_MATERIA: readonly {
+  id: CorMateria;
+  rotulo: string;
+  fundo: string;
+  texto: string;
+}[] = [
+  { id: "azul", rotulo: "Azul", fundo: "var(--materia-azul-bg)", texto: "var(--materia-azul-fg)" },
+  { id: "verde", rotulo: "Verde", fundo: "var(--materia-verde-bg)", texto: "var(--materia-verde-fg)" },
+  { id: "ambar", rotulo: "Âmbar", fundo: "var(--materia-ambar-bg)", texto: "var(--materia-ambar-fg)" },
+  { id: "vermelho", rotulo: "Vermelho", fundo: "var(--materia-vermelho-bg)", texto: "var(--materia-vermelho-fg)" },
+  { id: "roxo", rotulo: "Roxo", fundo: "var(--materia-roxo-bg)", texto: "var(--materia-roxo-fg)" },
+  { id: "rosa", rotulo: "Rosa", fundo: "var(--materia-rosa-bg)", texto: "var(--materia-rosa-fg)" },
+  { id: "ciano", rotulo: "Ciano", fundo: "var(--materia-ciano-bg)", texto: "var(--materia-ciano-fg)" },
+  { id: "cinza", rotulo: "Cinza", fundo: "var(--materia-cinza-bg)", texto: "var(--materia-cinza-fg)" },
+] as const;
+
+/**
+ * Estilo do grifo de uma materia. `null` (sem cor, ou sem materia) devolve
+ * `null` — a tela mostra o nome sem grifo nenhum, que e' diferente de mostrar
+ * um grifo neutro.
+ *
+ * Cor desconhecida (banco com valor que esta paleta nao tem, vindo de uma
+ * versao futura) tambem cai em `null` em vez de quebrar a tela.
+ */
+export function aparenciaDaCorMateria(
+  cor: CorMateria | null,
+): { fundo: string; texto: string } | null {
+  if (cor === null) return null;
+  const encontrada = CORES_MATERIA.find((opcao) => opcao.id === cor);
+  return encontrada ? { fundo: encontrada.fundo, texto: encontrada.texto } : null;
+}
 
 /** Aparencia de cada faixa de engajamento. As cores vem dos tokens. */
 export const APARENCIA_STATUS: Record<

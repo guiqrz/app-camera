@@ -3,8 +3,11 @@
 import { useEffect, useId, useRef, useState } from "react";
 
 import { useFocoPreso } from "@/components/coordenacao/usar-foco-preso";
-import { IconFechar } from "@/components/ui/icons";
-import type { Materia, NovaMateria } from "@/lib/types";
+import { CampoComExemplo } from "@/components/ui/campo-com-exemplo";
+import { EtiquetaMateria } from "@/components/ui/etiqueta-materia";
+import { IconCheckSimples, IconFechar } from "@/components/ui/icons";
+import { CORES_MATERIA } from "@/lib/format";
+import type { CorMateria, Materia, NovaMateria } from "@/lib/types";
 
 type ModoModal = "criar" | "editar";
 
@@ -18,17 +21,27 @@ type ModalMateriaProps = {
   aoSalvar: (dados: NovaMateria) => Promise<void>;
 };
 
-const VALORES_INICIAIS = { nome: "" };
+const VALORES_INICIAIS: { nome: string; cor: CorMateria | null } = {
+  nome: "",
+  cor: null,
+};
 
 /**
- * Modal de materia unificado — cria uma materia nova ou renomeia uma
- * existente, decidido pelo prop `modo`. Mesmo molde do `ModalTurma`: overlay
- * escurecido + card centrado, Esc fecha, clique fora fecha, foco inicial no
- * campo, reset ao abrir.
+ * Modal de materia unificado — cria uma materia nova ou edita uma existente,
+ * decidido pelo prop `modo`. Mesmo molde do `ModalTurma`: overlay escurecido +
+ * card centrado, Esc fecha, clique fora fecha, foco inicial no campo, reset ao
+ * abrir.
  *
- * Materia e' global (nao pertence a turma nenhuma) e tem um campo so'. A
- * unicidade do nome quem valida e' o backend — vira um 422 que a vista repassa
- * como Error e cai no erro inline aqui.
+ * Materia e' global (nao pertence a turma nenhuma) e tem nome + cor opcional.
+ * A cor vira o grifo do nome na grade da turma; "Sem cor" e' uma escolha
+ * valida, nao um estado inacabado.
+ *
+ * A unicidade do nome e a validade da cor quem valida e' o backend — vira um
+ * 422 que a vista repassa como Error e cai no erro inline aqui.
+ *
+ * ATENCAO no modo editar: o PUT do backend e' substituicao TOTAL — mandar
+ * `cor: null` LIMPA a cor da materia. Por isso o seletor ja abre com a cor
+ * atual marcada e o envio manda sempre a cor explicita.
  */
 export function ModalMateria({
   aberto,
@@ -52,7 +65,13 @@ export function ModalMateria({
   if (aberto !== abertoAnterior) {
     setAbertoAnterior(aberto);
     if (aberto) {
-      setValores(editando && materia ? { nome: materia.nome } : VALORES_INICIAIS);
+      setValores(
+        // Pre-preencher a cor atual nao e' cosmetico: sem isso o PUT apagaria
+        // a cor da materia em silencio (substituicao total).
+        editando && materia
+          ? { nome: materia.nome, cor: materia.cor }
+          : VALORES_INICIAIS,
+      );
       setErroValidacao(null);
       setErroApi(null);
       setEnviando(false);
@@ -104,13 +123,14 @@ export function ModalMateria({
 
     setEnviando(true);
     try {
-      await aoSalvar({ nome });
+      // `cor` sempre explicita, inclusive null — ver o aviso no JSDoc.
+      await aoSalvar({ nome, cor: valores.cor });
       // Sucesso: quem chama (a vista) fecha e recarrega — nao mexe aqui.
     } catch (causa) {
       setErroApi(
         causa instanceof Error
           ? causa.message
-          : `Não foi possível ${editando ? "renomear" : "criar"} a matéria.`,
+          : `Não foi possível ${editando ? "salvar" : "criar"} a matéria.`,
       );
     } finally {
       setEnviando(false);
@@ -157,27 +177,60 @@ export function ModalMateria({
         </div>
 
         <form onSubmit={aoSubmeter} className="flex flex-col gap-4" noValidate>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-text-muted text-xs font-bold">Nome da matéria</span>
-            <input
-              ref={primeiroCampoRef}
-              type="text"
-              required
-              value={valores.nome}
-              onChange={(evento) => setValores({ nome: evento.target.value })}
-              placeholder="História"
-              className="text-text w-full rounded-lg bg-transparent px-3 py-2 text-sm outline-none"
-              style={{ border: "1px solid var(--border)" }}
-              disabled={enviando}
-            />
-          </label>
+          <CampoComExemplo
+            ref={primeiroCampoRef}
+            rotulo="Nome da matéria"
+            valor={valores.nome}
+            aoMudar={(nome) => setValores((atuais) => ({ ...atuais, nome }))}
+            exemplo="História"
+            disabled={enviando}
+          />
 
-          {/* Renomear vale pra grade inteira: a materia e' global, nao uma
+          {/* Seletor de cor. Grupo de radio, nao <select>: as opcoes SAO as
+              cores, entao mostra-las e' mais claro que nomea-las numa lista.
+              O nome de cada cor fica no aria-label pra quem usa leitor de tela
+              e pra quem nao distingue as cores. */}
+          <fieldset className="flex flex-col gap-2" disabled={enviando}>
+            <legend className="text-text-muted text-xs font-bold">
+              Cor (opcional)
+            </legend>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <BotaoCor
+                rotulo="Sem cor"
+                selecionada={valores.cor === null}
+                aoEscolher={() => setValores((atuais) => ({ ...atuais, cor: null }))}
+              />
+              {CORES_MATERIA.map((opcao) => (
+                <BotaoCor
+                  key={opcao.id}
+                  rotulo={opcao.rotulo}
+                  fundo={opcao.fundo}
+                  texto={opcao.texto}
+                  selecionada={valores.cor === opcao.id}
+                  aoEscolher={() =>
+                    setValores((atuais) => ({ ...atuais, cor: opcao.id }))
+                  }
+                />
+              ))}
+            </div>
+
+            {/* Previa: a cor so' faz sentido vista no lugar onde vai aparecer,
+                grifando o nome da materia. */}
+            <p className="mt-1 flex items-center gap-2 text-xs">
+              <span className="text-text-muted">Na grade:</span>
+              <EtiquetaMateria
+                nome={valores.nome.trim() || "História"}
+                cor={valores.cor}
+              />
+            </p>
+          </fieldset>
+
+          {/* Editar vale pra grade inteira: a materia e' global, nao uma
               copia por aula. Sem esse aviso o usuario pode achar que so' a
               turma aberta seria afetada. */}
           {editando && (
             <p className="text-text-muted text-xs leading-relaxed">
-              A matéria é usada por todas as turmas — o novo nome aparece em
+              A matéria é usada por todas as turmas — o nome e a cor aparecem em
               todas as aulas que a utilizam.
             </p>
           )}
@@ -225,5 +278,47 @@ export function ModalMateria({
         </form>
       </div>
     </div>
+  );
+}
+
+type BotaoCorProps = {
+  rotulo: string;
+  /** Cor de fundo do botao. Ausente = a opcao "Sem cor". */
+  fundo?: string;
+  texto?: string;
+  selecionada: boolean;
+  aoEscolher: () => void;
+};
+
+/**
+ * Uma bolinha do seletor de cor.
+ *
+ * `aria-pressed` em vez de `<input type="radio">`: sao botoes de acao imediata
+ * num grupo pequeno, e o par role/estado ja anuncia certo pro leitor de tela.
+ * O nome da cor vai no `aria-label` porque a bolinha nao tem texto visivel —
+ * sem ele, quem usa leitor de tela ouviria so' "botao".
+ *
+ * A selecao e' marcada por um check DENTRO da bolinha, alem do anel em volta:
+ * anel colorido sozinho seria informacao transmitida so' por cor.
+ */
+function BotaoCor({ rotulo, fundo, texto, selecionada, aoEscolher }: BotaoCorProps) {
+  return (
+    <button
+      type="button"
+      onClick={aoEscolher}
+      aria-label={rotulo}
+      aria-pressed={selecionada}
+      title={rotulo}
+      className="inline-flex h-7 w-7 items-center justify-center rounded-full transition-transform"
+      style={{
+        background: fundo ?? "var(--surface-2)",
+        color: texto ?? "var(--text-muted)",
+        border: fundo ? "1.5px solid transparent" : "1.5px dashed var(--border-strong)",
+        outline: selecionada ? "2px solid var(--primary)" : "none",
+        outlineOffset: "2px",
+      }}
+    >
+      {selecionada && <IconCheckSimples size={12} />}
+    </button>
   );
 }
