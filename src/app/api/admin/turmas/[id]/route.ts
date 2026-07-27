@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { statusSeguro } from "@/app/api/admin/_lib/status-seguro";
+import { validarNovaTurma } from "@/app/api/admin/_lib/validar-turma";
 import { ApiError, editarTurma, excluirTurma } from "@/lib/api";
-import type { NovaTurma } from "@/lib/types";
 
 /**
  * Ponte de "Editar turma" (PUT) e "Excluir turma" (DELETE) da tela
@@ -15,22 +15,6 @@ type Params = { params: Promise<{ id: string }> };
 function idValido(bruto: string): number | null {
   const n = Number(bruto);
   return Number.isInteger(n) && n > 0 ? n : null;
-}
-
-/**
- * Turma agora e' so' nome + sala: a agenda (dia/hora) mudou pras aulas
- * (`/admin/turmas/{id}/aulas`). Validar horario aqui rejeitaria com 400 todo
- * corpo valido que a tela manda.
- */
-function validarNovaTurma(dados: unknown): dados is NovaTurma {
-  if (typeof dados !== "object" || dados === null) return false;
-  const d = dados as Record<string, unknown>;
-  return (
-    typeof d.nome === "string" &&
-    d.nome.trim() !== "" &&
-    typeof d.sala_id === "string" &&
-    d.sala_id.trim() !== ""
-  );
 }
 
 export async function PUT(requisicao: Request, { params }: Params) {
@@ -97,10 +81,11 @@ export async function DELETE(_requisicao: Request, { params }: Params) {
         return NextResponse.json({ erro: "Turma não encontrada." }, { status: 404 });
       }
       if (causa.status === 409) {
-        // Turma tem alunos: {detail: {nome, total_alunos}} vai cru pro modal
-        // entrar no estado bloqueado e pedir pra mover/excluir os alunos antes.
+        // Exclusao recusada: {detail: {motivo, nome, total_*}} vai cru pro modal
+        // entrar no estado bloqueado. O motivo ("alunos" ou "historico") decide a
+        // mensagem la', entao aqui o texto fica neutro.
         return NextResponse.json(
-          { erro: "A turma tem alunos matriculados.", detalhe: causa.detalhe },
+          { erro: "Não foi possível excluir a turma.", detalhe: causa.detalhe },
           { status: 409 },
         );
       }
