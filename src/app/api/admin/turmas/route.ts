@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { statusSeguro } from "@/app/api/admin/_lib/status-seguro";
+import { validarNovaTurma } from "@/app/api/admin/_lib/validar-turma";
 import { ApiError, criarTurma } from "@/lib/api";
-import type { NovaTurma } from "@/lib/types";
 
 /**
  * Ponte de escrita "Nova turma" da tela "Administracao".
@@ -61,23 +61,4 @@ export async function POST(requisicao: Request) {
     }
     throw causa;
   }
-}
-
-function validarNovaTurma(dados: unknown): dados is NovaTurma {
-  if (typeof dados !== "object" || dados === null) return false;
-  const d = dados as Record<string, unknown>;
-  return (
-    typeof d.nome === "string" &&
-    d.nome.trim() !== "" &&
-    typeof d.sala_id === "string" &&
-    d.sala_id.trim() !== "" &&
-    typeof d.dia_semana === "number" &&
-    Number.isInteger(d.dia_semana) &&
-    d.dia_semana >= 0 &&
-    d.dia_semana <= 6 &&
-    typeof d.hora_inicio === "string" &&
-    d.hora_inicio.trim() !== "" &&
-    typeof d.hora_fim === "string" &&
-    d.hora_fim.trim() !== ""
-  );
 }
