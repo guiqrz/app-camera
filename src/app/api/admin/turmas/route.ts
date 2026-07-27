@@ -36,19 +36,11 @@ export async function POST(requisicao: Request) {
     return NextResponse.json(criada, { status: 201 });
   } catch (causa) {
     if (causa instanceof ApiError) {
-      if (causa.status === 409) {
-        // Conflito de horario: outra turma ja ocupa a mesma sala/dia nesse
-        // intervalo. O detalhe ({detail: {nome}}) vai cru pro modal apontar
-        // com qual turma o horario colide.
-        return NextResponse.json(
-          { erro: "Conflito de horário com outra turma.", detalhe: causa.detalhe },
-          { status: 409 },
-        );
-      }
       if (causa.status === 422) {
-        // Erro de validacao da API (ex.: horario invalido, fim antes do inicio).
-        // O detalhe vem estruturado ({detail: string}) — repassa cru pro
-        // modal mostrar a mensagem exata.
+        // Erro de validacao da API (nome ou sala vazios). O detalhe vem
+        // estruturado ({detail: string}) — repassa cru pro modal mostrar a
+        // mensagem exata. Conflito de horario nao acontece mais aqui: a agenda
+        // saiu da turma e o 409 mora em POST /admin/turmas/{id}/aulas.
         return NextResponse.json(
           { erro: "Não foi possível criar a turma.", detalhe: causa.detalhe },
           { status: 422 },

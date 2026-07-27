@@ -17,13 +17,17 @@ const INTERVALO_MS = 3000;
 /** Limiar do backend para o alerta de dispersao — so' documenta o que ja vem pronto em `alerta_atencao`. */
 const LIMIAR_ALERTA_PCT = 20;
 
-/** Dias da semana pela convencao strftime %w (0 = domingo) usada no backend. */
-const DIAS_SEMANA = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
-
-/** Rotulo curto de uma turma pro seletor: "3B - Historia · seg 08:00–09:40". */
+/**
+ * Rotulo curto de uma turma pro seletor: "3B · sala_32A".
+ *
+ * Antes mostrava o dia e o horario da turma, mas a agenda saiu de Turma e
+ * virou a entidade Aula: hoje uma turma tem varias aulas em dias e horarios
+ * diferentes, entao nao existe mais "o horario da turma" pra caber num rotulo
+ * de uma linha. A sala e' o que de fato identifica onde a camera esta, e e'
+ * ela que desempata turmas de nome parecido nessa lista.
+ */
 function rotuloDaTurma(turma: Turma): string {
-  const dia = DIAS_SEMANA[turma.dia_semana] ?? "";
-  return `${turma.nome} · ${dia} ${turma.hora_inicio}–${turma.hora_fim}`;
+  return `${turma.nome} · ${turma.sala_id}`;
 }
 
 /**

@@ -23,6 +23,10 @@ type ListaAulasChamadaProps = {
  * grande com botao direto — e' nela que o professor quase sempre clica. As
  * demais ficam guardadas num cartao recolhivel "Aulas anteriores", fora do
  * caminho mas a um clique de distancia.
+ *
+ * Horario e materia sao nulos quando a sessao nao tem aula associada (camera
+ * ligada na mao, ou aula excluida depois): a linha de apoio encolhe pra so' o
+ * que existe, sem placeholder no lugar do dado ausente.
  */
 export function ListaAulasChamada({ aulas }: ListaAulasChamadaProps) {
   const [anterioresAbertas, setAnterioresAbertas] = useState(false);
@@ -42,6 +46,13 @@ export function ListaAulasChamada({ aulas }: ListaAulasChamadaProps) {
   }
 
   const [destaque, ...anteriores] = aulas;
+  // Horario e materia so' aparecem quando existem — ver o JSDoc do componente.
+  const apoioDestaque = [
+    formatarIntervalo(destaque.hora_inicio, destaque.hora_fim),
+    destaque.materia,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <div className="flex flex-col gap-4">
@@ -66,17 +77,23 @@ export function ListaAulasChamada({ aulas }: ListaAulasChamadaProps) {
               {formatarDiaSemana(destaque.dia_semana)},{" "}
               {formatarDataExtensa(destaque.data)}
             </p>
-            <p className="text-text-muted mt-0.5 text-sm">
-              {formatarIntervalo(destaque.hora_inicio, destaque.hora_fim)}
-              {destaque.em_andamento && (
-                <span
-                  className="ml-2 rounded-full px-2.5 py-0.5 text-[11px] font-extrabold tracking-wide uppercase"
-                  style={{ background: "var(--ok-bg)", color: "var(--ok-fg)" }}
-                >
-                  Ao vivo
-                </span>
-              )}
-            </p>
+            {/* O selo "Ao vivo" fica nesta linha mesmo quando nao ha horario —
+                por isso o <p> continua renderizando com a legenda vazia. */}
+            {(apoioDestaque || destaque.em_andamento) && (
+              <p className="text-text-muted mt-0.5 text-sm">
+                {apoioDestaque}
+                {destaque.em_andamento && (
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-[11px] font-extrabold tracking-wide uppercase ${
+                      apoioDestaque ? "ml-2" : ""
+                    }`}
+                    style={{ background: "var(--ok-bg)", color: "var(--ok-fg)" }}
+                  >
+                    Ao vivo
+                  </span>
+                )}
+              </p>
+            )}
           </div>
 
           <Link
@@ -127,7 +144,15 @@ export function ListaAulasChamada({ aulas }: ListaAulasChamadaProps) {
 
           {anterioresAbertas && (
             <ul>
-              {anteriores.map((aula) => (
+              {anteriores.map((aula) => {
+                const apoio = [
+                  formatarIntervalo(aula.hora_inicio, aula.hora_fim),
+                  aula.materia,
+                ]
+                  .filter(Boolean)
+                  .join(" · ");
+
+                return (
                 <li key={aula.sessao_id}>
                   <Link
                     href={`/chamada/${aula.sessao_id}`}
@@ -139,9 +164,9 @@ export function ListaAulasChamada({ aulas }: ListaAulasChamadaProps) {
                         {formatarDiaSemana(aula.dia_semana)},{" "}
                         {formatarDataExtensa(aula.data)}
                       </p>
-                      <p className="text-text-muted mt-0.5 text-[13px]">
-                        {formatarIntervalo(aula.hora_inicio, aula.hora_fim)}
-                      </p>
+                      {apoio && (
+                        <p className="text-text-muted mt-0.5 text-[13px]">{apoio}</p>
+                      )}
                     </div>
                     <span
                       className="flex-none -rotate-90"
@@ -152,7 +177,8 @@ export function ListaAulasChamada({ aulas }: ListaAulasChamadaProps) {
                     </span>
                   </Link>
                 </li>
-              ))}
+                );
+              })}
             </ul>
           )}
         </div>

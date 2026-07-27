@@ -20,11 +20,15 @@ import "server-only";
 
 import type {
   AlunoAdmin,
+  Aula,
   AulasDaTurma,
   ChamadaDaSessao,
   ConfirmacaoPresencaResposta,
   EstadoCamera,
   EstatisticasDaTurma,
+  Materia,
+  NovaAula,
+  NovaMateria,
   NovaTurma,
   RelatorioDaSessao,
   Turma,
@@ -295,6 +299,34 @@ export function excluirTurma(id: number): Promise<{ id: number; nome: string }> 
   return requisitar<{ id: number; nome: string }>(`/admin/turmas/${id}`, {
     method: "DELETE",
   });
+}
+
+/* --- Materias --- */
+export function listarMaterias(): Promise<Materia[]> {
+  return requisitar<Materia[]>("/admin/materias", { revalidate: 0 });
+}
+export function criarMateria(dados: NovaMateria): Promise<{ id: number }> {
+  return requisitar<{ id: number }>("/admin/materias", { method: "POST", body: dados });
+}
+export function editarMateria(id: number, dados: NovaMateria): Promise<{ id: number }> {
+  return requisitar<{ id: number }>(`/admin/materias/${id}`, { method: "PUT", body: dados });
+}
+export function excluirMateria(id: number): Promise<{ id: number; nome: string }> {
+  return requisitar<{ id: number; nome: string }>(`/admin/materias/${id}`, { method: "DELETE" });
+}
+
+/* --- Aulas --- */
+export function listarAulasDaTurma(turmaId: number): Promise<Aula[]> {
+  return requisitar<Aula[]>(`/admin/turmas/${turmaId}/aulas`, { revalidate: 0 });
+}
+export function criarAula(turmaId: number, dados: NovaAula): Promise<{ id: number }> {
+  return requisitar<{ id: number }>(`/admin/turmas/${turmaId}/aulas`, { method: "POST", body: dados });
+}
+export function editarAula(id: number, dados: NovaAula): Promise<{ id: number }> {
+  return requisitar<{ id: number }>(`/admin/aulas/${id}`, { method: "PUT", body: dados });
+}
+export function excluirAula(id: number): Promise<{ id: number }> {
+  return requisitar<{ id: number }>(`/admin/aulas/${id}`, { method: "DELETE" });
 }
 
 /* ------------------------------------------------------------------ */
