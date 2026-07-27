@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { statusSeguro } from "@/app/api/admin/_lib/status-seguro";
+import { validarNovaMateria } from "@/app/api/admin/_lib/validar-materia";
 import { ApiError, criarMateria, listarMaterias } from "@/lib/api";
-import type { NovaMateria } from "@/lib/types";
 
 /**
  * Ponte de "Materias" da tela "Coordenacao": listar (GET) e cadastrar (POST).
@@ -76,8 +76,3 @@ export async function POST(requisicao: Request) {
   }
 }
 
-function validarNovaMateria(dados: unknown): dados is NovaMateria {
-  if (typeof dados !== "object" || dados === null) return false;
-  const d = dados as Record<string, unknown>;
-  return typeof d.nome === "string" && d.nome.trim() !== "";
-}

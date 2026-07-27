@@ -210,11 +210,38 @@ export type NovaTurma = {
   sala_id: string;
 };
 
-/** GET /admin/materias */
-export type Materia = { id: number; nome: string };
+/**
+ * Id de cor da materia. Espelha CORES_MATERIA em cupcam/gestao/materias.py —
+ * o backend responde 422 pra qualquer valor fora desta lista. O banco guarda
+ * o id ("azul"), nunca um valor CSS: o tom exato de cada cor no tema claro e
+ * no escuro e' decisao do site (ver APARENCIA_COR_MATERIA em lib/format.ts).
+ */
+export type CorMateria =
+  | "azul"
+  | "verde"
+  | "ambar"
+  | "vermelho"
+  | "roxo"
+  | "rosa"
+  | "ciano"
+  | "cinza";
 
-/** Corpo de POST/PUT /admin/materias. */
-export type NovaMateria = { nome: string };
+/** GET /admin/materias */
+export type Materia = {
+  id: number;
+  nome: string;
+  /** Nula quando a materia nao tem cor — a tela a mostra sem grifo. */
+  cor: CorMateria | null;
+};
+
+/**
+ * Corpo de POST/PUT /admin/materias.
+ *
+ * ATENCAO no PUT: e' substituicao TOTAL, igual ao de aula — `cor: null` LIMPA
+ * a cor da materia. Quem edita reenvia sempre a cor atual pra nao apaga-la
+ * sem querer.
+ */
+export type NovaMateria = { nome: string; cor: CorMateria | null };
 
 /** Uma aula da grade de uma turma (GET /admin/turmas/{id}/aulas). */
 export type Aula = {
@@ -227,6 +254,8 @@ export type Aula = {
   hora_fim: string;
   materia_id: number | null;
   materia_nome: string | null;
+  /** Cor da materia da aula. Nula sem materia, ou com materia sem cor. */
+  materia_cor: CorMateria | null;
 };
 
 /** Corpo de POST/PUT de aula. */

@@ -50,6 +50,27 @@
   --radius: 12px;
   --radius-lg: 16px;
   --radius-xl: 24px;
+
+  /* Cores de materia — o grifo atras do nome na grade e na lista.
+     Par -bg/-fg por cor: o fundo e' o grifo, o texto vai por cima dele.
+     Os ids (azul, verde, ...) espelham CORES_MATERIA no backend; o banco
+     guarda o id, e o tom exato de cada tema e' decidido aqui. */
+  --materia-azul-bg: #dbeafe;
+  --materia-azul-fg: #1e429f;
+  --materia-verde-bg: #d7f5e3;
+  --materia-verde-fg: #12643a;
+  --materia-ambar-bg: #fdf0d5;
+  --materia-ambar-fg: #8a5a06;
+  --materia-vermelho-bg: #fde0de;
+  --materia-vermelho-fg: #9b2c26;
+  --materia-roxo-bg: #ebe0fb;
+  --materia-roxo-fg: #5b2a91;
+  --materia-rosa-bg: #fce0ee;
+  --materia-rosa-fg: #9b2c6a;
+  --materia-ciano-bg: #d5f2f6;
+  --materia-ciano-fg: #0d5b66;
+  --materia-cinza-bg: #e6ebf0;
+  --materia-cinza-fg: #414b57;
 }
 
 :root[data-theme="dark"] {
@@ -96,6 +117,25 @@
   --warn-fg: #fbbf24;
   --danger-bg: rgba(224, 72, 63, 0.18);
   --danger-fg: #f87171;
+
+  /* Cores de materia no escuro: fundo translucido (o grifo claro ofuscaria
+     sobre a superficie escura) e texto claro por cima. */
+  --materia-azul-bg: rgba(59, 130, 246, 0.2);
+  --materia-azul-fg: #93c5fd;
+  --materia-verde-bg: rgba(26, 157, 92, 0.2);
+  --materia-verde-fg: #6ee7a8;
+  --materia-ambar-bg: rgba(242, 169, 59, 0.2);
+  --materia-ambar-fg: #fcd34d;
+  --materia-vermelho-bg: rgba(224, 72, 63, 0.2);
+  --materia-vermelho-fg: #fca5a5;
+  --materia-roxo-bg: rgba(149, 97, 226, 0.24);
+  --materia-roxo-fg: #cbaaf8;
+  --materia-rosa-bg: rgba(219, 92, 158, 0.22);
+  --materia-rosa-fg: #f9a8d4;
+  --materia-ciano-bg: rgba(34, 172, 190, 0.2);
+  --materia-ciano-fg: #7fdbe8;
+  --materia-cinza-bg: rgba(255, 255, 255, 0.12);
+  --materia-cinza-fg: #cbd5e1;
 }
 
 /* Respeita a preferencia do sistema quando o usuario ainda nao escolheu
@@ -140,5 +180,22 @@
     --warn-fg: #fbbf24;
     --danger-bg: rgba(224, 72, 63, 0.18);
     --danger-fg: #f87171;
+
+    --materia-azul-bg: rgba(59, 130, 246, 0.2);
+    --materia-azul-fg: #93c5fd;
+    --materia-verde-bg: rgba(26, 157, 92, 0.2);
+    --materia-verde-fg: #6ee7a8;
+    --materia-ambar-bg: rgba(242, 169, 59, 0.2);
+    --materia-ambar-fg: #fcd34d;
+    --materia-vermelho-bg: rgba(224, 72, 63, 0.2);
+    --materia-vermelho-fg: #fca5a5;
+    --materia-roxo-bg: rgba(149, 97, 226, 0.24);
+    --materia-roxo-fg: #cbaaf8;
+    --materia-rosa-bg: rgba(219, 92, 158, 0.22);
+    --materia-rosa-fg: #f9a8d4;
+    --materia-ciano-bg: rgba(34, 172, 190, 0.2);
+    --materia-ciano-fg: #7fdbe8;
+    --materia-cinza-bg: rgba(255, 255, 255, 0.12);
+    --materia-cinza-fg: #cbd5e1;
   }
 }
