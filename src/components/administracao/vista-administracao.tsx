@@ -4,7 +4,10 @@ import { useCallback, useMemo, useState } from "react";
 
 import { ModalAluno } from "@/components/administracao/modal-aluno";
 import { ModalConfirmarExclusao } from "@/components/administracao/modal-confirmar-exclusao";
-import { ModalConfirmarExclusaoTurma } from "@/components/administracao/modal-confirmar-exclusao-turma";
+import {
+  ModalConfirmarExclusaoTurma,
+  type BloqueioTurma,
+} from "@/components/administracao/modal-confirmar-exclusao-turma";
 import { ModalTurma } from "@/components/administracao/modal-turma";
 import { PainelAlunos } from "@/components/administracao/painel-alunos";
 import { PainelTurmas } from "@/components/administracao/painel-turmas";
@@ -45,6 +48,11 @@ export function VistaAdministracao({ visaoInicial }: VistaAdministracaoProps) {
   // desatualizada, e o usuario pode achar que a acao nao valeu e repeti-la.
   const [avisoRecarga, setAvisoRecarga] = useState<string | null>(null);
 
+  // Cache-buster da miniatura. A URL da foto e' constante por RA e a ponte responde
+  // com Cache-Control: max-age=30, entao trocar a foto de um aluno mostraria a antiga
+  // por ate' 30s. Cada recarga bem-sucedida incrementa isto, mudando a URL do <img>.
+  const [versaoFotos, setVersaoFotos] = useState(0);
+
   /** Busca o retrato mais recente da API e substitui o estado local. */
   const recarregar = useCallback(async () => {
     try {
@@ -64,6 +72,7 @@ export function VistaAdministracao({ visaoInicial }: VistaAdministracaoProps) {
         }
         return dados.turmas[0]?.id ?? null;
       });
+      setVersaoFotos((atual) => atual + 1);
       setAvisoRecarga(null);
     } catch (causa) {
       console.error("[cupcam] falha ao recarregar visao admin:", causa);
@@ -229,19 +238,34 @@ export function VistaAdministracao({ visaoInicial }: VistaAdministracaoProps) {
     });
 
     if (!resposta.ok) {
-      // No 409 (turma com alunos), `detalhe` e' {detail: {nome, total_alunos}}.
-      // O modal usa esse formato pra entrar no estado bloqueado.
+      // O 409 tem DOIS motivos: "alunos" ({nome, total_alunos}) e "historico"
+      // ({nome, total_sessoes}, turma que ja teve aula). O modal usa o motivo pra
+      // escolher a mensagem — historico nao tem como ser resolvido pelo usuario.
       const corpo = (await resposta.json().catch(() => null)) as
-        | { erro?: string; detalhe?: { detail?: { nome?: string; total_alunos?: number } } }
+        | {
+            erro?: string;
+            detalhe?: {
+              detail?: {
+                motivo?: string;
+                nome?: string;
+                total_alunos?: number;
+                total_sessoes?: number;
+              };
+            };
+          }
         | null;
 
       if (resposta.status === 409 && corpo?.detalhe?.detail) {
-        const erro409 = new Error(corpo.erro ?? "A turma tem alunos matriculados.") as Error & {
-          turmaComAlunos?: { nome: string; total_alunos: number };
+        const erro409 = new Error(corpo.erro ?? "Não foi possível excluir a turma.") as Error & {
+          turmaBloqueada?: BloqueioTurma;
         };
-        const { nome, total_alunos } = corpo.detalhe.detail;
-        if (typeof nome === "string" && typeof total_alunos === "number") {
-          erro409.turmaComAlunos = { nome, total_alunos };
+        const { motivo, nome, total_alunos, total_sessoes } = corpo.detalhe.detail;
+        if (typeof nome === "string") {
+          if (motivo === "historico" && typeof total_sessoes === "number") {
+            erro409.turmaBloqueada = { motivo: "historico", nome, total: total_sessoes };
+          } else if (typeof total_alunos === "number") {
+            erro409.turmaBloqueada = { motivo: "alunos", nome, total: total_alunos };
+          }
         }
         throw erro409;
       }
@@ -326,6 +350,7 @@ export function VistaAdministracao({ visaoInicial }: VistaAdministracaoProps) {
         <PainelAlunos
           turma={turmaSelecionada}
           alunos={alunosDaTurma}
+          versaoFotos={versaoFotos}
           aoNovoAluno={aoNovoAluno}
           aoEditar={aoEditar}
           aoExcluir={aoExcluir}

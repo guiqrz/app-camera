@@ -6,9 +6,19 @@ import { useFocoPreso } from "@/components/administracao/usar-foco-preso";
 import { IconFechar } from "@/components/ui/icons";
 import type { TurmaAdmin } from "@/lib/types";
 
-/** Detalhe do 409 (turma com alunos) que a chamada de exclusao anexa ao Error. */
+/**
+ * Motivo pelo qual a API recusou a exclusao (409). "alunos" o usuario resolve
+ * (mover/excluir os alunos); "historico" nao — aula gravada e' permanente.
+ */
+export type BloqueioTurma = {
+  motivo: "alunos" | "historico";
+  nome: string;
+  total: number;
+};
+
+/** Detalhe do 409 que a chamada de exclusao anexa ao Error. */
 type ErroComAlunos = Error & {
-  turmaComAlunos?: { nome: string; total_alunos: number };
+  turmaBloqueada?: BloqueioTurma;
 };
 
 type ModalConfirmarExclusaoTurmaProps = {
@@ -40,11 +50,12 @@ export function ModalConfirmarExclusaoTurma({
   aoFechar,
   aoConfirmar,
 }: ModalConfirmarExclusaoTurmaProps) {
-  const [bloqueada, setBloqueada] = useState<{ total_alunos: number } | null>(null);
+  const [bloqueada, setBloqueada] = useState<BloqueioTurma | null>(null);
   const [erroApi, setErroApi] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
 
   const botaoConfirmarRef = useRef<HTMLButtonElement>(null);
+  const botaoFecharRef = useRef<HTMLButtonElement>(null);
   const idTitulo = useId();
   const refModal = useFocoPreso(aberto);
 
@@ -63,10 +74,16 @@ export function ModalConfirmarExclusaoTurma({
     }
   }
 
+  // `bloqueada` entra nas deps porque o 409 DESMONTA o botao Confirmar: sem re-rodar,
+  // o foco ficaria orfao no <body> e a navegacao por teclado sairia do modal.
   useEffect(() => {
     if (!aberto) return;
+    if (bloqueada) {
+      botaoFecharRef.current?.focus();
+      return;
+    }
     botaoConfirmarRef.current?.focus();
-  }, [aberto, turma?.id]);
+  }, [aberto, turma?.id, bloqueada]);
 
   useEffect(() => {
     if (!aberto) return;
@@ -99,10 +116,9 @@ export function ModalConfirmarExclusaoTurma({
       // Sucesso: quem chama (a vista) fecha e recarrega — nao mexe aqui.
     } catch (causa) {
       const erro = causa as ErroComAlunos;
-      if (erro?.turmaComAlunos) {
-        // 409: turma tem alunos — entra no estado bloqueado em vez de mostrar
-        // isso como erro generico.
-        setBloqueada({ total_alunos: erro.turmaComAlunos.total_alunos });
+      if (erro?.turmaBloqueada) {
+        // 409: entra no estado bloqueado em vez de mostrar isso como erro generico.
+        setBloqueada(erro.turmaBloqueada);
         setErroApi(null);
       } else {
         setErroApi(erro instanceof Error ? erro.message : "Não foi possível excluir a turma.");
@@ -112,8 +128,11 @@ export function ModalConfirmarExclusaoTurma({
     }
   }
 
-  const totalAlunos = bloqueada?.total_alunos ?? 0;
-  const rotuloAlunos = totalAlunos === 1 ? "aluno" : "alunos";
+  const total = bloqueada?.total ?? 0;
+  const mensagemBloqueio =
+    bloqueada?.motivo === "historico"
+      ? `A turma ${turma.nome} tem ${total} ${total === 1 ? "aula registrada" : "aulas registradas"}. Turmas com histórico de aula não podem ser excluídas.`
+      : `A turma ${turma.nome} tem ${total} ${total === 1 ? "aluno" : "alunos"}. Mova ou exclua os alunos antes de excluir a turma.`;
 
   return (
     <div
@@ -139,7 +158,11 @@ export function ModalConfirmarExclusaoTurma({
             className="text-text text-lg font-extrabold"
             style={{ fontFamily: "var(--font-geologica)" }}
           >
-            {bloqueada ? "Turma com alunos" : "Excluir turma"}
+            {bloqueada
+              ? bloqueada.motivo === "historico"
+                ? "Turma com histórico"
+                : "Turma com alunos"
+              : "Excluir turma"}
           </h2>
           <button
             type="button"
@@ -153,12 +176,14 @@ export function ModalConfirmarExclusaoTurma({
         </div>
 
         {bloqueada ? (
+          // role="alert" porque esta mensagem SUBSTITUI a pergunta depois do 409 — sem
+          // ele, leitor de tela nao anuncia que a exclusao foi recusada.
           <p
+            role="alert"
             className="rounded-xl px-4 py-3 text-sm leading-relaxed font-semibold"
             style={{ background: "var(--danger-bg)", color: "var(--danger-fg)" }}
           >
-            A turma {turma.nome} tem {totalAlunos} {rotuloAlunos}. Mova ou exclua os alunos
-            antes de excluir a turma.
+            {mensagemBloqueio}
           </p>
         ) : (
           <p className="text-text-body text-sm leading-relaxed">
@@ -178,6 +203,7 @@ export function ModalConfirmarExclusaoTurma({
 
         <div className="mt-1 flex items-center justify-end gap-2.5">
           <button
+            ref={botaoFecharRef}
             type="button"
             onClick={aoFechar}
             disabled={enviando}
