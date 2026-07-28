@@ -16,6 +16,17 @@ type Props = {
   params: Promise<{ turmaId: string }>;
 };
 
+export async function generateMetadata({ params }: Props) {
+  const { turmaId } = await params;
+  const id = Number(turmaId);
+  if (!Number.isInteger(id) || id <= 0) return { title: "Relatórios" };
+
+  const aulas = await buscarAulasDaTurma(id).catch(() => null);
+  if (!aulas) return { title: "Relatórios" };
+
+  return { title: `Relatório · ${aulas.turma.nome} — Cupcam Insights` };
+}
+
 export default async function RelatorioGeralPage({ params }: Props) {
   const { turmaId } = await params;
   const id = Number(turmaId);

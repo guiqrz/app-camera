@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 
 import { VistaTurma } from "@/components/coordenacao/vista-turma";
 import { AppShell } from "@/components/layout/app-shell";
+import { Breadcrumb, type EloBreadcrumb } from "@/components/layout/breadcrumb";
 import { buscarVisaoAdmin } from "@/lib/api";
 
 // A visao de administracao precisa ser sempre fresca (ver revalidate:0 em
@@ -9,6 +10,17 @@ import { buscarVisaoAdmin } from "@/lib/api";
 export const dynamic = "force-dynamic";
 
 type Props = { params: Promise<{ id: string }> };
+
+export async function generateMetadata({ params }: Props) {
+  const { id } = await params;
+  const idNumero = Number(id);
+  if (!Number.isInteger(idNumero) || idNumero <= 0) return { title: "Coordenação" };
+
+  const visao = await buscarVisaoAdmin().catch(() => null);
+  const turma = visao?.turmas.find((candidata) => candidata.id === idNumero);
+
+  return { title: turma ? `${turma.nome} — Cupcam Insights` : "Coordenação" };
+}
 
 /**
  * Pagina de uma turma — dados da turma e a grade semanal de aulas.
@@ -32,8 +44,13 @@ export default async function TurmaPage({ params }: Props) {
   const turma = visao.turmas.find((candidata) => candidata.id === idNumero);
   if (!turma) notFound();
 
+  const elos: EloBreadcrumb[] = [
+    { rotulo: "Coordenação", href: "/coordenacao" },
+    { rotulo: turma.nome },
+  ];
+
   return (
-    <AppShell titulo="Coordenação">
+    <AppShell titulo="Coordenação" breadcrumb={<Breadcrumb elos={elos} />}>
       <VistaTurma turmaInicial={turma} />
     </AppShell>
   );

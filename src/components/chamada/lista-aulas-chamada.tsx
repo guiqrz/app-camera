@@ -14,6 +14,9 @@ import type { AulaCard } from "@/lib/types";
 type ListaAulasChamadaProps = {
   /** Aulas ja ordenadas: em andamento primeiro, depois da mais nova pra mais antiga. */
   aulas: AulaCard[];
+  /** Id da turma desta pagina, anexado aos links como ?turma= para que a tela
+   *  de destino saiba de onde o professor veio. */
+  turmaId: number;
 };
 
 /**
@@ -28,7 +31,7 @@ type ListaAulasChamadaProps = {
  * ligada na mao, ou aula excluida depois): a linha de apoio encolhe pra so' o
  * que existe, sem placeholder no lugar do dado ausente.
  */
-export function ListaAulasChamada({ aulas }: ListaAulasChamadaProps) {
+export function ListaAulasChamada({ aulas, turmaId }: ListaAulasChamadaProps) {
   const [anterioresAbertas, setAnterioresAbertas] = useState(false);
 
   if (aulas.length === 0) {
@@ -97,7 +100,7 @@ export function ListaAulasChamada({ aulas }: ListaAulasChamadaProps) {
           </div>
 
           <Link
-            href={`/chamada/${destaque.sessao_id}`}
+            href={`/chamada/${destaque.sessao_id}?turma=${turmaId}`}
             className="rounded-xl px-6 py-3 text-sm font-extrabold text-white"
             style={{
               background: "var(--primary)",
@@ -152,18 +155,23 @@ export function ListaAulasChamada({ aulas }: ListaAulasChamadaProps) {
                   .filter(Boolean)
                   .join(" · ");
 
+                const rotuloAula = `${formatarDiaSemana(aula.dia_semana)}, ${formatarDataExtensa(aula.data)}`;
+
                 return (
-                <li key={aula.sessao_id}>
+                <li
+                  key={aula.sessao_id}
+                  className="flex items-center gap-2 pr-4"
+                  style={{ borderTop: "1px solid var(--border)" }}
+                >
+                  {/* Dois links irmaos, nao aninhados: o item inteiro era um
+                      unico Link, e por isso o relatorio da aula nao tinha como
+                      caber aqui — link dentro de link e' HTML invalido. */}
                   <Link
-                    href={`/chamada/${aula.sessao_id}`}
-                    className="hover:bg-surface-2 flex items-center gap-4 px-6 py-4 transition-colors"
-                    style={{ borderTop: "1px solid var(--border)" }}
+                    href={`/chamada/${aula.sessao_id}?turma=${turmaId}`}
+                    className="hover:bg-surface-2 flex min-w-0 flex-1 items-center gap-4 px-6 py-4 transition-colors"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="text-text text-sm font-bold">
-                        {formatarDiaSemana(aula.dia_semana)},{" "}
-                        {formatarDataExtensa(aula.data)}
-                      </p>
+                      <p className="text-text text-sm font-bold">{rotuloAula}</p>
                       {apoio && (
                         <p className="text-text-muted mt-0.5 text-[13px]">{apoio}</p>
                       )}
@@ -175,6 +183,14 @@ export function ListaAulasChamada({ aulas }: ListaAulasChamadaProps) {
                     >
                       <IconSeta />
                     </span>
+                  </Link>
+
+                  <Link
+                    href={`/relatorios/sessao/${aula.sessao_id}?turma=${turmaId}`}
+                    className="text-text-brand hover:bg-surface-2 flex-none rounded-lg px-3 py-2 text-xs font-bold transition-colors"
+                  >
+                    Ver análise
+                    <span className="sr-only"> da aula de {rotuloAula}</span>
                   </Link>
                 </li>
                 );

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 
 import { AvatarAluno } from "@/components/chamada/avatar-aluno";
+import { BotaoIcone } from "@/components/ui/botao-icone";
 import { IconBusca, IconLapis, IconLixeira, IconMais, IconPessoas } from "@/components/ui/icons";
 import type { AlunoAdmin, TurmaAdmin } from "@/lib/types";
 
@@ -144,7 +145,9 @@ export function PainelAlunos({
                     <span className="text-text-body text-sm">{aluno.ra}</span>
                   </td>
                   <td className="px-6 py-3.5 text-right">
-                    <div className="flex items-center justify-end gap-1">
+                    {/* gap-3: os botoes tem 32px e area de toque de 44, entao
+                        precisam de 12px entre si para nao se cobrirem. */}
+                    <div className="flex items-center justify-end gap-3">
                       <BotaoEditar aluno={aluno} aoEditar={aoEditar} />
                       <BotaoExcluir aluno={aluno} aoExcluir={aoExcluir} />
                     </div>
@@ -247,15 +250,14 @@ function BotaoEditar({
   aoEditar: (aluno: AlunoAdmin) => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={() => aoEditar(aluno)}
-      aria-label={`Editar ${aluno.nome}`}
-      className="inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors"
-      style={{ color: "var(--text-muted)" }}
+    <BotaoIcone
+      rotulo={`Editar ${aluno.nome}`}
+      aoClicar={() => aoEditar(aluno)}
+      tamanho={32}
+      cor="var(--text-muted)"
     >
       <IconLapis />
-    </button>
+    </BotaoIcone>
   );
 }
 
@@ -268,14 +270,13 @@ function BotaoExcluir({
   aoExcluir: (aluno: AlunoAdmin) => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={() => aoExcluir(aluno)}
-      aria-label={`Excluir ${aluno.nome}`}
-      className="inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors"
-      style={{ color: "var(--danger)" }}
+    <BotaoIcone
+      rotulo={`Excluir ${aluno.nome}`}
+      aoClicar={() => aoExcluir(aluno)}
+      tamanho={32}
+      cor="var(--danger)"
     >
       <IconLixeira />
-    </button>
+    </BotaoIcone>
   );
 }

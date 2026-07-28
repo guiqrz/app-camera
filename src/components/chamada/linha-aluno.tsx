@@ -1,6 +1,7 @@
 "use client";
 
 import { AvatarAluno } from "@/components/chamada/avatar-aluno";
+import { BotaoIcone } from "@/components/ui/botao-icone";
 import { IconCheckSimples, IconFechar } from "@/components/ui/icons";
 import { formatarPct } from "@/lib/format";
 import type { AlunoChamada } from "@/lib/types";
@@ -68,8 +69,11 @@ export function LinhaAluno({ aluno, aoMarcar, aoAbrirDetalhe }: LinhaAlunoProps)
         </div>
       </div>
 
-      {/* Botoes Presente/Ausente */}
-      <div className="flex gap-1.5 justify-self-end sm:justify-self-start">
+      {/* Botoes Presente/Ausente. gap-2 (8px): com 36px de lado e area de toque
+          de 44, e' o minimo para um alvo nao invadir o do vizinho — marcar
+          "presente" por engano quando se quis "ausente" e' justamente o erro
+          que a chamada nao pode ter. */}
+      <div className="flex gap-2 justify-self-end sm:justify-self-start">
         <BotaoStatus
           ativo={presente}
           tipo="presente"
@@ -122,20 +126,21 @@ function BotaoStatus({
 }) {
   const cor = tipo === "presente" ? "var(--ok)" : "var(--danger)";
 
+  /* 36px nos dois tamanhos de tela. Antes o botao encolhia para 32px no
+     computador (`sm:h-8 sm:w-8`), o que contrariava o proposito descrito no
+     JSDoc acima — e nenhum dos dois valores alcancava o piso de 44px. Agora o
+     tamanho visual fica constante e a area de toque, invisivel, vai a 44. */
   return (
-    <button
-      type="button"
-      onClick={aoClicar}
-      aria-label={rotulo}
-      aria-pressed={ativo}
-      className="flex h-9 w-9 items-center justify-center rounded-lg transition-colors sm:h-8 sm:w-8"
-      style={{
-        background: ativo ? cor : "transparent",
-        border: ativo ? "none" : `1.5px solid ${cor}`,
-        color: ativo ? "#fff" : cor,
-      }}
+    <BotaoIcone
+      rotulo={rotulo}
+      aoClicar={aoClicar}
+      pressionado={ativo}
+      tamanho={36}
+      fundo={ativo ? cor : "transparent"}
+      cor={ativo ? "#fff" : cor}
+      borda={ativo ? undefined : `1.5px solid ${cor}`}
     >
       {tipo === "presente" ? <IconCheckSimples /> : <IconFechar size={14} />}
-    </button>
+    </BotaoIcone>
   );
 }
