@@ -9,6 +9,17 @@ type Props = {
   params: Promise<{ turmaId: string }>;
 };
 
+export async function generateMetadata({ params }: Props) {
+  const { turmaId } = await params;
+  const id = Number(turmaId);
+  if (!Number.isInteger(id) || id <= 0) return { title: "Chamada" };
+
+  const aulas = await buscarAulasDaTurma(id).catch(() => null);
+  if (!aulas) return { title: "Chamada" };
+
+  return { title: `Chamada · ${aulas.turma.nome} — Cupcam Insights` };
+}
+
 /**
  * Escolha da aula para fazer chamada.
  *
