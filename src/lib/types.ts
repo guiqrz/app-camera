@@ -270,6 +270,23 @@ export type NovaAula = {
 /* Camera                                                              */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Modo de operacao da camera (espelha cupcam/modos.py).
+ *
+ * Nao e' rotulo visual: fora de "aula" o backend nao classifica pose nem grava
+ * engajamento. Ver `mede_atencao` no EstadoCamera.
+ */
+export type ModoCamera = "aula" | "descanso" | "prova";
+
+/** Um modo com os textos que o backend manda (GET /camera/modos). */
+export type ModoCameraInfo = {
+  id: ModoCamera;
+  rotulo: string;
+  resumo: string;
+  /** false = neste modo a atencao da turma nao esta sendo medida. */
+  mede_atencao: boolean;
+};
+
 /** Estado ao vivo da captura, espelha o estado_camera.json do backend. */
 export type EstadoCamera =
   // Parada, ou iniciando: `iniciando` = o processo subiu mas o boot dos modelos
@@ -287,4 +304,19 @@ export type EstadoCamera =
       fps: number | null;
       mqtt: boolean;
       alerta_atencao: boolean;
+      /**
+       * Modo em vigor NA CAMERA, nao o ultimo clicado: a troca so' vale no
+       * proximo ciclo do backend, entao e' este campo que confirma que ela
+       * aconteceu de verdade.
+       *
+       * Opcional porque um estado escrito por um backend anterior a esta
+       * versao nao traz o campo.
+       */
+      modo?: ModoCamera;
+      /**
+       * false = a atencao NAO esta sendo medida neste modo. Existe pra tela
+       * nao mostrar "0% disperso" como se fosse um bom resultado quando na
+       * verdade nao ha medicao nenhuma acontecendo.
+       */
+      mede_atencao?: boolean;
     };
