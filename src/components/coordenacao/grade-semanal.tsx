@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 
 import { FormularioAula } from "@/components/coordenacao/formulario-aula";
+import { BotaoIcone } from "@/components/ui/botao-icone";
 import { EtiquetaMateria } from "@/components/ui/etiqueta-materia";
 import { IconCheck, IconFechar, IconLixeira, IconMais } from "@/components/ui/icons";
 import type { Aula, Materia, NovaAula } from "@/lib/types";
@@ -265,40 +266,44 @@ export function GradeSemanal({
                           {armada ? (
                             /* Confirmacao inline: o DELETE de aula nao tem 409
                                nem consequencia em cascata (a sessao so' perde o
-                               vinculo), entao um segundo clique basta. */
-                            <div className="flex flex-none items-center gap-0.5">
-                              <button
-                                type="button"
-                                onClick={() => {
+                               vinculo), entao um segundo clique basta.
+
+                               Alvo de toque em 36px (nao 44) e gap-2: a coluna do
+                               dia tem 160px, e dois alvos de 44 lado a lado se
+                               cobririam — um roubaria o clique do outro. */
+                            <div className="flex flex-none items-center gap-2">
+                              <BotaoIcone
+                                rotulo={`Confirmar exclusão da aula de ${rotuloAula(dia, aula)}`}
+                                aoClicar={() => {
                                   setAulaParaExcluirId(null);
                                   aoExcluirAula(aula);
                                 }}
-                                aria-label={`Confirmar exclusão da aula de ${rotuloAula(dia, aula)}`}
-                                className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-white"
-                                style={{ background: "var(--danger)" }}
+                                tamanho={28}
+                                alvo={36}
+                                fundo="var(--danger)"
+                                className="text-white"
                               >
                                 <IconCheck size={14} />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setAulaParaExcluirId(null)}
-                                aria-label="Cancelar exclusão"
-                                className="inline-flex h-7 w-7 items-center justify-center rounded-lg"
-                                style={{ color: "var(--text-muted)" }}
+                              </BotaoIcone>
+                              <BotaoIcone
+                                rotulo="Cancelar exclusão"
+                                aoClicar={() => setAulaParaExcluirId(null)}
+                                tamanho={28}
+                                alvo={36}
+                                cor="var(--text-muted)"
                               >
                                 <IconFechar size={14} />
-                              </button>
+                              </BotaoIcone>
                             </div>
                           ) : (
-                            <button
-                              type="button"
-                              onClick={() => setAulaParaExcluirId(aula.id)}
-                              aria-label={`Excluir aula de ${rotuloAula(dia, aula)}`}
-                              className="inline-flex h-7 w-7 flex-none items-center justify-center rounded-lg"
-                              style={{ color: "var(--danger)" }}
+                            <BotaoIcone
+                              rotulo={`Excluir aula de ${rotuloAula(dia, aula)}`}
+                              aoClicar={() => setAulaParaExcluirId(aula.id)}
+                              tamanho={28}
+                              cor="var(--danger)"
                             >
                               <IconLixeira size={14} />
-                            </button>
+                            </BotaoIcone>
                           )}
                         </div>
 

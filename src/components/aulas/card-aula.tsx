@@ -11,6 +11,10 @@ import type { AulaCard } from "@/lib/types";
 
 type CardAulaProps = {
   aula: AulaCard;
+  /** Id da turma, anexado ao link do relatorio como ?turma= para que a tela de
+   *  destino saiba voltar pra ca. O relatorio de sessao so' recebe o *nome* da
+   *  turma da API (`SessaoResumo.turma`), nunca o id. */
+  turmaId: number;
   /** Nome da turma — o card do desenho mostra turma e horario juntos. */
   nomeTurma: string;
 };
@@ -29,7 +33,7 @@ type CardAulaProps = {
  * aula associada (camera ligada na mao, ou aula excluida depois). Nesse caso a
  * legenda encolhe pra dia + data — nada de placeholder no lugar do horario.
  */
-export function CardAula({ aula, nomeTurma }: CardAulaProps) {
+export function CardAula({ aula, turmaId, nomeTurma }: CardAulaProps) {
   const aparencia = aparenciaDoStatus(aula.status);
   const temDados = aula.engajamento_pct !== null;
 
@@ -103,18 +107,39 @@ export function CardAula({ aula, nomeTurma }: CardAulaProps) {
           {aula.resumo ?? "Esta aula ainda não gerou recomendações."}
         </p>
 
-        <Link
-          href={`/relatorios/sessao/${aula.sessao_id}`}
-          className="text-text-brand border-border-default hover:bg-surface-2 mt-auto flex w-fit items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors"
-        >
-          Ver análise
-          <IconSetaDireita size={13} />
-          {/* Contexto para leitor de tela, que ouviria so' "Ver análise". */}
-          <span className="sr-only">
-            {" "}
-            da aula de {formatarDataCurta(aula.data)}
-          </span>
-        </Link>
+        {/* Dois caminhos a partir da aula. Numa aula ao vivo o professor quer
+            marcar presenca, nao ler analise — por isso a chamada vira a acao
+            principal ali, e sem esses links ele tinha que voltar ao menu e
+            reselecionar a turma pra chegar na chamada desta mesma aula. */}
+        <div className="mt-auto flex flex-wrap items-center gap-2">
+          <Link
+            href={`/chamada/${aula.sessao_id}?turma=${turmaId}`}
+            className={`flex w-fit items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${
+              aula.em_andamento
+                ? "text-white"
+                : "text-text-brand border-border-default hover:bg-surface-2 border"
+            }`}
+            style={
+              aula.em_andamento ? { background: "var(--primary)" } : undefined
+            }
+          >
+            Fazer chamada
+            <span className="sr-only"> da aula de {formatarDataCurta(aula.data)}</span>
+          </Link>
+
+          <Link
+            href={`/relatorios/sessao/${aula.sessao_id}?turma=${turmaId}`}
+            className="text-text-brand border-border-default hover:bg-surface-2 flex w-fit items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors"
+          >
+            Ver análise
+            <IconSetaDireita size={13} />
+            {/* Contexto para leitor de tela, que ouviria so' "Ver análise". */}
+            <span className="sr-only">
+              {" "}
+              da aula de {formatarDataCurta(aula.data)}
+            </span>
+          </Link>
+        </div>
       </div>
     </article>
   );

@@ -43,3 +43,7 @@ next-env.d.ts
 # O modelo de configuracao deve ser versionado (nao contem segredo).
 !.env.example
 .superpowers/
+
+# Snapshots das auditorias de UX ($impeccable) — output de ferramenta, nao
+# codigo. Servem de backlog local, mas nao vao pro repositorio.
+.impeccable/

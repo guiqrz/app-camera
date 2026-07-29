@@ -4,6 +4,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { useFocoPreso } from "@/components/coordenacao/usar-foco-preso";
 import { CampoComExemplo } from "@/components/ui/campo-com-exemplo";
+import { BotaoIcone } from "@/components/ui/botao-icone";
 import { IconFechar, IconFoto } from "@/components/ui/icons";
 import type { AlunoAdmin, TurmaAdmin } from "@/lib/types";
 
@@ -270,15 +271,14 @@ export function ModalAluno({
           >
             {editando ? "Editar aluno" : "Adicionar aluno"}
           </h2>
-          <button
-            type="button"
-            onClick={aoFechar}
-            aria-label="Fechar"
-            className="text-text-muted rounded-lg p-1"
-            disabled={enviando}
+          <BotaoIcone
+            rotulo="Fechar"
+            aoClicar={aoFechar}
+            desabilitado={enviando}
+            cor="var(--text-muted)"
           >
             <IconFechar size={20} />
-          </button>
+          </BotaoIcone>
         </div>
 
         <form onSubmit={aoSubmeter} className="flex flex-col gap-4" noValidate>

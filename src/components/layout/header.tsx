@@ -1,7 +1,7 @@
 "use client";
 
 import { ThemeToggle } from "@/components/theme/theme-toggle";
-import { IconMenu, IconSino } from "@/components/ui/icons";
+import { IconMenu } from "@/components/ui/icons";
 
 type HeaderProps = {
   aoAbrirMenu: () => void;
@@ -14,10 +14,11 @@ type HeaderProps = {
 export function Header({ aoAbrirMenu, titulo, children }: HeaderProps) {
   return (
     <header className="bg-surface shadow-header sticky top-0 z-30 flex flex-wrap items-center gap-4 px-5 py-4 lg:px-10">
+      {/* p-3 (nao p-1): e' o alvo mais tocado do celular e media 26px. */}
       <button
         type="button"
         onClick={aoAbrirMenu}
-        className="text-text flex-none rounded-lg p-1 lg:hidden"
+        className="text-text -m-1 flex-none rounded-lg p-3 lg:hidden"
         aria-label="Abrir menu"
       >
         <IconMenu />
@@ -34,19 +35,6 @@ export function Header({ aoAbrirMenu, titulo, children }: HeaderProps) {
 
       <div className="flex flex-none items-center gap-3">
         <ThemeToggle />
-
-        <button
-          type="button"
-          className="bg-surface-2 text-text relative flex h-10 w-10 items-center justify-center rounded-full"
-          aria-label="Notificações"
-        >
-          <IconSino />
-          <span
-            className="border-surface absolute top-1.5 right-1.5 h-2 w-2 rounded-full border-2"
-            style={{ background: "var(--danger)" }}
-            aria-hidden
-          />
-        </button>
 
         {/* Sem cadastro de professor no banco: dado fixo por ora. */}
         <div className="flex items-center gap-2.5">

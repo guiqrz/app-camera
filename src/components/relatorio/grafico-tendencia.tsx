@@ -5,6 +5,9 @@ import type { ResumoTurma } from "@/lib/consolidar";
 
 type GraficoTendenciaProps = {
   serie: ResumoTurma["serie"];
+  /** Id da turma desta pagina, anexado como ?turma= no link de cada barra: a
+   *  serie carrega o id da sessao, nunca o da turma. */
+  turmaId: number;
 };
 
 /**
@@ -15,7 +18,7 @@ type GraficoTendenciaProps = {
  * sao eventos discretos, nao uma medicao continua. Cada barra leva ao
  * relatorio daquela aula.
  */
-export function GraficoTendencia({ serie }: GraficoTendenciaProps) {
+export function GraficoTendencia({ serie, turmaId }: GraficoTendenciaProps) {
   if (serie.length === 0) {
     return (
       <div className="border-border-default text-text-muted flex h-56 items-center justify-center rounded-xl border border-dashed text-sm">
@@ -41,7 +44,7 @@ export function GraficoTendencia({ serie }: GraficoTendenciaProps) {
           return (
             <Link
               key={ponto.sessaoId}
-              href={`/relatorios/sessao/${ponto.sessaoId}`}
+              href={`/relatorios/sessao/${ponto.sessaoId}?turma=${turmaId}`}
               className="group flex h-full min-w-0 flex-1 flex-col justify-end"
               title={`${formatarDataCurta(ponto.data)}: ${ponto.engajamento}% — ver relatório`}
             >

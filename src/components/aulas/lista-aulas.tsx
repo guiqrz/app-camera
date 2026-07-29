@@ -10,6 +10,9 @@ import { CardAula } from "./card-aula";
 
 type ListaAulasProps = {
   aulas: AulaCard[];
+  /** Id da turma desta pagina. Vai nos links dos cards para que o relatorio
+   *  saiba de qual turma o professor veio — `AulaCard` nao carrega esse id. */
+  turmaId: number;
   nomeTurma: string;
   /** Data inicial do filtro, vinda de ?data= (ex.: ao chegar do Relatorio). */
   dataInicial?: string;
@@ -24,7 +27,12 @@ type FiltroStatus = "todos" | StatusEngajamento;
  * da turma de uma vez, entao nao ha ida a rede por digito nem paginacao a
  * fazer. Se o volume crescer muito, isso migra para a API.
  */
-export function ListaAulas({ aulas, nomeTurma, dataInicial = "" }: ListaAulasProps) {
+export function ListaAulas({
+  aulas,
+  turmaId,
+  nomeTurma,
+  dataInicial = "",
+}: ListaAulasProps) {
   const [busca, setBusca] = useState("");
   const [data, setData] = useState(dataInicial);
   const [status, setStatus] = useState<FiltroStatus>("todos");
@@ -157,7 +165,12 @@ export function ListaAulas({ aulas, nomeTurma, dataInicial = "" }: ListaAulasPro
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           {aulasFiltradas.map((aula) => (
-            <CardAula key={aula.sessao_id} aula={aula} nomeTurma={nomeTurma} />
+            <CardAula
+              key={aula.sessao_id}
+              aula={aula}
+              turmaId={turmaId}
+              nomeTurma={nomeTurma}
+            />
           ))}
         </div>
       )}
