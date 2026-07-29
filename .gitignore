@@ -42,4 +42,8 @@ next-env.d.ts
 
 # O modelo de configuracao deve ser versionado (nao contem segredo).
 !.env.example
+
+# Saida de ferramenta de analise, nao codigo do projeto — mesmo precedente do
+# .superpowers/ acima.
 .superpowers/
+.impeccable/

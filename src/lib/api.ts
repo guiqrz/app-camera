@@ -369,11 +369,12 @@ export function desligarCamera(): Promise<{ parado: boolean }> {
 }
 
 /**
- * Modos disponiveis, com rotulo e resumo.
+ * Modos disponiveis, com rotulo, resumo, detalhe e cor.
  *
  * Os textos vem do backend (cupcam/modos.py) em vez de ficarem escritos aqui
  * pra descricao e comportamento nunca divergirem: quem decide o que cada modo
- * liga e' o mesmo arquivo que descreve o que ele faz.
+ * liga e' o mesmo arquivo que descreve o que ele faz. A `cor` vem junto pelo
+ * mesmo motivo — e' identidade do modo, nao decoracao desta tela.
  */
 export function listarModosCamera(): Promise<{
   padrao: ModoCamera;

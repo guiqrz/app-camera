@@ -403,3 +403,20 @@ export function IconLapis({ size = 16, className }: IconProps) {
     </svg>
   );
 }
+
+export function IconInterrogacao({ size = 16, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
+      <path
+        d="M9.6 9.4a2.5 2.5 0 0 1 4.9.6c0 1.7-2.5 2-2.5 3.5"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+      {/* Ponto como traco de comprimento zero: mantem o mesmo peso visual dos
+          outros icones, que sao todos tracado e nenhum preenchido. */}
+      <path d="M12 16.8v.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}

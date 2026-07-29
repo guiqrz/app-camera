@@ -278,11 +278,27 @@ export type NovaAula = {
  */
 export type ModoCamera = "aula" | "descanso" | "prova";
 
-/** Um modo com os textos que o backend manda (GET /camera/modos). */
+/**
+ * Um modo com os textos que o backend manda (GET /camera/modos).
+ *
+ * Sao dois niveis de texto de proposito (ver DESCRICOES em cupcam/modos.py):
+ * `resumo` e' lido de relance no cartao, `detalhe` so' aparece a quem abre o
+ * "?" — e' onde cabe explicar o que DEIXA de ser gravado, informacao que o
+ * professor precisa uma vez e nao toda aula.
+ */
 export type ModoCameraInfo = {
   id: ModoCamera;
   rotulo: string;
+  /** Uma linha curta, sempre visivel abaixo do nome. */
   resumo: string;
+  /** Texto do balao de ajuda. Explica o que muda de fato na captura. */
+  detalhe: string;
+  /**
+   * Cor que identifica o modo, como id de paleta — nunca valor CSS. Reusa o
+   * vocabulario de CorMateria de proposito: o projeto tem uma paleta so', e o
+   * tom exato em cada tema fica em aparenciaDaCorMateria (lib/format.ts).
+   */
+  cor: CorMateria;
   /** false = neste modo a atencao da turma nao esta sendo medida. */
   mede_atencao: boolean;
 };
