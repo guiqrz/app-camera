@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { SeletorModo } from "@/components/camera/seletor-modo";
 import {
   IconCamera,
   IconPessoas,
@@ -10,7 +11,8 @@ import {
   IconRelogio,
 } from "@/components/ui/icons";
 import { StatCard } from "@/components/ui/stat-card";
-import type { EstadoCamera, Turma } from "@/lib/types";
+import { MODOS_CAMERA_FALLBACK, MODO_PADRAO } from "@/lib/modos-camera";
+import type { EstadoCamera, ModoCamera, ModoCameraInfo, Turma } from "@/lib/types";
 
 const INTERVALO_MS = 3000;
 
@@ -63,6 +65,15 @@ export function VistaCamera({ turmas }: VistaCameraProps) {
   const [avisoAcao, setAvisoAcao] = useState<string | null>(null);
   // "" = automatico por horario; senao, o id (como string) da turma escolhida.
   const [turmaEscolhida, setTurmaEscolhida] = useState<string>("");
+  // Rotulos/resumos dos modos. Comeca no fallback local pra tela nunca ficar
+  // sem os botoes — a lista real do backend chega logo depois e substitui.
+  const [modosDisponiveis, setModosDisponiveis] =
+    useState<ModoCameraInfo[]>(MODOS_CAMERA_FALLBACK);
+  // Modo escolhido na tela PARADA, aplicado ao ligar.
+  const [modoInicial, setModoInicial] = useState<ModoCamera>(MODO_PADRAO);
+  // Ultimo modo clicado com a camera rodando. Vira `modoPendente` (derivado)
+  // ate' o polling confirmar que a camera realmente trocou.
+  const [modoPedido, setModoPedido] = useState<ModoCamera | null>(null);
 
   // Evita "piscar" de erro de rede num polling que ainda nao rodou nenhuma vez.
   const primeiraLeituraFeita = useRef(false);
@@ -104,6 +115,25 @@ export function VistaCamera({ turmas }: VistaCameraProps) {
     };
   }, [buscar]);
 
+  // Lista de modos: uma vez so'. Falhou? Segue com MODOS_CAMERA_FALLBACK —
+  // perder a conexao nao pode custar o controle da camera ao professor.
+  useEffect(() => {
+    let cancelado = false;
+    (async () => {
+      try {
+        const r = await fetch("/api/camera/modos", { cache: "no-store" });
+        if (!r.ok) return;
+        const dados = (await r.json()) as { modos?: ModoCameraInfo[] };
+        if (!cancelado && dados.modos?.length) setModosDisponiveis(dados.modos);
+      } catch {
+        // Fallback ja esta em uso; nada a fazer.
+      }
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
   // Assim que o polling confirma rodando:true, sai do estado "iniciando" e
   // limpa qualquer aviso de acao que tenha piscado durante o boot.
   useEffect(() => {
@@ -115,14 +145,34 @@ export function VistaCamera({ turmas }: VistaCameraProps) {
     return () => clearTimeout(id);
   }, [estado]);
 
+  // Modo que a camera esta REALMENTE rodando. Um backend anterior a esta
+  // versao nao manda o campo — nesse caso assumimos o padrao, que e' como ele
+  // se comporta de fato.
+  const modoAtivo: ModoCamera =
+    estado?.rodando && estado.modo ? estado.modo : MODO_PADRAO;
+
+  // Pendente e' valor DERIVADO, nao estado a sincronizar: o pedido deixa de
+  // estar pendente no instante em que o polling mostra a camera naquele modo.
+  // Calcular aqui evita um efeito com setState (e o render em cascata que ele
+  // causaria); `modoPedido` continua sendo estado porque so' o clique o define.
+  const modoPendente = modoPedido !== null && modoPedido !== modoAtivo ? modoPedido : null;
+
   const ligar = useCallback(async () => {
     setLigando(true);
     setAvisoAcao(null);
     try {
-      // Turma escolhida a mao vai no corpo; "" (automatico) manda POST sem corpo.
-      const corpo = turmaEscolhida
-        ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify({ turma_id: Number(turmaEscolhida) }) }
-        : {};
+      // Turma e modo escolhidos a mao vao no corpo. Sem turma e no modo padrao,
+      // manda POST sem corpo nenhum: e' o caminho automatico de producao.
+      const escolhas: { turma_id?: number; modo?: ModoCamera } = {};
+      if (turmaEscolhida) escolhas.turma_id = Number(turmaEscolhida);
+      if (modoInicial !== MODO_PADRAO) escolhas.modo = modoInicial;
+      const corpo =
+        Object.keys(escolhas).length > 0
+          ? {
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(escolhas),
+            }
+          : {};
       const r = await fetch("/api/camera/ligar", { method: "POST", ...corpo });
       if (r.status === 409) {
         // Ja em execucao — nao e' erro, so' segue o polling normalmente.
@@ -139,7 +189,37 @@ export function VistaCamera({ turmas }: VistaCameraProps) {
       setAvisoAcao("Não foi possível ligar a câmera. Verifique a conexão com o notebook da sala.");
       setLigando(false);
     }
-  }, [buscar, turmaEscolhida]);
+  }, [buscar, turmaEscolhida, modoInicial]);
+
+  const trocarModo = useCallback(
+    async (modo: ModoCamera) => {
+      if (modo === modoAtivo) return; // ja' esta nele; nao gasta requisicao
+
+      // Otimista so' no rotulo "Aplicando…": o cartao ATIVO continua sendo o
+      // que a camera confirmou, porque a troca leva alguns segundos e mentir
+      // sobre isso faria o professor achar que o modo ja valia.
+      setModoPedido(modo);
+      setAvisoAcao(null);
+      try {
+        const r = await fetch("/api/camera/modo", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ modo }),
+        });
+        if (!r.ok) {
+          const dados = (await r.json().catch(() => null)) as { erro?: string } | null;
+          setAvisoAcao(dados?.erro ?? "Não foi possível trocar o modo da câmera.");
+          setModoPedido(null);
+          return;
+        }
+        buscar();
+      } catch {
+        setAvisoAcao("Não foi possível trocar o modo. Verifique a conexão com o notebook da sala.");
+        setModoPedido(null);
+      }
+    },
+    [buscar, modoAtivo],
+  );
 
   const desligar = useCallback(async () => {
     setDesligando(true);
@@ -195,7 +275,16 @@ export function VistaCamera({ turmas }: VistaCameraProps) {
       )}
 
       {estado?.rodando ? (
-        <VistaRodando estado={estado} desligando={desligando} aoDesligar={desligar} aviso={avisoAcao} />
+        <VistaRodando
+          estado={estado}
+          desligando={desligando}
+          aoDesligar={desligar}
+          aviso={avisoAcao}
+          modos={modosDisponiveis}
+          modoAtivo={modoAtivo}
+          modoPendente={modoPendente}
+          aoTrocarModo={trocarModo}
+        />
       ) : (
         <VistaParada
           iniciando={iniciando}
@@ -205,6 +294,9 @@ export function VistaCamera({ turmas }: VistaCameraProps) {
           turmas={turmas}
           turmaEscolhida={turmaEscolhida}
           aoEscolherTurma={setTurmaEscolhida}
+          modos={modosDisponiveis}
+          modoInicial={modoInicial}
+          aoEscolherModo={setModoInicial}
         />
       )}
     </div>
@@ -219,6 +311,9 @@ type VistaParadaProps = {
   turmas: Turma[];
   turmaEscolhida: string;
   aoEscolherTurma: (valor: string) => void;
+  modos: ModoCameraInfo[];
+  modoInicial: ModoCamera;
+  aoEscolherModo: (modo: ModoCamera) => void;
 };
 
 /** Estados 1 (parada) e 2 (iniciando) — nenhuma captura rodando ainda. */
@@ -230,10 +325,13 @@ function VistaParada({
   turmas,
   turmaEscolhida,
   aoEscolherTurma,
+  modos,
+  modoInicial,
+  aoEscolherModo,
 }: VistaParadaProps) {
   return (
     <div
-      className="border-border-default bg-surface shadow-card mx-auto flex w-full max-w-md flex-col items-center gap-5 rounded-2xl border p-10 text-center"
+      className="border-border-default bg-surface shadow-card mx-auto flex w-full max-w-lg flex-col items-center gap-5 rounded-2xl border p-10 text-center"
     >
       <div
         className="flex h-16 w-16 items-center justify-center rounded-full"
@@ -298,6 +396,21 @@ function VistaParada({
             </select>
           </label>
 
+          {/* Modo inicial: a escolha vive aqui, no momento em que importa, e
+              nao numa preferencia guardada — decisao do usuario em 28/07/2026.
+              Toda captura comeca em Aula a menos que ele mude isto agora. */}
+          <div className="flex w-full flex-col gap-1.5 text-left">
+            <span className="text-text-muted text-xs font-bold tracking-wide uppercase">
+              Modo inicial
+            </span>
+            <SeletorModo
+              modos={modos}
+              ativo={modoInicial}
+              desabilitado={ligando}
+              aoEscolher={aoEscolherModo}
+            />
+          </div>
+
           <button
             type="button"
             onClick={aoLigar}
@@ -328,10 +441,23 @@ type VistaRodandoProps = {
   desligando: boolean;
   aoDesligar: () => void;
   aviso: string | null;
+  modos: ModoCameraInfo[];
+  modoAtivo: ModoCamera;
+  modoPendente: ModoCamera | null;
+  aoTrocarModo: (modo: ModoCamera) => void;
 };
 
 /** Estados 3 (rodando com aula) e 4 (rodando sem aula) — captura ativa. */
-function VistaRodando({ estado, desligando, aoDesligar, aviso }: VistaRodandoProps) {
+function VistaRodando({
+  estado,
+  desligando,
+  aoDesligar,
+  aviso,
+  modos,
+  modoAtivo,
+  modoPendente,
+  aoTrocarModo,
+}: VistaRodandoProps) {
   // "Tem aula" exige turma E sessao. Usamos o proprio nome da turma como prova:
   // num render transitorio logo apos ligar, o estado pode chegar com sessao_id
   // ja preenchido mas turma ainda nula/ausente — checar so' `!= null` deixaria
@@ -345,6 +471,11 @@ function VistaRodando({ estado, desligando, aoDesligar, aviso }: VistaRodandoPro
   const pctDispersao = Math.round((estado.pct_desatento ?? 0) * 100);
   const mediaPessoas = (estado.media_pessoas ?? 0).toFixed(1);
   const fpsTexto = estado.fps != null ? estado.fps.toFixed(1) : "Sem dado";
+  // Fora do modo Aula a atencao nao e' medida. Sem esta checagem a tela
+  // mostraria "0% disperso" como se fosse um resultado otimo, quando na
+  // verdade nao ha medicao nenhuma. `?? true` cobre backend antigo, que so'
+  // tinha o modo Aula.
+  const medeAtencao = estado.mede_atencao ?? true;
 
   return (
     <div className="flex flex-col gap-6">
@@ -383,6 +514,27 @@ function VistaRodando({ estado, desligando, aoDesligar, aviso }: VistaRodandoPro
         </button>
       </div>
 
+      {/* Faixa do modo: proprio bloco, abaixo do cabecalho. Modo e' controle da
+          captura, nao metrica — por isso nao entra na grade de StatCards. */}
+      <div className="border-border-default bg-surface shadow-card flex flex-col gap-3 rounded-2xl border p-5">
+        <div className="flex items-baseline justify-between gap-3">
+          <span className="text-text-muted text-xs font-bold tracking-wide uppercase">
+            Modo da aula
+          </span>
+          {!medeAtencao && (
+            <span className="text-xs font-semibold" style={{ color: "var(--warn-fg)" }}>
+              Atenção da turma não está sendo medida
+            </span>
+          )}
+        </div>
+        <SeletorModo
+          modos={modos}
+          ativo={modoAtivo}
+          pendente={modoPendente}
+          aoEscolher={aoTrocarModo}
+        />
+      </div>
+
       {aviso && (
         <p className="text-text-muted -mt-2 text-xs font-semibold" role="status">
           {aviso}
@@ -412,8 +564,14 @@ function VistaRodando({ estado, desligando, aoDesligar, aviso }: VistaRodandoPro
         />
         <StatCard
           rotulo="Dispersão"
-          valor={`${pctDispersao}%`}
-          apoio="Turma olhando fora da aula agora"
+          // Travessao em vez de "0%": sem medicao, zero seria mentira boa —
+          // o professor leria como "turma toda atenta".
+          valor={medeAtencao ? `${pctDispersao}%` : "—"}
+          apoio={
+            medeAtencao
+              ? "Turma olhando fora da aula agora"
+              : "Não medida neste modo"
+          }
           icone={
             <span style={{ color: estado.alerta_atencao ? "var(--danger-fg)" : "var(--warn-fg)" }}>
               <IconQueda />

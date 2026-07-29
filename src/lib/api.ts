@@ -27,6 +27,8 @@ import type {
   EstadoCamera,
   EstatisticasDaTurma,
   Materia,
+  ModoCamera,
+  ModoCameraInfo,
   NovaAula,
   NovaMateria,
   NovaTurma,
@@ -343,15 +345,57 @@ export function lerEstadoCamera(): Promise<EstadoCamera> {
  *
  * turmaId opcional: turma escolhida a mao na tela de Camera. Sem ela, o backend
  * escolhe a turma automatico pelo horario.
+ *
+ * modo opcional: modo inicial da captura. Sem ele, o backend sobe no padrao
+ * (Aula) — inclusive quando a camera sobe sozinha por horario.
  */
-export function ligarCamera(turmaId?: number): Promise<{ iniciando: boolean }> {
+export function ligarCamera(
+  turmaId?: number,
+  modo?: ModoCamera,
+): Promise<{ iniciando: boolean }> {
+  const corpo: { turma_id?: number; modo?: ModoCamera } = {};
+  if (turmaId != null) corpo.turma_id = turmaId;
+  if (modo != null) corpo.modo = modo;
   return requisitar<{ iniciando: boolean }>("/camera/ligar", {
     method: "POST",
-    body: turmaId != null ? { turma_id: turmaId } : undefined,
+    // Sem nada escolhido, manda POST sem corpo: e' o caminho automatico.
+    body: Object.keys(corpo).length > 0 ? corpo : undefined,
   });
 }
 
 /** Para a captura. Idempotente no backend. */
 export function desligarCamera(): Promise<{ parado: boolean }> {
   return requisitar<{ parado: boolean }>("/camera/desligar", { method: "POST" });
+}
+
+/**
+ * Modos disponiveis, com rotulo, resumo, detalhe e cor.
+ *
+ * Os textos vem do backend (cupcam/modos.py) em vez de ficarem escritos aqui
+ * pra descricao e comportamento nunca divergirem: quem decide o que cada modo
+ * liga e' o mesmo arquivo que descreve o que ele faz. A `cor` vem junto pelo
+ * mesmo motivo — e' identidade do modo, nao decoracao desta tela.
+ */
+export function listarModosCamera(): Promise<{
+  padrao: ModoCamera;
+  modos: ModoCameraInfo[];
+}> {
+  return requisitar<{ padrao: ModoCamera; modos: ModoCameraInfo[] }>("/camera/modos");
+}
+
+/**
+ * Pede a troca de modo com a camera rodando.
+ *
+ * `aplicando: true` significa "comando aceito", nao "ja valeu": o backend le o
+ * pedido no proximo ciclo, entao quem confirma a troca e' o `modo` do
+ * /camera/estado, alguns segundos depois.
+ */
+export function trocarModoCamera(modo: ModoCamera): Promise<{
+  modo: ModoCamera;
+  aplicando: boolean;
+}> {
+  return requisitar<{ modo: ModoCamera; aplicando: boolean }>("/camera/modo", {
+    method: "POST",
+    body: { modo },
+  });
 }
