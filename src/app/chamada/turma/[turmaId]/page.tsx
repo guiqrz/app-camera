@@ -61,7 +61,7 @@ export default async function EscolherAulaChamadaPage({ params }: Props) {
           <SeletorTurma turmas={turmas} turmaAtualId={id} baseRota="/chamada/turma" />
         </div>
 
-        <ListaAulasChamada aulas={ordenadas} />
+        <ListaAulasChamada aulas={ordenadas} turmaId={id} />
       </div>
     </AppShell>
   );

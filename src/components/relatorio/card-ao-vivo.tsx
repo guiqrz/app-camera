@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import { IconPessoas, IconQueda } from "@/components/ui/icons";
@@ -134,9 +135,23 @@ export function CardAoVivo({ turmaId }: CardAoVivoProps) {
         />
       </div>
 
-      <p className="text-text-muted text-xs">
-        Insights completos quando a aula terminar.
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-text-muted text-xs">
+          Insights completos quando a aula terminar.
+        </p>
+
+        {/* O card anunciava a aula ao vivo sem dar como chegar nela, apesar de
+            ter o sessao_id em maos. Daqui o professor abre a chamada da aula
+            que esta acontecendo. */}
+        <Link
+          href={`/chamada/${estado.sessao_id}?turma=${turmaId}`}
+          className="flex flex-none items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-extrabold text-white transition-colors"
+          style={{ background: "var(--primary)" }}
+        >
+          Abrir chamada
+          <span className="sr-only"> da aula ao vivo de {estado.turma.nome}</span>
+        </Link>
+      </div>
     </div>
   );
 }

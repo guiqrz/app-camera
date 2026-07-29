@@ -132,7 +132,7 @@ export function VistaRelatorioGeral({ resumo, nomeTurma, turmaId }: VistaRelator
               para ver o relatório da aula.
             </p>
           </div>
-          <GraficoTendencia serie={resumo.serie} />
+          <GraficoTendencia serie={resumo.serie} turmaId={turmaId} />
         </div>
 
         <div className="border-border-default bg-surface shadow-card flex flex-col rounded-2xl border p-5">
@@ -175,8 +175,10 @@ export function VistaRelatorioGeral({ resumo, nomeTurma, turmaId }: VistaRelator
             })}
           </div>
 
+          {/* Direto na turma desta pagina: /aulas sozinho cairia na primeira
+              turma da lista, trocando a turma sem o professor perceber. */}
           <Link
-            href="/aulas"
+            href={`/aulas/${turmaId}`}
             className="text-text-brand border-border-default hover:bg-surface-2 mt-6 flex items-center justify-center gap-2 rounded-xl border py-2.5 text-sm font-bold transition-colors"
           >
             Ver todas as aulas

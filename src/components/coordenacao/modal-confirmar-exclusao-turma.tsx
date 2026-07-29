@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 
 import { useFocoPreso } from "@/components/coordenacao/usar-foco-preso";
+import { BotaoIcone } from "@/components/ui/botao-icone";
 import { IconFechar } from "@/components/ui/icons";
 import type { TurmaAdmin } from "@/lib/types";
 
@@ -164,15 +165,14 @@ export function ModalConfirmarExclusaoTurma({
                 : "Turma com alunos"
               : "Excluir turma"}
           </h2>
-          <button
-            type="button"
-            onClick={aoFechar}
-            aria-label="Fechar"
-            className="text-text-muted rounded-lg p-1"
-            disabled={enviando}
+          <BotaoIcone
+            rotulo="Fechar"
+            aoClicar={aoFechar}
+            desabilitado={enviando}
+            cor="var(--text-muted)"
           >
             <IconFechar size={20} />
-          </button>
+          </BotaoIcone>
         </div>
 
         {bloqueada ? (

@@ -1,6 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 
 import { ModalAluno } from "@/components/coordenacao/modal-aluno";
 import { ModalConfirmarExclusao } from "@/components/coordenacao/modal-confirmar-exclusao";
@@ -60,9 +68,39 @@ type CorpoErro = {
  */
 export function VistaAdministracao({ visaoInicial }: VistaAdministracaoProps) {
   const [visao, setVisao] = useState<VisaoAdmin>(visaoInicial);
-  const [selecionadaId, setSelecionadaId] = useState<number | null>(
-    visaoInicial.turmas[0]?.id ?? null,
+
+  /* A turma selecionada mora na URL (?turma={id}), nao em estado local.
+     Mesma decisao ja' tomada pelos seletores de Minhas Aulas, Chamada e
+     Relatorios (ver o JSDoc de components/aulas/seletor-turma.tsx): assim a
+     escolha sobrevive ao F5, o endereco pode ser compartilhado e o botao voltar
+     do navegador funciona. Esta tela era a unica fora dessa convencao. */
+  const router = useRouter();
+  const parametros = useSearchParams();
+  const [navegando, iniciarNavegacao] = useTransition();
+
+  const turmaDaUrl = Number(parametros.get("turma"));
+  const selecionadaId = useMemo(() => {
+    // Id valido e existente ganha; senao cai na primeira turma da lista. Cobre
+    // URL sem parametro, com lixo, e turma excluida depois de virar link.
+    const daUrl =
+      Number.isInteger(turmaDaUrl) && turmaDaUrl > 0 ? turmaDaUrl : null;
+
+    if (daUrl !== null && visao.turmas.some((turma) => turma.id === daUrl)) {
+      return daUrl;
+    }
+    return visao.turmas[0]?.id ?? null;
+  }, [turmaDaUrl, visao.turmas]);
+
+  const selecionarTurma = useCallback(
+    (turmaId: number) => {
+      iniciarNavegacao(() => router.replace(`/coordenacao?turma=${turmaId}`));
+    },
+    // `replace` e nao `push`: trocar de turma dentro da mesma tela e' um filtro,
+    // nao uma navegacao — empilhar cada troca faria o botao voltar percorrer
+    // turma por turma antes de sair da tela.
+    [router],
   );
+
   const [modalAluno, setModalAluno] = useState<EstadoModalAluno | null>(null);
   const [modalNovaTurma, setModalNovaTurma] = useState(false);
   const [modalMateria, setModalMateria] = useState<EstadoModalMateria | null>(null);
@@ -97,13 +135,9 @@ export function VistaAdministracao({ visaoInicial }: VistaAdministracaoProps) {
       }
       const dados = (await resposta.json()) as VisaoAdmin;
       setVisao(dados);
-      // Mantem a selecao se a turma ainda existir; senao cai na primeira.
-      setSelecionadaId((atual) => {
-        if (atual !== null && dados.turmas.some((turma) => turma.id === atual)) {
-          return atual;
-        }
-        return dados.turmas[0]?.id ?? null;
-      });
+      /* Nao ha selecao a corrigir aqui: `selecionadaId` deriva da URL cruzada
+         com esta lista, entao uma turma que acabou de ser excluida cai sozinha
+         na primeira do retrato novo. */
       setVersaoFotos((atual) => atual + 1);
       setAvisoRecarga(null);
     } catch (causa) {
@@ -508,11 +542,16 @@ export function VistaAdministracao({ visaoInicial }: VistaAdministracaoProps) {
       {/* Paineis: turmas a esquerda, alunos da turma selecionada a direita. A
           grade de aulas saiu daqui — vive na pagina da turma, junto dos dados
           dela. Em tela estreita as colunas empilham. */}
-      <div className="grid gap-5 lg:grid-cols-[340px_1fr] lg:items-start">
+      <div
+        className="grid gap-5 lg:grid-cols-[340px_1fr] lg:items-start"
+        // Esmaece durante a troca de turma, como fazem os outros seletores do
+        // app: sem isso a navegacao parece travada por um instante.
+        style={{ opacity: navegando ? 0.6 : 1 }}
+      >
         <PainelTurmas
           turmas={visao.turmas}
           selecionadaId={selecionadaId}
-          aoSelecionar={setSelecionadaId}
+          aoSelecionar={selecionarTurma}
           aoNovaTurma={aoNovaTurma}
           aoExcluirTurma={aoExcluirTurma}
         />

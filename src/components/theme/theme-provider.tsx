@@ -13,9 +13,22 @@ import { THEME_STORAGE_KEY } from "./theme-script";
 
 export type Theme = "light" | "dark";
 
+/**
+ * O que o usuario ESCOLHEU, que nao e' a mesma coisa que o tema aplicado:
+ * "sistema" significa "nao escolhi nada, siga o aparelho" — e nesse caso o
+ * tema aplicado muda sozinho quando o sistema operacional muda.
+ */
+export type PreferenciaTema = Theme | "sistema";
+
 type ThemeContextValue = {
+  /** Tema em vigor agora ("sistema" ja resolvido pra claro ou escuro). */
   theme: Theme;
+  /** A escolha do usuario, incluindo "sistema". */
+  preferencia: PreferenciaTema;
+  /** Alterna claro/escuro. Usado pelo botao do header. */
   toggleTheme: () => void;
+  /** Define a preferencia. "sistema" apaga a escolha e volta a seguir o aparelho. */
+  definirPreferencia: (proxima: PreferenciaTema) => void;
 };
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
@@ -29,6 +42,25 @@ function lerTemaAplicado(): Theme {
   return window.matchMedia("(prefers-color-scheme: dark)").matches
     ? "dark"
     : "light";
+}
+
+/**
+ * Le a escolha do usuario do localStorage.
+ *
+ * A ausencia da chave E' a informacao: significa "sistema". Por isso nao
+ * gravamos a string "sistema" — escolher sistema REMOVE a chave, que e'
+ * exatamente o estado que o ThemeScript entende como "deixa a media query
+ * decidir". Um valor extra no storage criaria dois jeitos de dizer a mesma
+ * coisa, e o script do <head> teria que conhecer os dois.
+ */
+function lerPreferencia(): PreferenciaTema {
+  try {
+    const salvo = localStorage.getItem(THEME_STORAGE_KEY);
+    if (salvo === "dark" || salvo === "light") return salvo;
+  } catch {
+    // localStorage bloqueado: trata como "sem escolha".
+  }
+  return "sistema";
 }
 
 /**
@@ -64,21 +96,53 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     () => "light",
   );
 
-  const toggleTheme = useCallback(() => {
-    const proximo: Theme = lerTemaAplicado() === "dark" ? "light" : "dark";
+  // A preferencia tambem e' lida de fora do React (localStorage), entao segue
+  // o mesmo padrao do tema: releitura sob demanda em vez de estado espelhado,
+  // que sairia de sincronia se outra aba mudasse a escolha.
+  const preferencia = useSyncExternalStore<PreferenciaTema>(
+    useCallback(
+      (aoMudar: () => void) => {
+        void versao;
+        return assinarPreferenciaDoSistema(aoMudar);
+      },
+      [versao],
+    ),
+    lerPreferencia,
+    () => "sistema",
+  );
 
-    document.documentElement.setAttribute("data-theme", proximo);
-    try {
-      localStorage.setItem(THEME_STORAGE_KEY, proximo);
-    } catch {
-      // localStorage bloqueado: o tema vale so' nesta visita.
+  const definirPreferencia = useCallback((proxima: PreferenciaTema) => {
+    const raiz = document.documentElement;
+
+    if (proxima === "sistema") {
+      // Remover a chave e o atributo devolve o controle pra media query do
+      // semantic.css — mesmo estado de quem nunca escolheu nada.
+      raiz.removeAttribute("data-theme");
+      try {
+        localStorage.removeItem(THEME_STORAGE_KEY);
+      } catch {
+        // localStorage bloqueado: a escolha vale so' nesta visita.
+      }
+    } else {
+      raiz.setAttribute("data-theme", proxima);
+      try {
+        localStorage.setItem(THEME_STORAGE_KEY, proxima);
+      } catch {
+        // localStorage bloqueado: a escolha vale so' nesta visita.
+      }
     }
 
     setVersao((v) => v + 1);
   }, []);
 
+  const toggleTheme = useCallback(() => {
+    definirPreferencia(lerTemaAplicado() === "dark" ? "light" : "dark");
+  }, [definirPreferencia]);
+
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider
+      value={{ theme, preferencia, toggleTheme, definirPreferencia }}
+    >
       {children}
     </ThemeContext.Provider>
   );

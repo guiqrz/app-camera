@@ -5,6 +5,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { useFocoPreso } from "@/components/coordenacao/usar-foco-preso";
 import { CampoComExemplo } from "@/components/ui/campo-com-exemplo";
 import { EtiquetaMateria } from "@/components/ui/etiqueta-materia";
+import { BotaoIcone } from "@/components/ui/botao-icone";
 import { IconCheckSimples, IconFechar } from "@/components/ui/icons";
 import { CORES_MATERIA } from "@/lib/format";
 import type { CorMateria, Materia, NovaMateria } from "@/lib/types";
@@ -165,15 +166,14 @@ export function ModalMateria({
           >
             {editando ? "Renomear matéria" : "Nova matéria"}
           </h2>
-          <button
-            type="button"
-            onClick={aoFechar}
-            aria-label="Fechar"
-            className="text-text-muted rounded-lg p-1"
-            disabled={enviando}
+          <BotaoIcone
+            rotulo="Fechar"
+            aoClicar={aoFechar}
+            desabilitado={enviando}
+            cor="var(--text-muted)"
           >
             <IconFechar size={20} />
-          </button>
+          </BotaoIcone>
         </div>
 
         <form onSubmit={aoSubmeter} className="flex flex-col gap-4" noValidate>
@@ -194,7 +194,7 @@ export function ModalMateria({
             <legend className="text-text-muted text-xs font-bold">
               Cor (opcional)
             </legend>
-            <div className="flex flex-wrap items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-2">
               <BotaoCor
                 rotulo="Sem cor"
                 selecionada={valores.cor === null}
@@ -300,6 +300,12 @@ type BotaoCorProps = {
  *
  * A selecao e' marcada por um check DENTRO da bolinha, alem do anel em volta:
  * anel colorido sozinho seria informacao transmitida so' por cor.
+ *
+ * A bolinha mede 36px (nao 28) porque sao 10 numa fileira: a area de toque
+ * invisivel do BotaoIcone se sobreporia em cadeia entre vizinhas, entao aqui o
+ * alvo cresce de verdade — numa paleta, bolinha maior tambem se ve melhor. Nao
+ * usa BotaoIcone porque o anel de selecao (outline com offset) e' especifico
+ * deste seletor.
  */
 function BotaoCor({ rotulo, fundo, texto, selecionada, aoEscolher }: BotaoCorProps) {
   return (
@@ -309,7 +315,7 @@ function BotaoCor({ rotulo, fundo, texto, selecionada, aoEscolher }: BotaoCorPro
       aria-label={rotulo}
       aria-pressed={selecionada}
       title={rotulo}
-      className="inline-flex h-7 w-7 items-center justify-center rounded-full transition-transform"
+      className="inline-flex h-9 w-9 items-center justify-center rounded-full transition-transform"
       style={{
         background: fundo ?? "var(--surface-2)",
         color: texto ?? "var(--text-muted)",

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { BotaoIcone } from "@/components/ui/botao-icone";
 import { EtiquetaMateria } from "@/components/ui/etiqueta-materia";
 import { IconCheck, IconFechar, IconLapis, IconLixeira, IconMais } from "@/components/ui/icons";
 import type { Materia } from "@/lib/types";
@@ -104,7 +105,7 @@ export function PainelMaterias({
             return (
               <li
                 key={materia.id}
-                className="flex items-center gap-1 rounded-lg py-1 pr-1 pl-2"
+                className="flex items-center gap-2 rounded-lg py-1 pr-1 pl-2"
                 style={{
                   background: "var(--surface-2)",
                   border: armada ? "1.5px solid var(--danger)" : "1.5px solid transparent",
@@ -116,6 +117,10 @@ export function PainelMaterias({
                   className="text-xs"
                 />
 
+                {/* Alvo de toque reduzido a 32px: sao dois botoes colados dentro
+                    de uma etiqueta compacta, e 44px fariam as areas invisiveis
+                    se sobreporem — uma roubaria o clique da outra. 32 e' o maior
+                    que ainda separa os vizinhos com o gap-2 do container. */}
                 {armada ? (
                   <>
                     <span
@@ -124,48 +129,49 @@ export function PainelMaterias({
                     >
                       Excluir?
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => {
+                    <BotaoIcone
+                      rotulo={`Confirmar exclusão da matéria ${materia.nome}`}
+                      aoClicar={() => {
                         setMateriaParaExcluirId(null);
                         aoExcluirMateria(materia);
                       }}
-                      aria-label={`Confirmar exclusão da matéria ${materia.nome}`}
-                      className="inline-flex h-6 w-6 items-center justify-center rounded text-white"
-                      style={{ background: "var(--danger)" }}
+                      tamanho={24}
+                      alvo={32}
+                      fundo="var(--danger)"
+                      className="text-white"
                     >
                       <IconCheck size={13} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setMateriaParaExcluirId(null)}
-                      aria-label="Cancelar exclusão"
-                      className="inline-flex h-6 w-6 items-center justify-center rounded"
-                      style={{ color: "var(--text-muted)" }}
+                    </BotaoIcone>
+                    <BotaoIcone
+                      rotulo="Cancelar exclusão"
+                      aoClicar={() => setMateriaParaExcluirId(null)}
+                      tamanho={24}
+                      alvo={32}
+                      cor="var(--text-muted)"
                     >
                       <IconFechar size={13} />
-                    </button>
+                    </BotaoIcone>
                   </>
                 ) : (
                   <>
-                    <button
-                      type="button"
-                      onClick={() => aoEditarMateria(materia)}
-                      aria-label={`Editar matéria ${materia.nome}`}
-                      className="inline-flex h-6 w-6 items-center justify-center rounded transition-colors"
-                      style={{ color: "var(--text-muted)" }}
+                    <BotaoIcone
+                      rotulo={`Editar matéria ${materia.nome}`}
+                      aoClicar={() => aoEditarMateria(materia)}
+                      tamanho={24}
+                      alvo={32}
+                      cor="var(--text-muted)"
                     >
                       <IconLapis size={13} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setMateriaParaExcluirId(materia.id)}
-                      aria-label={`Excluir matéria ${materia.nome}`}
-                      className="inline-flex h-6 w-6 items-center justify-center rounded transition-colors"
-                      style={{ color: "var(--danger)" }}
+                    </BotaoIcone>
+                    <BotaoIcone
+                      rotulo={`Excluir matéria ${materia.nome}`}
+                      aoClicar={() => setMateriaParaExcluirId(materia.id)}
+                      tamanho={24}
+                      alvo={32}
+                      cor="var(--danger)"
                     >
                       <IconLixeira size={13} />
-                    </button>
+                    </BotaoIcone>
                   </>
                 )}
               </li>

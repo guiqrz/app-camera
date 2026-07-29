@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { AppShell } from "@/components/layout/app-shell";
 
 /** Estado vazio: a escola ainda nao cadastrou nenhuma turma. */
@@ -10,6 +12,15 @@ export function AvisoSemTurmas() {
           O CUPCAM ainda não tem turmas no banco de dados. Cadastre uma turma
           para que as aulas monitoradas apareçam aqui.
         </p>
+        {/* Sem este botao o aviso descrevia a saida sem abri-la: o professor
+            tinha que descobrir sozinho que turma se cadastra em Coordenacao. */}
+        <Link
+          href="/coordenacao"
+          className="mt-6 inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-extrabold text-white transition-colors"
+          style={{ background: "var(--primary)" }}
+        >
+          Cadastrar turma
+        </Link>
       </div>
     </AppShell>
   );

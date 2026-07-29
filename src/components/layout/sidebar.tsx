@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, type ComponentType } from "react";
@@ -30,15 +31,23 @@ const ITENS: ItemMenu[] = [
   { rotulo: "Câmera", href: "/camera", Icone: IconCamera },
   { rotulo: "Inteligência Artificial", href: "/ia", Icone: IconIA, emBreve: true },
   { rotulo: "Coordenação", href: "/coordenacao", Icone: IconAdministracao },
-  { rotulo: "Configurações", href: "/configuracoes", Icone: IconConfiguracoes, emBreve: true },
+  { rotulo: "Configurações", href: "/configuracoes", Icone: IconConfiguracoes },
 ];
 
 function Logo() {
   return (
     <div className="flex items-center gap-2.5 px-2">
-      <div
-        className="h-9 w-9 flex-none rounded-full"
-        style={{ background: "var(--grad-brand)" }}
+      {/* O PNG ja vem recortado e quadrado (public/logo-cupcam.png, 144px),
+          servido a 36 pra ficar nitido em tela retina. `priority` porque o
+          logo aparece acima da dobra em toda pagina — sem isso ele entra
+          depois do primeiro desenho e o menu "pisca" sem marca. */}
+      <Image
+        src="/logo-cupcam.png"
+        alt=""
+        width={36}
+        height={36}
+        priority
+        className="h-9 w-9 flex-none"
         aria-hidden
       />
       <span
@@ -106,10 +115,11 @@ export function Sidebar({ aberto, aoFechar }: SidebarProps) {
       >
         <div className="flex items-center justify-between">
           <Logo />
+          {/* p-3 (nao p-1): media 26px, abaixo do piso de 44px para o dedo. */}
           <button
             type="button"
             onClick={aoFechar}
-            className="rounded-lg p-1 lg:hidden"
+            className="-m-1 rounded-lg p-3 lg:hidden"
             style={{ color: "var(--sidebar-text)" }}
             aria-label="Fechar menu"
           >

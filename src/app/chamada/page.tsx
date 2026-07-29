@@ -1,14 +1,20 @@
-import { redirect } from "next/navigation";
-
+import { PonteTurmaPadrao } from "@/components/layout/ponte-turma-padrao";
 import { listarTurmas } from "@/lib/api";
 
 import { AvisoSemTurmas } from "../aulas/aviso-sem-turmas";
+import CarregandoEscolhaAula from "./turma/[turmaId]/loading";
+
+// Sem parametro dinamico na rota, o Next tentaria pre-renderizar em build time
+// (SSG) e o build falharia sem a API de pe. Nao ha o que pre-renderizar: a
+// pagina so' encaminha. Mesmo motivo de /coordenacao.
+export const dynamic = "force-dynamic";
 
 /**
  * Entrada da tela "Fazer Chamada".
  *
- * Mesmo desenho da entrada de Minhas Aulas: descobre a primeira turma e
- * encaminha para /chamada/turma/{id}, onde o professor escolhe a aula.
+ * Abre na turma que o professor escolheu em Configuracoes ("Turma padrao"), com
+ * a primeira da lista como reserva. A escolha acontece no navegador porque a
+ * preferencia mora no localStorage — ver PonteTurmaPadrao.
  */
 export default async function ChamadaPage() {
   const turmas = await listarTurmas();
@@ -17,5 +23,9 @@ export default async function ChamadaPage() {
     return <AvisoSemTurmas />;
   }
 
-  redirect(`/chamada/turma/${turmas[0].id}`);
+  return (
+    <PonteTurmaPadrao turmas={turmas} baseRota="/chamada/turma">
+      <CarregandoEscolhaAula />
+    </PonteTurmaPadrao>
+  );
 }

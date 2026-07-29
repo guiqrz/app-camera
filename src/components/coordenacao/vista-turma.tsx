@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { GradeSemanal } from "@/components/coordenacao/grade-semanal";
 import { CampoComExemplo } from "@/components/ui/campo-com-exemplo";
-import { IconRelogio, IconSeta } from "@/components/ui/icons";
+import { IconRelogio, IconSetaDireita } from "@/components/ui/icons";
 import type { Aula, Materia, NovaAula, NovaTurma, TurmaAdmin } from "@/lib/types";
 import { deduzirTurno, TURNOS, turnoPorId, TURNO_PADRAO } from "@/lib/turnos";
 
@@ -237,13 +237,7 @@ export function VistaTurma({ turmaInicial }: VistaTurmaProps) {
   return (
     <div className="flex flex-col gap-7">
       <div className="flex flex-col gap-3">
-        <Link
-          href="/coordenacao"
-          className="text-text-muted inline-flex w-fit items-center gap-1.5 text-xs font-bold"
-        >
-          <IconSeta size={13} />
-          Voltar para Coordenação
-        </Link>
+        {/* O caminho de volta agora e' a trilha do cabecalho (ver AppShell). */}
         <div>
           <h1
             className="text-text text-2xl font-extrabold sm:text-3xl"
@@ -255,6 +249,28 @@ export function VistaTurma({ turmaInicial }: VistaTurmaProps) {
             Sala {turma.sala_id} · {turma.total_alunos}{" "}
             {turma.total_alunos === 1 ? "aluno matriculado" : "alunos matriculados"}
           </p>
+        </div>
+
+        {/* Atalhos para o que o coordenador faz DEPOIS de mexer na turma: sem
+            eles, ver as aulas desta turma exigia voltar ao menu e reselecionar
+            a turma na outra tela. */}
+        <div className="mt-1 flex flex-wrap gap-2">
+          {(
+            [
+              ["Ver aulas", `/aulas/${turma.id}`],
+              ["Relatório da turma", `/relatorios/turma/${turma.id}`],
+              ["Fazer chamada", `/chamada/turma/${turma.id}`],
+            ] as const
+          ).map(([rotulo, href]) => (
+            <Link
+              key={href}
+              href={href}
+              className="text-text-brand border-border-default hover:bg-surface-2 inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-bold transition-colors"
+            >
+              {rotulo}
+              <IconSetaDireita size={12} />
+            </Link>
+          ))}
         </div>
       </div>
 

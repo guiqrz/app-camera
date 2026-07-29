@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 
 import { useFocoPreso } from "@/components/coordenacao/usar-foco-preso";
+import { BotaoIcone } from "@/components/ui/botao-icone";
 import { IconFechar } from "@/components/ui/icons";
 import type { AlunoAdmin } from "@/lib/types";
 
@@ -152,15 +153,14 @@ export function ModalConfirmarExclusao({
           >
             {estagioPerigo ? "Excluir com histórico de presença" : "Excluir aluno"}
           </h2>
-          <button
-            type="button"
-            onClick={aoFechar}
-            aria-label="Fechar"
-            className="text-text-muted rounded-lg p-1"
-            disabled={enviando}
+          <BotaoIcone
+            rotulo="Fechar"
+            aoClicar={aoFechar}
+            desabilitado={enviando}
+            cor="var(--text-muted)"
           >
             <IconFechar size={20} />
-          </button>
+          </BotaoIcone>
         </div>
 
         {estagioPerigo ? (

@@ -404,6 +404,7 @@ export function IconLapis({ size = 16, className }: IconProps) {
   );
 }
 
+/** Ponto de interrogacao em circulo — o "?" que abre o balao de ajuda. */
 export function IconInterrogacao({ size = 16, className }: IconProps) {
   return (
     <svg {...base(size, className)}>
@@ -417,6 +418,60 @@ export function IconInterrogacao({ size = 16, className }: IconProps) {
       {/* Ponto como traco de comprimento zero: mantem o mesmo peso visual dos
           outros icones, que sao todos tracado e nenhum preenchido. */}
       <path d="M12 16.8v.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** Rosto simplificado — o cadastro biometrico, na tela de Privacidade. */
+export function IconRosto({ size = 18, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
+      <circle cx="9.2" cy="10.2" r="1" fill="currentColor" />
+      <circle cx="14.8" cy="10.2" r="1" fill="currentColor" />
+      <path d="M8.6 14.6a4.2 4.2 0 0 0 6.8 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** Prancheta com linhas — a ficha de dados do aluno. */
+export function IconFicha({ size = 18, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <path
+        d="M8 4h8a1 1 0 0 1 1 1v1H7V5a1 1 0 0 1 1-1Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M7 6H6a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1h-1"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path d="M9 11h6M9 15h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** Cadeado fechado — armazenamento protegido por chave. */
+export function IconCadeado({ size = 18, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <rect x="4.5" y="10" width="15" height="10" rx="2" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M8.5 10V7.5a3.5 3.5 0 0 1 7 0V10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** Balanca de dois pratos — o principio que decide o uso de cada dado. */
+export function IconBalanca({ size = 18, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <path d="M12 4v16M7 20h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M5 7h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M5 7 2.5 13h5L5 7ZM19 7l-2.5 6h5L19 7Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
     </svg>
   );
 }

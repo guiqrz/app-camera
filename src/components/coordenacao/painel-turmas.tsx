@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-
+import { BotaoIcone } from "@/components/ui/botao-icone";
 import { IconLapis, IconLixeira, IconMais, IconTurma } from "@/components/ui/icons";
 import type { TurmaAdmin } from "@/lib/types";
 
@@ -102,24 +101,27 @@ export function PainelTurmas({
 
                 {/* Acoes da turma — fora do botao de selecao (link ou botao
                     dentro de botao e' HTML invalido). */}
-                <div className="flex flex-none items-center gap-0.5 pr-2">
-                  <Link
+                {/* gap-3 (12px) e nao gap-0.5: os botoes medem 32px e a area de
+                    toque vai a 44, entao precisam de 12px entre si para uma nao
+                    cobrir a outra. */}
+                <div className="flex flex-none items-center gap-3 pr-2">
+                  <BotaoIcone
+                    como="link"
                     href={`/coordenacao/turmas/${turma.id}`}
-                    aria-label={`Editar turma ${turma.nome} e sua grade de aulas`}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors"
-                    style={{ color: "var(--text-muted)" }}
+                    rotulo={`Editar turma ${turma.nome} e sua grade de aulas`}
+                    tamanho={32}
+                    cor="var(--text-muted)"
                   >
                     <IconLapis />
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={() => aoExcluirTurma(turma)}
-                    aria-label={`Excluir turma ${turma.nome}`}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors"
-                    style={{ color: "var(--danger)" }}
+                  </BotaoIcone>
+                  <BotaoIcone
+                    rotulo={`Excluir turma ${turma.nome}`}
+                    aoClicar={() => aoExcluirTurma(turma)}
+                    tamanho={32}
+                    cor="var(--danger)"
                   >
                     <IconLixeira />
-                  </button>
+                  </BotaoIcone>
                 </div>
               </li>
             );

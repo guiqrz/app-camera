@@ -11,6 +11,17 @@ type Props = {
   searchParams: Promise<{ data?: string }>;
 };
 
+export async function generateMetadata({ params }: Props) {
+  const { turmaId } = await params;
+  const id = Number(turmaId);
+  if (!Number.isInteger(id) || id <= 0) return { title: "Minhas aulas" };
+
+  const aulas = await buscarAulasDaTurma(id).catch(() => null);
+  if (!aulas) return { title: "Minhas aulas" };
+
+  return { title: `Aulas · ${aulas.turma.nome} — Cupcam Insights` };
+}
+
 export default async function AulasDaTurmaPage({ params, searchParams }: Props) {
   const { turmaId } = await params;
   const { data: dataInicial } = await searchParams;
@@ -53,6 +64,7 @@ export default async function AulasDaTurmaPage({ params, searchParams }: Props) 
 
         <ListaAulas
           aulas={aulas.aulas}
+          turmaId={id}
           nomeTurma={aulas.turma.nome}
           dataInicial={dataInicial}
         />

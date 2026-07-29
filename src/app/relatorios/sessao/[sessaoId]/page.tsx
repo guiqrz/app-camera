@@ -1,17 +1,39 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { VistaRelatorio } from "@/components/relatorio/vista-relatorio";
 import { AppShell } from "@/components/layout/app-shell";
-import { IconSeta } from "@/components/ui/icons";
+import { Breadcrumb, type EloBreadcrumb } from "@/components/layout/breadcrumb";
 import { ApiError, buscarRelatorio } from "@/lib/api";
+import { dataDoTimestamp, formatarDataCurta } from "@/lib/format";
 
 type Props = {
   params: Promise<{ sessaoId: string }>;
+  /** `turma` e' o id da turma de onde o professor veio (ver JSDoc abaixo). */
+  searchParams: Promise<{ turma?: string }>;
 };
 
-export default async function RelatorioPage({ params }: Props) {
+/** Id de turma valido vindo da URL, ou null se ausente/lixo. */
+function lerIdDaTurma(bruto: string | undefined): number | null {
+  if (!bruto) return null;
+  const id = Number(bruto);
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
+
+export async function generateMetadata({ params }: Props) {
   const { sessaoId } = await params;
+  const id = Number(sessaoId);
+  if (!Number.isInteger(id) || id <= 0) return { title: "Relatório" };
+
+  const relatorio = await buscarRelatorio(id).catch(() => null);
+  if (!relatorio) return { title: "Relatório" };
+
+  const data = formatarDataCurta(dataDoTimestamp(relatorio.sessao.iniciada_em));
+  return { title: `${relatorio.sessao.turma} · ${data} — Cupcam Insights` };
+}
+
+export default async function RelatorioPage({ params, searchParams }: Props) {
+  const { sessaoId } = await params;
+  const { turma: turmaBruta } = await searchParams;
   const id = Number(sessaoId);
 
   if (!Number.isInteger(id) || id <= 0) notFound();
@@ -22,24 +44,23 @@ export default async function RelatorioPage({ params }: Props) {
     throw causa;
   });
 
-  return (
-    <AppShell titulo="Relatório">
-      <div className="flex flex-col gap-6">
-        {/* Volta para a lista de aulas da turma desta sessao nao e' possivel
-            (o relatorio nao carrega o turma_id), entao voltamos para a raiz
-            de Minhas Aulas, que redireciona para a primeira turma. */}
-        <Link
-          href="/aulas"
-          className="text-text-brand flex w-fit items-center gap-1.5 text-sm font-bold"
-        >
-          <span className="rotate-90">
-            <IconSeta size={16} />
-          </span>
-          Voltar para minhas aulas
-        </Link>
+  /* De qual turma o professor veio.
+     O relatorio da API traz o NOME da turma (`sessao.turma`), nunca o id — por
+     isso quem linka pra ca anexa ?turma={id}. Sem esse parametro (link antigo,
+     URL colada na mao) caimos em /aulas, que encaminha pra primeira turma: e' o
+     comportamento antigo, preservado como reserva. */
+  const turmaId = lerIdDaTurma(turmaBruta);
+  const hrefAulas = turmaId === null ? "/aulas" : `/aulas/${turmaId}`;
 
-        <VistaRelatorio relatorio={relatorio} />
-      </div>
+  const elos: EloBreadcrumb[] = [
+    { rotulo: "Minhas aulas", href: hrefAulas },
+    { rotulo: relatorio.sessao.turma, href: hrefAulas },
+    { rotulo: formatarDataCurta(dataDoTimestamp(relatorio.sessao.iniciada_em)) },
+  ];
+
+  return (
+    <AppShell titulo="Relatório" breadcrumb={<Breadcrumb elos={elos} />}>
+      <VistaRelatorio relatorio={relatorio} />
     </AppShell>
   );
 }
