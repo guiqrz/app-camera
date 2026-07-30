@@ -10,12 +10,17 @@ Três perfis, num mesmo app:
 
 1. **Professor, depois da aula (uso principal).** No computador, com calma.
    Revisa o relatório da aula, confere a chamada que a câmera montou, olha
-   tendência da turma ao longo do tempo. É aqui que o app entrega valor.
+   tendência da turma ao longo do tempo. É aqui que o app entrega valor. Também
+   é quem ajusta as próprias preferências — a turma que o app abre primeiro, o
+   tema — que valem só naquele navegador, nunca para a escola inteira.
 2. **Coordenação/direção.** Mantém a base em dia: cadastra turmas, matérias,
    alunos e a grade semanal. Olha panorama, não uma aula isolada.
-3. **Professor, durante a aula (uso mais raro hoje).** Ao vivo o app mostra só
-   duas coisas: percentual de atenção coletiva (com sinal quando cai abaixo de
-   70%) e a chamada. Escopo pequeno de propósito por ora — deve crescer.
+3. **Professor, durante a aula (uso mais raro hoje).** Ao vivo o app mostra o
+   percentual de atenção coletiva (com sinal quando cai abaixo de 70%) e a
+   chamada, e deixa o professor dizer **que tipo de momento** é aquele — aula
+   expositiva, atividade livre ou prova. Escopo ainda pequeno de propósito, mas
+   já não é só leitura: é o único ponto do app onde o professor muda o que a
+   câmera está medindo.
 
 ## Product Purpose
 
@@ -28,7 +33,11 @@ Três dores, na ordem de importância:
    tendência pra conversar com coordenação e com a família com número na mão,
    não com impressão.
 2. **"Não sei se a turma está entendendo."** Engajamento coletivo dá um sinal
-   que o professor não consegue medir sozinho enquanto dá aula.
+   que o professor não consegue medir sozinho enquanto dá aula. Mas o sinal só
+   vale quando há aula acontecendo: numa prova o aluno olha pra baixo porque
+   está escrevendo, e chamar isso de desatenção sujaria o histórico da turma.
+   Por isso o professor pode declarar o momento, e o app para de medir atenção
+   quando ela não significa nada.
 3. **Chamada é perda de tempo.** A câmera já viu quem está lá; o app só precisa
    ser rápido pra confirmar ou corrigir.
 
@@ -51,7 +60,9 @@ Quatro coisas que o app não pode parecer:
   cinza, formulário infinito, nada respira, tudo exige três cliques.
 - **Ferramenta de vigilância.** Nenhum clima de monitorar aluno individualmente.
   Isso já é regra de código (engajamento é sempre coletivo e anônimo), e a
-  interface tem que sustentar a mesma promessa.
+  interface tem que sustentar a mesma promessa — inclusive dizendo em texto o
+  que é coletado e o que nunca é guardado, em vez de esperar que o professor
+  confie no silêncio.
 - **Dashboard SaaS genérico.** Número gigante com gradiente, cards idênticos
   repetidos, muito gráfico e pouca decisão.
 - **Rede social / gamificado.** Sem badge, streak, confete ou ranking de aluno.
@@ -66,7 +77,10 @@ Quatro coisas que o app não pode parecer:
    como os dados são desenhados. Nenhuma tela oferece um caminho pra medir
    atenção de uma pessoa.
 4. **"Sem dado" é uma resposta.** `null` da API aparece como ausência explícita,
-   nunca como zero. Confundir os dois mentiria sobre a turma.
+   nunca como zero. Confundir os dois mentiria sobre a turma — "0% disperso" e
+   "não estamos medindo" levam a decisões opostas, e o segundo caso é comum:
+   acontece toda vez que a aula não está no modo expositivo. A ausência precisa
+   aparecer também no relatório, explicando o vão em vez de deixá-lo em branco.
 5. **Duas mãos, dois contextos.** Depois da aula é computador e calma; durante a
    aula é celular, pressa e uma mão. A mesma tela precisa servir aos dois.
 

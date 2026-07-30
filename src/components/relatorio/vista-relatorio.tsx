@@ -174,7 +174,10 @@ export function VistaRelatorio({ relatorio }: VistaRelatorioProps) {
             </p>
           </div>
           <div className="mt-4">
-            <GraficoLinhaTempo pontos={relatorio.linha_do_tempo} />
+            <GraficoLinhaTempo
+              pontos={relatorio.linha_do_tempo}
+              periodos={relatorio.periodos_sem_medicao}
+            />
           </div>
         </div>
 
