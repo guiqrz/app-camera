@@ -67,21 +67,27 @@ export function GraficoLinhaTempo({ pontos, periodos = [] }: GraficoProps) {
 
   // Um so' ponto nao forma linha: repete para virar um segmento reto.
   const dados = pontos.length === 1 ? [pontos[0], pontos[0]] : pontos;
-  const ultimoMinuto = dados[dados.length - 1].minuto || 1;
+
+  // O eixo X vai ate o fim do ultimo VAO, nao ate o ultimo ponto medido: a aula
+  // que termina em Descanso tem seu ultimo ponto ANTES do vao, e escalar so' pelos
+  // pontos comprimiria a faixa final a zero — ela seria descartada e o professor
+  // ficaria sem explicacao nenhuma pro fim da curva.
+  const ultimoMinuto =
+    Math.max(
+      dados[dados.length - 1].minuto,
+      ...periodos.map((p) => p.minuto_fim),
+    ) || 1;
 
   const x = (minuto: number) => L + (minuto / ultimoMinuto) * larguraUtil;
   const y = (pct: number) => T + (1 - pct / 100) * alturaUtil;
 
-  // Faixas visiveis: so' as que caem dentro do intervalo desenhado. Um periodo
-  // que comeca depois do ultimo ponto (aula encerrada em Descanso, sem leitura
-  // posterior) nao tem area no eixo e sairia como faixa de largura zero.
+  // Periodo de duracao zero nao tem area pra pintar (o proprio backend nao gera
+  // periodo repetido, mas dois comandos no mesmo minuto cairiam aqui).
   const faixas = periodos
-    .filter((p) => p.minuto_inicio <= ultimoMinuto && p.minuto_fim > p.minuto_inicio)
+    .filter((p) => p.minuto_fim > p.minuto_inicio)
     .map((p) => {
-      const inicio = Math.max(0, p.minuto_inicio);
-      const fim = Math.min(ultimoMinuto, p.minuto_fim);
-      const px = x(inicio);
-      const largura = x(fim) - px;
+      const px = x(Math.max(0, p.minuto_inicio));
+      const largura = x(Math.min(ultimoMinuto, p.minuto_fim)) - px;
       return { ...p, px, largura };
     })
     .filter((f) => f.largura > 0);
@@ -133,7 +139,9 @@ export function GraficoLinhaTempo({ pontos, periodos = [] }: GraficoProps) {
       `M ${coordenadas[0].px.toFixed(1)} ${(H - B).toFixed(1)} ` +
       coordenadas.map((c) => `L ${c.px.toFixed(1)} ${c.py.toFixed(1)}`).join(" ") +
       ` L ${coordenadas[coordenadas.length - 1].px.toFixed(1)} ${(H - B).toFixed(1)} Z`;
-    return { linha, area };
+    // Chave estavel: cada trecho comeca num x proprio, entao o primeiro ponto
+    // identifica o segmento mesmo se a segmentacao mudar.
+    return { linha, area, chave: coordenadas[0].px };
   });
 
   const linhasGrade = [0, 25, 50, 75, 100];
@@ -236,8 +244,8 @@ export function GraficoLinhaTempo({ pontos, periodos = [] }: GraficoProps) {
 
       {/* Um par area+linha por trecho continuo. Varios paths em vez de um so'
           e' justamente o que deixa o vao vazio. */}
-      {caminhos.map((caminho, indice) => (
-        <g key={indice}>
+      {caminhos.map((caminho) => (
+        <g key={caminho.chave}>
           <path d={caminho.area} fill="url(#preenchimento-atencao)" />
           <path
             d={caminho.linha}
