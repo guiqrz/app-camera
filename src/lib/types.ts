@@ -355,4 +355,16 @@ export type EstadoCamera =
        * verdade nao ha medicao nenhuma acontecendo.
        */
       mede_atencao?: boolean;
+      /**
+       * true = a camera esta GRAVANDO audio da aula neste instante.
+       *
+       * Vem da captura, nao do comando: e' a confirmacao de que a gravacao
+       * comecou de fato, e nao apenas que alguem clicou no botao. E' o que
+       * autoriza a tela a mostrar a faixa "Gravando audio" — sem aviso visivel
+       * seria gravacao silenciosa de uma sala com menores.
+       *
+       * Opcional porque um estado escrito por um backend anterior a esta versao
+       * nao traz o campo; ausente e' tratado como false (nao gravando).
+       */
+      audio_ativo?: boolean;
     };

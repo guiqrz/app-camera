@@ -475,3 +475,42 @@ export function IconBalanca({ size = 18, className }: IconProps) {
     </svg>
   );
 }
+
+/** Microfone — captura de audio da aula ligada. */
+export function IconMicrofone({ size = 18, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <rect x="9" y="2.5" width="6" height="11" rx="3" stroke="currentColor" strokeWidth="1.8" />
+      <path
+        d="M5.5 11a6.5 6.5 0 0 0 13 0"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+      <path d="M12 17.5v4M9 21.5h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/**
+ * Microfone cortado — captura desligada.
+ *
+ * O corte diagonal e' o que distingue os dois estados sem depender de cor
+ * (WCAG 1.4.1): quem nao percebe a diferenca entre vermelho e cinza ainda ve a
+ * barra atravessando o desenho.
+ */
+export function IconMicrofoneCortado({ size = 18, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <rect x="9" y="2.5" width="6" height="11" rx="3" stroke="currentColor" strokeWidth="1.8" />
+      <path
+        d="M5.5 11a6.5 6.5 0 0 0 13 0"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+      <path d="M12 17.5v4M9 21.5h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M3.5 3.5l17 17" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}

@@ -399,3 +399,27 @@ export function trocarModoCamera(modo: ModoCamera): Promise<{
     body: { modo },
   });
 }
+
+/**
+ * Se o microfone esta ligado no comando pendente.
+ *
+ * Atencao: isto e' o COMANDO, nao a gravacao. Quem confirma que a captura
+ * comecou de fato e' `audio_ativo` no /camera/estado — e' esse que a tela usa
+ * pro aviso "gravando", justamente pra nunca dizer que grava antes de gravar.
+ */
+export function lerAudioCamera(): Promise<{ ativo: boolean }> {
+  return requisitar<{ ativo: boolean }>("/camera/audio", { revalidate: 0 });
+}
+
+/**
+ * Liga/desliga a gravacao de audio da aula.
+ *
+ * Como a troca de modo, o backend le o comando uma vez por ciclo — entao a
+ * resposta significa "comando gravado", e a confirmacao vem pelo polling.
+ */
+export function trocarAudioCamera(ativo: boolean): Promise<{ ativo: boolean }> {
+  return requisitar<{ ativo: boolean }>("/camera/audio", {
+    method: "POST",
+    body: { ativo },
+  });
+}
