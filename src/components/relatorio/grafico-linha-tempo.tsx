@@ -1,8 +1,18 @@
-import type { PontoLinhaDoTempo } from "@/lib/types";
+import { aparenciaDaCorMateria } from "@/lib/format";
+import type { CorMateria, PeriodoSemMedicao, PontoLinhaDoTempo } from "@/lib/types";
 
 type GraficoProps = {
   pontos: PontoLinhaDoTempo[];
+  /** Trechos em Descanso/Prova, marcados como faixa. Aula normal: vazio. */
+  periodos?: PeriodoSemMedicao[];
 };
+
+/** Frase que nomeia os modos de um ou mais periodos ("Descanso", "Descanso e Prova"). */
+function listarRotulos(periodos: PeriodoSemMedicao[]): string {
+  const rotulos = [...new Set(periodos.map((p) => p.rotulo))];
+  if (rotulos.length === 1) return rotulos[0];
+  return `${rotulos.slice(0, -1).join(", ")} e ${rotulos[rotulos.length - 1]}`;
+}
 
 /**
  * Grafico da atencao da turma ao longo da aula, minuto a minuto.
@@ -11,8 +21,31 @@ type GraficoProps = {
  * eixos simples, e uma dependencia de charting seria peso desnecessario. A
  * viewBox e' fixa e o SVG escala com o container (preserveAspectRatio none no
  * eixo X para preencher a largura).
+ *
+ * Vaos (`periodos`): fora do modo Aula a atencao nao e' medida, entao aqueles
+ * minutos simplesmente NAO existem em `pontos`. A curva e' cortada nas bordas do
+ * periodo e o trecho recebe uma faixa com o nome do modo. Ligar os dois lados
+ * desenharia uma queda de atencao que ninguem mediu — numero inventado, pior que
+ * a ausencia (ver PRODUCT.md, "Sem dado e' uma resposta").
  */
-export function GraficoLinhaTempo({ pontos }: GraficoProps) {
+export function GraficoLinhaTempo({ pontos, periodos = [] }: GraficoProps) {
+  // Aula inteira sem medicao: nao ha curva NEM faixa util (um grafico coberto de
+  // ponta a ponta e' so' um retangulo colorido). Explica o motivo em texto.
+  if (pontos.length === 0 && periodos.length > 0) {
+    const inicio = periodos[0].horario_inicio;
+    const fim = periodos[periodos.length - 1].horario_fim;
+    return (
+      <div className="border-border-default text-text-muted flex h-56 flex-col items-center justify-center gap-1 rounded-xl border border-dashed px-6 text-center text-sm">
+        <p>
+          Esta aula esteve em{" "}
+          <strong className="text-text font-semibold">{listarRotulos(periodos)}</strong> das{" "}
+          {inicio} às {fim}.
+        </p>
+        <p>A atenção não é medida nesse modo.</p>
+      </div>
+    );
+  }
+
   // Estado vazio: aula sem leitura ainda nao tem curva para desenhar.
   if (pontos.length === 0) {
     return (
@@ -39,17 +72,69 @@ export function GraficoLinhaTempo({ pontos }: GraficoProps) {
   const x = (minuto: number) => L + (minuto / ultimoMinuto) * larguraUtil;
   const y = (pct: number) => T + (1 - pct / 100) * alturaUtil;
 
-  const coordenadas = dados.map((p) => ({ px: x(p.minuto), py: y(p.atencao_pct) }));
+  // Faixas visiveis: so' as que caem dentro do intervalo desenhado. Um periodo
+  // que comeca depois do ultimo ponto (aula encerrada em Descanso, sem leitura
+  // posterior) nao tem area no eixo e sairia como faixa de largura zero.
+  const faixas = periodos
+    .filter((p) => p.minuto_inicio <= ultimoMinuto && p.minuto_fim > p.minuto_inicio)
+    .map((p) => {
+      const inicio = Math.max(0, p.minuto_inicio);
+      const fim = Math.min(ultimoMinuto, p.minuto_fim);
+      const px = x(inicio);
+      const largura = x(fim) - px;
+      return { ...p, px, largura };
+    })
+    .filter((f) => f.largura > 0);
 
-  // Caminho da linha e caminho da area preenchida abaixo dela.
-  const linha = coordenadas
-    .map((c, i) => `${i === 0 ? "M" : "L"} ${c.px.toFixed(1)} ${c.py.toFixed(1)}`)
-    .join(" ");
+  // Corta a curva nos vaos: cada trecho continuo vira um <path> proprio, entao
+  // nada atravessa a faixa.
+  //
+  // O corte olha o INTERVALO entre dois pontos vizinhos, nao o ponto sozinho: os
+  // minutos do vao simplesmente nao existem em `pontos` (sem medicao, sem
+  // leitura), entao o caso normal e' justamente ter ponto so' nas BORDAS — 0 e 3
+  // com um Descanso de 0 a 3. Testar apenas "o ponto esta dentro?" nao acha nada
+  // pra cortar e a linha atravessa a faixa inteira, que era o bug original.
+  const cruzaVao = (minutoAnterior: number, minuto: number) =>
+    periodos.some(
+      (p) => minutoAnterior <= p.minuto_inicio && minuto >= p.minuto_fim,
+    );
 
-  const area =
-    `M ${coordenadas[0].px.toFixed(1)} ${(H - B).toFixed(1)} ` +
-    coordenadas.map((c) => `L ${c.px.toFixed(1)} ${c.py.toFixed(1)}`).join(" ") +
-    ` L ${coordenadas[coordenadas.length - 1].px.toFixed(1)} ${(H - B).toFixed(1)} Z`;
+  // Ponto DENTRO de um periodo nao deveria existir; se existir e' descartado —
+  // a faixa manda, e desenhar ali seria mostrar atencao "medida" no vao.
+  const dentroDeVao = (minuto: number) =>
+    periodos.some((p) => minuto > p.minuto_inicio && minuto < p.minuto_fim);
+
+  const segmentos: { px: number; py: number }[][] = [];
+  let atual: { px: number; py: number }[] = [];
+  let minutoAnterior: number | null = null;
+  for (const ponto of dados) {
+    if (dentroDeVao(ponto.minuto)) continue;
+
+    if (minutoAnterior !== null && cruzaVao(minutoAnterior, ponto.minuto)) {
+      if (atual.length > 0) segmentos.push(atual);
+      atual = [];
+    }
+    atual.push({ px: x(ponto.minuto), py: y(ponto.atencao_pct) });
+    minutoAnterior = ponto.minuto;
+  }
+  if (atual.length > 0) segmentos.push(atual);
+
+  // Caminho da linha e da area preenchida, por segmento. Um segmento de um unico
+  // ponto nao desenha linha, entao ganha um "L" pra si mesmo e vira um pontinho.
+  const caminhos = segmentos.map((coordenadas) => {
+    const passos = coordenadas
+      .map((c, i) => `${i === 0 ? "M" : "L"} ${c.px.toFixed(1)} ${c.py.toFixed(1)}`)
+      .join(" ");
+    const linha =
+      coordenadas.length === 1
+        ? `${passos} L ${coordenadas[0].px.toFixed(1)} ${coordenadas[0].py.toFixed(1)}`
+        : passos;
+    const area =
+      `M ${coordenadas[0].px.toFixed(1)} ${(H - B).toFixed(1)} ` +
+      coordenadas.map((c) => `L ${c.px.toFixed(1)} ${c.py.toFixed(1)}`).join(" ") +
+      ` L ${coordenadas[coordenadas.length - 1].px.toFixed(1)} ${(H - B).toFixed(1)} Z`;
+    return { linha, area };
+  });
 
   const linhasGrade = [0, 25, 50, 75, 100];
 
@@ -62,9 +147,49 @@ export function GraficoLinhaTempo({ pontos }: GraficoProps) {
       viewBox={`0 0 ${W} ${H}`}
       className="h-56 w-full"
       role="img"
-      aria-label={`Grafico da atencao da turma ao longo de ${pontos.length} minutos de aula.`}
+      aria-label={
+        `Gráfico da atenção da turma ao longo de ${pontos.length} minutos de aula.` +
+        (faixas.length > 0
+          ? ` A atenção não foi medida em ${faixas.length === 1 ? "um trecho" : `${faixas.length} trechos`}: ` +
+            faixas
+              .map((f) => `${f.rotulo}, das ${f.horario_inicio} às ${f.horario_fim}`)
+              .join("; ") +
+            "."
+          : "")
+      }
       preserveAspectRatio="none"
     >
+      {/* Faixas dos trechos sem medicao, ATRAS da grade e da curva: sao fundo,
+          nao dado. O rotulo so' aparece quando a faixa e' larga o bastante pra
+          ele caber sem estourar as bordas. */}
+      {faixas.map((faixa) => {
+        const aparencia = aparenciaDaCorMateria(faixa.cor as CorMateria);
+        const cabeRotulo = faixa.largura >= 46;
+        return (
+          <g key={`${faixa.modo}-${faixa.minuto_inicio}`}>
+            <rect
+              x={faixa.px}
+              y={T}
+              width={faixa.largura}
+              height={alturaUtil}
+              fill={aparencia?.fundo ?? "var(--border)"}
+            />
+            {cabeRotulo && (
+              <text
+                x={faixa.px + faixa.largura / 2}
+                y={T + 14}
+                textAnchor="middle"
+                fontSize={10}
+                fontWeight={600}
+                fill={aparencia?.texto ?? "var(--text-muted)"}
+              >
+                {faixa.rotulo}
+              </text>
+            )}
+          </g>
+        );
+      })}
+
       {/* Linhas de grade horizontais + rotulos do eixo Y */}
       {linhasGrade.map((pct) => (
         <g key={pct}>
@@ -109,16 +234,22 @@ export function GraficoLinhaTempo({ pontos }: GraficoProps) {
         </linearGradient>
       </defs>
 
-      <path d={area} fill="url(#preenchimento-atencao)" />
-      <path
-        d={linha}
-        fill="none"
-        stroke="var(--primary)"
-        strokeWidth={2.5}
-        strokeLinejoin="round"
-        strokeLinecap="round"
-        vectorEffect="non-scaling-stroke"
-      />
+      {/* Um par area+linha por trecho continuo. Varios paths em vez de um so'
+          e' justamente o que deixa o vao vazio. */}
+      {caminhos.map((caminho, indice) => (
+        <g key={indice}>
+          <path d={caminho.area} fill="url(#preenchimento-atencao)" />
+          <path
+            d={caminho.linha}
+            fill="none"
+            stroke="var(--primary)"
+            strokeWidth={2.5}
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            vectorEffect="non-scaling-stroke"
+          />
+        </g>
+      ))}
     </svg>
   );
 }

@@ -127,6 +127,24 @@ export type ItemFeedInsight = {
   tipo?: string;
 };
 
+/**
+ * Trecho da aula em que a atencao NAO foi medida (modo Descanso ou Prova).
+ *
+ * Os minutos sao contados do inicio da aula, na mesma escala de
+ * `PontoLinhaDoTempo.minuto` — e' o que permite desenhar a faixa alinhada com a
+ * curva. `cor` e' um id de paleta ("ambar", "azul"), nunca um valor CSS: quem
+ * resolve o tom em cada tema e' o app.
+ */
+export type PeriodoSemMedicao = {
+  modo: string;
+  rotulo: string;
+  cor: string;
+  minuto_inicio: number;
+  minuto_fim: number;
+  horario_inicio: string;
+  horario_fim: string;
+};
+
 /** GET /sessoes/{sessao_id}/relatorio — a rota mais completa. */
 export type RelatorioDaSessao = {
   sessao: SessaoResumo & { em_andamento: boolean };
@@ -149,6 +167,8 @@ export type RelatorioDaSessao = {
     ausentes: number;
   };
   linha_do_tempo: PontoLinhaDoTempo[];
+  /** Vaos da linha do tempo (Descanso/Prova). Vazio numa aula normal. */
+  periodos_sem_medicao: PeriodoSemMedicao[];
   recomendacoes: string[];
   /** Costuma vir vazio; a tela precisa de um estado "sem insights". */
   feed_insights: ItemFeedInsight[];
