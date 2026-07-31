@@ -33,6 +33,7 @@ import type {
   NovaMateria,
   NovaTurma,
   RelatorioDaSessao,
+  Transcricao,
   Turma,
   VisaoAdmin,
 } from "./types";
@@ -61,7 +62,7 @@ export class ApiError extends Error {
   }
 }
 
-function lerConfiguracao(): { baseUrl: string; apiKey: string } {
+export function lerConfiguracao(): { baseUrl: string; apiKey: string } {
   const baseUrl = process.env.CUPCAM_API_URL;
   const apiKey = process.env.CUPCAM_API_KEY;
 
@@ -422,4 +423,27 @@ export function trocarAudioCamera(ativo: boolean): Promise<{ ativo: boolean }> {
     method: "POST",
     body: { ativo },
   });
+}
+
+/* ------------------------------------------------------------------ */
+/* Transcricao                                                         */
+/* ------------------------------------------------------------------ */
+
+/** Transcricao da aula. Lanca ApiError 404 quando a aula nao tem audio. */
+export function buscarTranscricao(sessaoId: number): Promise<Transcricao> {
+  return requisitar<Transcricao>(`/sessoes/${sessaoId}/transcricao`, { revalidate: 0 });
+}
+
+/**
+ * Pede uma nova tentativa de transcricao.
+ *
+ * Lanca ApiError 404 (sem audio guardado) ou 409 (ja esta transcrevendo).
+ */
+export function reprocessarTranscricao(
+  sessaoId: number,
+): Promise<{ reprocessando: boolean }> {
+  return requisitar<{ reprocessando: boolean }>(
+    `/sessoes/${sessaoId}/transcricao/reprocessar`,
+    { method: "POST" },
+  );
 }

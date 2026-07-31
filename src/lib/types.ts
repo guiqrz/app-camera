@@ -368,3 +368,41 @@ export type EstadoCamera =
        */
       audio_ativo?: boolean;
     };
+
+/* ------------------------------------------------------------------ */
+/* Transcricao                                                         */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Em que pe esta a transcricao de uma aula.
+ *
+ * A distincao existe porque "sem transcricao" escondia tres casos diferentes:
+ * a aula nao gravou audio, esta transcrevendo agora, ou falhou. O professor
+ * precisa saber qual — so' o terceiro pede acao dele.
+ */
+export type EstadoTranscricao = "transcrevendo" | "pronta" | "falhou";
+
+export type TrechoTranscricao = {
+  segundo_inicio: number;
+  segundo_fim: number;
+  texto: string;
+};
+
+export type Transcricao = {
+  sessao_id: number;
+  turma: string;
+  /** null quando a sessao nao tem aula agendada vinculada. */
+  materia: string | null;
+  data: string;
+  texto: string;
+  modelo: string;
+  duracao_seg: number | null;
+  gerada_em: string;
+  /** Quando a transcricao sera apagada. Visivel na tela de proposito: e' o
+   *  contrato de privacidade dos 60 dias, nao um detalhe interno. */
+  expira_em: string;
+  estado: EstadoTranscricao;
+  /** Motivo da falha, ou null. */
+  erro: string | null;
+  trechos: TrechoTranscricao[];
+};
