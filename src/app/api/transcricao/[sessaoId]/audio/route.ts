@@ -11,6 +11,62 @@
 
 export const dynamic = "force-dynamic";
 
+/**
+ * "O audio ainda existe?" — sem baixar o audio.
+ *
+ * TEMPORARIO, junto com a retencao de alguns dias: a tela so' mostra o player
+ * quando o WAV esta no disco, e sem este HEAD ela teria que pedir o arquivo
+ * INTEIRO (dezenas de MB) pra descobrir isso em toda visita ao relatorio.
+ *
+ * Sem um `HEAD` exportado, o Next responderia via `GET` e baixaria o corpo
+ * mesmo assim, que e' justamente o custo que este handler evita.
+ *
+ * Pergunta a API com `GET` + `Range: bytes=0-0`, NAO com `HEAD`: a rota de la'
+ * e' declarada `@app.get`, e o FastAPI devolve 405 pra HEAD (verificado em
+ * 31/07/2026 — nao e' o comportamento automatico que se costuma supor). Com o
+ * Range o servidor manda 1 byte em vez do WAV inteiro, entao o custo continua
+ * desprezivel sem precisar de rota nova no backend.
+ *
+ * Devolve so' o status: 200 (existe), 404 (prazo vencido ou aula sem audio —
+ * caso NORMAL), 502 (a sala nao respondeu).
+ */
+export async function HEAD(
+  _requisicao: Request,
+  { params }: { params: Promise<{ sessaoId: string }> },
+) {
+  const { sessaoId } = await params;
+  const id = Number(sessaoId);
+  if (!Number.isInteger(id) || id <= 0) {
+    return new Response(null, { status: 422 });
+  }
+
+  const baseUrl = process.env.CUPCAM_API_URL?.replace(/\/$/, "");
+  const apiKey = process.env.CUPCAM_API_KEY;
+  if (!baseUrl || !apiKey) {
+    return new Response(null, { status: 500 });
+  }
+
+  try {
+    const resposta = await fetch(`${baseUrl}/sessoes/${id}/audio`, {
+      headers: { "X-API-Key": apiKey, Range: "bytes=0-0" },
+      cache: "no-store",
+    });
+    // Cancela o corpo explicitamente: com o Range ele e' 1 byte (ou o WAV
+    // inteiro, se o servidor ignorar o cabecalho), e deixar o stream aberto
+    // seguraria a conexao a toa.
+    await resposta.body?.cancel();
+    // Mesma regra do GET: status cru nunca sobe pro navegador, senao um 401 da
+    // chave do SERVIDOR viraria "voce nao esta autenticado" pro professor.
+    // 206 (Partial Content) e' o sucesso esperado do Range; 200 tambem serve,
+    // pra um servidor que responda o arquivo todo em vez do trecho.
+    return new Response(null, {
+      status: resposta.ok ? 200 : resposta.status === 404 ? 404 : 502,
+    });
+  } catch {
+    return new Response(null, { status: 502 });
+  }
+}
+
 export async function GET(
   _requisicao: Request,
   { params }: { params: Promise<{ sessaoId: string }> },
