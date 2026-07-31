@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { IconRecomecar, IconTranscricao } from "@/components/ui/icons";
-import { dataDoTimestamp, formatarDataCurta } from "@/lib/format";
+import { dataDoTimestamp, formatarDataExtensa } from "@/lib/format";
 import type { Transcricao } from "@/lib/types";
 
 /** Polling so' enquanto transcreve. 10s porque nada muda a cada segundo aqui —
@@ -30,6 +30,10 @@ export function SecaoTranscricao({ sessaoId }: SecaoTranscricaoProps) {
   const [expandido, setExpandido] = useState(false);
   const [copiado, setCopiado] = useState(false);
 
+  // Evita "piscar" aviso de rede antes da primeira leitura ter rodado — mesma
+  // guarda de vista-camera.tsx.
+  const primeiraLeituraFeita = useRef(false);
+
   const buscar = useCallback(async () => {
     try {
       const r = await fetch(`/api/transcricao/${sessaoId}`, { cache: "no-store" });
@@ -37,11 +41,25 @@ export function SecaoTranscricao({ sessaoId }: SecaoTranscricaoProps) {
         // Normal: a aula nao gravou audio. Nao e' erro.
         setTranscricao(null);
         setAviso(null);
+        primeiraLeituraFeita.current = true;
       } else if (r.ok) {
         setTranscricao((await r.json()) as Transcricao);
         setAviso(null);
+        primeiraLeituraFeita.current = true;
+      } else if (primeiraLeituraFeita.current) {
+        // Ex.: 502 do proxy (backend fora do ar). Sem isto o polling girava
+        // "Transcrevendo…" pra sempre com a sala desconectada, sem avisar o
+        // professor que a tela parou de fato de atualizar.
+        setAviso(
+          "Não foi possível atualizar a transcrição. Verifique se o notebook da sala está ligado.",
+        );
       }
     } catch {
+      // Sem guarda de primeira leitura aqui (diferente de vista-camera): la' o
+      // polling roda sempre, e uma falha muda de estado sozinha no proximo
+      // tick. Aqui o polling SO' comeca depois que a 1a leitura definir
+      // `transcrevendo`, entao se ela falhar nao ha' outro tick pra avisar —
+      // silenciar deixaria a tela presa em "sem audio" sem explicar por que.
       setAviso("Não foi possível carregar a transcrição.");
     } finally {
       setCarregando(false);
@@ -168,13 +186,21 @@ export function SecaoTranscricao({ sessaoId }: SecaoTranscricaoProps) {
         <div className="flex flex-col gap-4">
           <div className="text-text-muted flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
             {transcricao.duracao_seg !== null && (
-              <span>{Math.round(transcricao.duracao_seg / 60)} min de áudio</span>
+              <span>
+                {/* Piso de "menos de 1 min": Math.round sozinho mostrava
+                    "0 min de audio" pra aula com menos de 30s gravados. */}
+                {transcricao.duracao_seg < 60
+                  ? "menos de 1 min de áudio"
+                  : `${Math.round(transcricao.duracao_seg / 60)} min de áudio`}
+              </span>
             )}
             <span>modelo: {transcricao.modelo}</span>
             {/* Expira visivel de proposito: e' o contrato de privacidade dos 60
-                dias. Escondê-lo derrotaria o motivo de expira_em ser coluna. */}
+                dias. Data extensa (com ano) e nao "DD/MM": um prazo de 60 dias
+                pode cair no ano seguinte, e "12/09" sem ano e' ambiguo bem no
+                dado que E' o contrato de privacidade. */}
             <span>
-              expira em {formatarDataCurta(dataDoTimestamp(transcricao.expira_em))}
+              expira em {formatarDataExtensa(dataDoTimestamp(transcricao.expira_em))}
             </span>
           </div>
 
