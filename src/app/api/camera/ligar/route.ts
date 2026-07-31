@@ -13,27 +13,34 @@ import type { ModoCamera } from "@/lib/types";
  * pode importar lib/api.ts (server-only), entao a chave nunca aparece no
  * JavaScript do usuario.
  *
- * Corpo opcional {"turma_id": N, "modo": "descanso"}: turma e modo escolhidos
- * a mao antes de ligar. Ausente/invalido = o backend escolhe automatico
- * (turma por horario, modo Aula) — nunca e' erro.
+ * Corpo opcional {"turma_id": N, "modo": "descanso", "audio": true}: turma,
+ * modo e microfone escolhidos a mao antes de ligar. Ausente/invalido = o
+ * backend escolhe automatico (turma por horario, modo Aula, audio conforme
+ * CUPCAM_AUDIO_ATIVO do .env) — nunca e' erro.
  */
 
 export const dynamic = "force-dynamic";
 
 /**
- * Turma e modo escolhidos no corpo. Ambos opcionais e independentes:
+ * Turma, modo e audio escolhidos no corpo. Todos opcionais e independentes:
  * ausente/invalido vira undefined, e o backend cai no automatico (turma por
- * horario, modo Aula). Aqui um valor invalido NAO e' erro — diferente de
- * /api/camera/modo, este e' o caminho em que "nao escolhi nada" e' normal.
+ * horario, modo Aula, audio conforme CUPCAM_AUDIO_ATIVO do .env). Aqui um
+ * valor invalido NAO e' erro — diferente de /api/camera/modo, este e' o
+ * caminho em que "nao escolhi nada" e' normal.
  */
 async function lerEscolhas(
   requisicao: Request,
-): Promise<{ turmaId?: number; modo?: ModoCamera }> {
+): Promise<{ turmaId?: number; modo?: ModoCamera; audio?: boolean }> {
   try {
-    const corpo = (await requisicao.json()) as { turma_id?: unknown; modo?: unknown };
+    const corpo = (await requisicao.json()) as {
+      turma_id?: unknown;
+      modo?: unknown;
+      audio?: unknown;
+    };
     return {
       turmaId: typeof corpo?.turma_id === "number" ? corpo.turma_id : undefined,
       modo: ehModoCamera(corpo?.modo) ? corpo.modo : undefined,
+      audio: typeof corpo?.audio === "boolean" ? corpo.audio : undefined,
     };
   } catch {
     // Sem corpo ou corpo nao-JSON: liga no automatico.
@@ -42,9 +49,9 @@ async function lerEscolhas(
 }
 
 export async function POST(requisicao: Request) {
-  const { turmaId, modo } = await lerEscolhas(requisicao);
+  const { turmaId, modo, audio } = await lerEscolhas(requisicao);
   try {
-    return NextResponse.json(await ligarCamera(turmaId, modo));
+    return NextResponse.json(await ligarCamera(turmaId, modo, audio));
   } catch (causa) {
     if (causa instanceof ApiError) {
       if (causa.status === 409) {

@@ -349,14 +349,20 @@ export function lerEstadoCamera(): Promise<EstadoCamera> {
  *
  * modo opcional: modo inicial da captura. Sem ele, o backend sobe no padrao
  * (Aula) — inclusive quando a camera sobe sozinha por horario.
+ *
+ * audio opcional: liga o microfone junto, se o professor escolheu isso na
+ * tela parada de Camera. Sem ele, o backend decide sozinho via
+ * CUPCAM_AUDIO_ATIVO do .env — o mesmo caminho que a camera automatica usa.
  */
 export function ligarCamera(
   turmaId?: number,
   modo?: ModoCamera,
+  audio?: boolean,
 ): Promise<{ iniciando: boolean }> {
-  const corpo: { turma_id?: number; modo?: ModoCamera } = {};
+  const corpo: { turma_id?: number; modo?: ModoCamera; audio?: boolean } = {};
   if (turmaId != null) corpo.turma_id = turmaId;
   if (modo != null) corpo.modo = modo;
+  if (audio != null) corpo.audio = audio;
   return requisitar<{ iniciando: boolean }>("/camera/ligar", {
     method: "POST",
     // Sem nada escolhido, manda POST sem corpo: e' o caminho automatico.

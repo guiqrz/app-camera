@@ -141,6 +141,11 @@ function SwitchSempreGravar() {
       >
         {ativo ? <IconMicrofone size={18} /> : <IconMicrofoneCortado size={18} />}
       </span>
+      {/* Rotulo proprio, diferente de "Microfone ligado/desligado" do
+          ControleMicrofone: ali o texto descreve um ESTADO ao vivo da
+          captura; aqui descreve uma PREFERENCIA (o que vai acontecer da
+          proxima vez), entao precisa deixar essa diferenca clara em vez de
+          copiar o texto de um controle que fala de agora. */}
       <span
         className="text-sm font-extrabold"
         style={{ color: ativo ? "var(--danger-fg)" : "var(--text)" }}
