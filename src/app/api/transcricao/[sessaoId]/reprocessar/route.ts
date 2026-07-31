@@ -21,10 +21,17 @@ export async function POST(
     return NextResponse.json(await reprocessarTranscricao(id));
   } catch (causa) {
     if (causa instanceof ApiError) {
+      // Cada status ganha a mensagem do SEU caso. Antes qualquer erro que nao
+      // fosse 409 virava "nao ha audio guardado": com o notebook da sala
+      // desligado, o professor lia que o audio tinha sumido enquanto o WAV
+      // estava no disco (bug de 31/07/2026). Afirmar a causa errada manda ele
+      // procurar problema no lugar errado — pior que nao explicar nada.
       const mensagem =
         causa.status === 409
           ? "Esta aula já está sendo transcrita."
-          : "Não há áudio guardado para transcrever de novo.";
+          : causa.status === 404
+            ? "Não há áudio guardado para transcrever de novo."
+            : "Não foi possível tentar de novo. Verifique se o notebook da sala está ligado.";
       return NextResponse.json({ erro: mensagem }, { status: statusSeguro(causa) });
     }
     throw causa;
