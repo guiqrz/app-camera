@@ -477,6 +477,7 @@ function VistaParada({
             <ControleMicrofone
               gravando={audioInicial}
               desabilitado={ligando}
+              aindaNaoIniciou
               aoAlternar={aoEscolherAudio}
             />
           </div>
