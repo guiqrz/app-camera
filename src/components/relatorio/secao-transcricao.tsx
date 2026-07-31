@@ -1,0 +1,208 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+
+import { IconRecomecar, IconTranscricao } from "@/components/ui/icons";
+import { dataDoTimestamp, formatarDataCurta } from "@/lib/format";
+import type { Transcricao } from "@/lib/types";
+
+/** Polling so' enquanto transcreve. 10s porque nada muda a cada segundo aqui —
+ *  diferente da camera ao vivo, que usa 3s. */
+const INTERVALO_MS = 10000;
+
+type SecaoTranscricaoProps = {
+  sessaoId: number;
+};
+
+/**
+ * Transcricao da aula, com os quatro estados possiveis.
+ *
+ * Por que quatro e nao dois: "sem transcricao" escondia "a aula nao gravou
+ * audio", "esta transcrevendo agora" e "falhou". Só o ultimo pede acao do
+ * professor, e os outros dois nao sao erro nenhum — mostrar os tres como a
+ * mesma coisa fazia o professor procurar problema onde nao havia.
+ */
+export function SecaoTranscricao({ sessaoId }: SecaoTranscricaoProps) {
+  const [transcricao, setTranscricao] = useState<Transcricao | null>(null);
+  const [carregando, setCarregando] = useState(true);
+  const [aviso, setAviso] = useState<string | null>(null);
+  const [reprocessando, setReprocessando] = useState(false);
+  const [expandido, setExpandido] = useState(false);
+  const [copiado, setCopiado] = useState(false);
+
+  const buscar = useCallback(async () => {
+    try {
+      const r = await fetch(`/api/transcricao/${sessaoId}`, { cache: "no-store" });
+      if (r.status === 404) {
+        // Normal: a aula nao gravou audio. Nao e' erro.
+        setTranscricao(null);
+        setAviso(null);
+      } else if (r.ok) {
+        setTranscricao((await r.json()) as Transcricao);
+        setAviso(null);
+      }
+    } catch {
+      setAviso("Não foi possível carregar a transcrição.");
+    } finally {
+      setCarregando(false);
+    }
+  }, [sessaoId]);
+
+  // Primeira leitura. setTimeout(0) pelo mesmo motivo da tela de Camera: o lint
+  // le o setState sincrono como recalculo derivavel, mas isto e' I/O externo.
+  useEffect(() => {
+    const id = setTimeout(buscar, 0);
+    return () => clearTimeout(id);
+  }, [buscar]);
+
+  // Polling SO' enquanto transcreve: parado, nao ha o que atualizar, e uma
+  // requisicao a cada 10s pra sempre seria desperdicio no relatorio de uma aula
+  // que o professor deixou aberta.
+  const transcrevendo = transcricao?.estado === "transcrevendo";
+  useEffect(() => {
+    if (!transcrevendo) return;
+    const id = setInterval(buscar, INTERVALO_MS);
+    return () => clearInterval(id);
+  }, [transcrevendo, buscar]);
+
+  const reprocessar = useCallback(async () => {
+    setReprocessando(true);
+    setAviso(null);
+    try {
+      const r = await fetch(`/api/transcricao/${sessaoId}/reprocessar`, {
+        method: "POST",
+      });
+      if (!r.ok) {
+        const dados = (await r.json().catch(() => null)) as { erro?: string } | null;
+        setAviso(dados?.erro ?? "Não foi possível tentar de novo.");
+        return;
+      }
+      await buscar();
+    } catch {
+      setAviso("Não foi possível tentar de novo. Verifique a conexão.");
+    } finally {
+      setReprocessando(false);
+    }
+  }, [sessaoId, buscar]);
+
+  const copiar = useCallback(async () => {
+    if (!transcricao) return;
+    try {
+      await navigator.clipboard.writeText(transcricao.texto);
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 2000);
+    } catch {
+      setAviso("Não foi possível copiar. Selecione o texto e copie manualmente.");
+    }
+  }, [transcricao]);
+
+  if (carregando) return null;
+
+  return (
+    <div className="border-border-default bg-surface shadow-card flex flex-col gap-4 rounded-2xl border p-5">
+      <div className="flex items-center gap-2.5">
+        <span aria-hidden style={{ color: "var(--primary)" }}>
+          <IconTranscricao size={20} />
+        </span>
+        <h2 className="text-text text-lg font-extrabold">Transcrição da aula</h2>
+      </div>
+
+      {aviso && (
+        <p className="text-xs font-semibold" style={{ color: "var(--warn-fg)" }} role="status">
+          {aviso}
+        </p>
+      )}
+
+      {transcricao === null ? (
+        <p className="text-text-muted text-sm leading-relaxed">
+          Esta aula não teve áudio gravado. Para gravar, ligue o microfone na
+          tela de Câmera antes ou durante a aula.
+        </p>
+      ) : transcricao.estado === "transcrevendo" ? (
+        <div className="flex items-center gap-3" role="status">
+          <span className="relative flex h-3 w-3 shrink-0" aria-hidden>
+            <span
+              className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-75"
+              style={{ background: "var(--warn)" }}
+            />
+            <span
+              className="relative inline-flex h-3 w-3 rounded-full"
+              style={{ background: "var(--warn)" }}
+            />
+          </span>
+          <div>
+            <p className="text-text text-sm font-extrabold">Transcrevendo o áudio…</p>
+            <p className="text-text-muted text-xs">
+              Leva alguns minutos. Esta tela atualiza sozinha.
+            </p>
+          </div>
+        </div>
+      ) : transcricao.estado === "falhou" ? (
+        <div className="flex flex-col gap-3">
+          <div>
+            <p className="text-sm font-extrabold" style={{ color: "var(--danger-fg)" }}>
+              Não foi possível transcrever esta aula
+            </p>
+            {transcricao.erro && (
+              <p className="text-text-muted mt-1 text-xs leading-relaxed">
+                {transcricao.erro}
+              </p>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={reprocessar}
+            disabled={reprocessando}
+            className="border-border-default text-text flex w-fit items-center gap-2 rounded-xl border px-4 py-2 text-sm font-extrabold transition-colors hover:bg-[var(--surface-2)] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <IconRecomecar size={16} />
+            {reprocessando ? "Tentando…" : "Tentar de novo"}
+          </button>
+          {/* Player so' aqui e no sucesso-com-audio-guardado: e' justamente
+              quando o WAV ainda existe no disco. */}
+          <audio controls preload="none" className="w-full max-w-md">
+            <source src={`/api/transcricao/${sessaoId}/audio`} type="audio/wav" />
+          </audio>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-4">
+          <div className="text-text-muted flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+            {transcricao.duracao_seg !== null && (
+              <span>{Math.round(transcricao.duracao_seg / 60)} min de áudio</span>
+            )}
+            <span>modelo: {transcricao.modelo}</span>
+            {/* Expira visivel de proposito: e' o contrato de privacidade dos 60
+                dias. Escondê-lo derrotaria o motivo de expira_em ser coluna. */}
+            <span>
+              expira em {formatarDataCurta(dataDoTimestamp(transcricao.expira_em))}
+            </span>
+          </div>
+
+          <div
+            className="text-text-body overflow-y-auto text-sm leading-relaxed"
+            style={{ maxHeight: expandido ? "none" : "16rem" }}
+          >
+            {transcricao.texto}
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setExpandido((v) => !v)}
+              className="border-border-default text-text rounded-xl border px-4 py-2 text-xs font-extrabold transition-colors hover:bg-[var(--surface-2)]"
+            >
+              {expandido ? "Recolher" : "Expandir"}
+            </button>
+            <button
+              type="button"
+              onClick={copiar}
+              className="border-border-default text-text rounded-xl border px-4 py-2 text-xs font-extrabold transition-colors hover:bg-[var(--surface-2)]"
+            >
+              {copiado ? "Copiado!" : "Copiar texto"}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

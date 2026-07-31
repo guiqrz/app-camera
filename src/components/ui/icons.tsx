@@ -514,3 +514,45 @@ export function IconMicrofoneCortado({ size = 18, className }: IconProps) {
     </svg>
   );
 }
+
+/** Documento com linhas de texto — a transcricao da aula. */
+export function IconTranscricao({ size = 18, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <path
+        d="M6 3h8l4 4v14H6V3Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path d="M14 3v4h4" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+      <path
+        d="M9 12h6M9 16h6"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+/** Duas setas em ciclo — tentar de novo. */
+export function IconRecomecar({ size = 18, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <path
+        d="M20 12a8 8 0 1 1-2.3-5.6"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+      <path
+        d="M20 4v4h-4"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
