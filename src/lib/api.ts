@@ -33,6 +33,7 @@ import type {
   NovaMateria,
   NovaTurma,
   RelatorioDaSessao,
+  Transcricao,
   Turma,
   VisaoAdmin,
 } from "./types";
@@ -61,7 +62,7 @@ export class ApiError extends Error {
   }
 }
 
-function lerConfiguracao(): { baseUrl: string; apiKey: string } {
+export function lerConfiguracao(): { baseUrl: string; apiKey: string } {
   const baseUrl = process.env.CUPCAM_API_URL;
   const apiKey = process.env.CUPCAM_API_KEY;
 
@@ -154,9 +155,16 @@ export function listarTurmas(): Promise<Turma[]> {
   return requisitar<Turma[]>("/turmas", { revalidate: 300 });
 }
 
-/** Tela "Minhas Aulas". */
+/**
+ * Tela "Minhas Aulas".
+ *
+ * Sem cache: a lista muda a cada aula dada, e uma aula EM ANDAMENTO precisa
+ * parar de ser mostrada como ao vivo assim que encerra. Com os 30s do padrao o
+ * card ficava afirmando "em andamento" depois do fim da aula (visto em
+ * 31/07/2026).
+ */
 export function buscarAulasDaTurma(turmaId: number): Promise<AulasDaTurma> {
-  return requisitar<AulasDaTurma>(`/turmas/${turmaId}/aulas`);
+  return requisitar<AulasDaTurma>(`/turmas/${turmaId}/aulas`, { revalidate: 0 });
 }
 
 /** Tela "Relatorio" — visao completa de uma aula. */
@@ -348,14 +356,20 @@ export function lerEstadoCamera(): Promise<EstadoCamera> {
  *
  * modo opcional: modo inicial da captura. Sem ele, o backend sobe no padrao
  * (Aula) — inclusive quando a camera sobe sozinha por horario.
+ *
+ * audio opcional: liga o microfone junto, se o professor escolheu isso na
+ * tela parada de Camera. Sem ele, o backend decide sozinho via
+ * CUPCAM_AUDIO_ATIVO do .env — o mesmo caminho que a camera automatica usa.
  */
 export function ligarCamera(
   turmaId?: number,
   modo?: ModoCamera,
+  audio?: boolean,
 ): Promise<{ iniciando: boolean }> {
-  const corpo: { turma_id?: number; modo?: ModoCamera } = {};
+  const corpo: { turma_id?: number; modo?: ModoCamera; audio?: boolean } = {};
   if (turmaId != null) corpo.turma_id = turmaId;
   if (modo != null) corpo.modo = modo;
+  if (audio != null) corpo.audio = audio;
   return requisitar<{ iniciando: boolean }>("/camera/ligar", {
     method: "POST",
     // Sem nada escolhido, manda POST sem corpo: e' o caminho automatico.
@@ -397,5 +411,68 @@ export function trocarModoCamera(modo: ModoCamera): Promise<{
   return requisitar<{ modo: ModoCamera; aplicando: boolean }>("/camera/modo", {
     method: "POST",
     body: { modo },
+  });
+}
+
+/**
+ * Se o microfone esta ligado no comando pendente.
+ *
+ * Atencao: isto e' o COMANDO, nao a gravacao. Quem confirma que a captura
+ * comecou de fato e' `audio_ativo` no /camera/estado — e' esse que a tela usa
+ * pro aviso "gravando", justamente pra nunca dizer que grava antes de gravar.
+ */
+export function lerAudioCamera(): Promise<{ ativo: boolean }> {
+  return requisitar<{ ativo: boolean }>("/camera/audio", { revalidate: 0 });
+}
+
+/**
+ * Liga/desliga a gravacao de audio da aula.
+ *
+ * Como a troca de modo, o backend le o comando uma vez por ciclo — entao a
+ * resposta significa "comando gravado", e a confirmacao vem pelo polling.
+ */
+export function trocarAudioCamera(ativo: boolean): Promise<{ ativo: boolean }> {
+  return requisitar<{ ativo: boolean }>("/camera/audio", {
+    method: "POST",
+    body: { ativo },
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* Transcricao                                                         */
+/* ------------------------------------------------------------------ */
+
+/** Transcricao da aula. Lanca ApiError 404 quando a aula nao tem audio. */
+export function buscarTranscricao(sessaoId: number): Promise<Transcricao> {
+  return requisitar<Transcricao>(`/sessoes/${sessaoId}/transcricao`, { revalidate: 0 });
+}
+
+/**
+ * Pede uma nova tentativa de transcricao.
+ *
+ * Lanca ApiError 404 (sem audio guardado) ou 409 (ja esta transcrevendo).
+ */
+export function reprocessarTranscricao(
+  sessaoId: number,
+): Promise<{ reprocessando: boolean }> {
+  return requisitar<{ reprocessando: boolean }>(
+    `/sessoes/${sessaoId}/transcricao/reprocessar`,
+    { method: "POST" },
+  );
+}
+
+/**
+ * Apaga o audio da aula a pedido do professor. Devolve quantos arquivos sairam.
+ *
+ * Apaga TODOS os trechos da sessao (o microfone pode ter sido religado no meio
+ * da aula), e nunca toca na transcricao — o texto continua la'.
+ *
+ * Lanca ApiError 404 quando nao ha audio guardado.
+ */
+export function excluirAudioDaSessao(
+  sessaoId: number,
+): Promise<{ apagados: number }> {
+  return requisitar<{ apagados: number }>(`/sessoes/${sessaoId}/audio`, {
+    method: "DELETE",
   });
 }

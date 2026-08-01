@@ -163,6 +163,21 @@ export function IconSetaDireita({ size = 14, className }: IconProps) {
   );
 }
 
+/** Espelho exato de IconSetaDireita — mesmo traco, mesma bitola. */
+export function IconSetaEsquerda({ size = 14, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <path
+        d="M19 12H6M11 6l-6 6 6 6"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function IconSino({ size = 18, className }: IconProps) {
   return (
     <svg {...base(size, className)}>
@@ -472,6 +487,87 @@ export function IconBalanca({ size = 18, className }: IconProps) {
       <path d="M12 4v16M7 20h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
       <path d="M5 7h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
       <path d="M5 7 2.5 13h5L5 7ZM19 7l-2.5 6h5L19 7Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/** Microfone — captura de audio da aula ligada. */
+export function IconMicrofone({ size = 18, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <rect x="9" y="2.5" width="6" height="11" rx="3" stroke="currentColor" strokeWidth="1.8" />
+      <path
+        d="M5.5 11a6.5 6.5 0 0 0 13 0"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+      <path d="M12 17.5v4M9 21.5h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/**
+ * Microfone cortado — captura desligada.
+ *
+ * O corte diagonal e' o que distingue os dois estados sem depender de cor
+ * (WCAG 1.4.1): quem nao percebe a diferenca entre vermelho e cinza ainda ve a
+ * barra atravessando o desenho.
+ */
+export function IconMicrofoneCortado({ size = 18, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <rect x="9" y="2.5" width="6" height="11" rx="3" stroke="currentColor" strokeWidth="1.8" />
+      <path
+        d="M5.5 11a6.5 6.5 0 0 0 13 0"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+      <path d="M12 17.5v4M9 21.5h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M3.5 3.5l17 17" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** Documento com linhas de texto — a transcricao da aula. */
+export function IconTranscricao({ size = 18, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <path
+        d="M6 3h8l4 4v14H6V3Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path d="M14 3v4h4" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+      <path
+        d="M9 12h6M9 16h6"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+/** Duas setas em ciclo — tentar de novo. */
+export function IconRecomecar({ size = 18, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <path
+        d="M20 12a8 8 0 1 1-2.3-5.6"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+      <path
+        d="M20 4v4h-4"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }

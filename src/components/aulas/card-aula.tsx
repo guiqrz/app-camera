@@ -29,20 +29,51 @@ type CardAulaProps = {
  * Uma aula sem leitura de engajamento mostra "Sem dados", nunca "0%": zero
  * significaria turma inteiramente desatenta, que e' outra afirmacao.
  *
- * Horario e materia vem da aula da grade e sao nulos quando a sessao nao tem
- * aula associada (camera ligada na mao, ou aula excluida depois). Nesse caso a
- * legenda encolhe pra dia + data — nada de placeholder no lugar do horario.
+ * A legenda mostra o horario REAL da captura, que sempre existe. O agendado da
+ * grade entra ao lado apenas quando destoa dele ("previsto 08:00 - 09:40"):
+ * numa aula pontual os dois seriam identicos, e repetir viraria ruido em todo
+ * card. Materia vem da aula da grade e some quando a sessao nao tem aula
+ * associada (camera ligada na mao, ou aula excluida depois) — nada de
+ * placeholder no lugar dela.
  */
 export function CardAula({ aula, turmaId, nomeTurma }: CardAulaProps) {
   const aparencia = aparenciaDoStatus(aula.status);
   const temDados = aula.engajamento_pct !== null;
 
-  // Montada por partes porque as duas ultimas podem faltar; `filter(Boolean)`
-  // tira o separador junto com o pedaco ausente.
+  // Horario REAL da captura.
+  //
+  // O inicio deveria sempre existir (a sessao so' nasce quando a camera liga),
+  // mas a interpolacao direta imprimia a string "undefined" quando o campo
+  // faltava — foi o que apareceu na tela em 31/07/2026, servido pelo cache do
+  // Next populado antes de o backend passar a mandar o campo. Uma legenda que
+  // diz "undefined" e' pior que uma que assume nao saber, entao aqui a ausencia
+  // vira "indefinido" explicito.
+  //
+  // "em andamento" vem de `em_andamento` da API, nao da ausencia do fim: sao
+  // perguntas diferentes, e responder uma com a outra fez o card chamar de ao
+  // vivo uma aula que ja tinha encerrado.
+  const horarioReal = !aula.hora_real_inicio
+    ? "horário indefinido"
+    : aula.em_andamento
+      ? `${aula.hora_real_inicio} · em andamento`
+      : (formatarIntervalo(aula.hora_real_inicio, aula.hora_real_fim) ??
+        `${aula.hora_real_inicio} · fim indefinido`);
+
+  // Agendado da grade, mostrado SO' quando destoa do real: repetir "08:00 - 09:40
+  // (grade)" ao lado de "08:00 - 09:40" seria ruido em toda aula pontual. Quando
+  // difere, e' informacao — a aula comecou atrasada ou terminou cedo. Sessao sem
+  // aula vinculada (camera na mao) nao tem agendado nenhum.
+  const horarioAgendado = formatarIntervalo(aula.hora_inicio, aula.hora_fim);
+  const agendadoDifere =
+    horarioAgendado !== null && horarioAgendado !== horarioReal;
+
+  // Montada por partes porque as ultimas podem faltar; `filter(Boolean)` tira o
+  // separador junto com o pedaco ausente.
   const legenda = [
     formatarDiaSemana(aula.dia_semana),
     formatarDataCurta(aula.data),
-    formatarIntervalo(aula.hora_inicio, aula.hora_fim),
+    horarioReal,
+    agendadoDifere ? `previsto ${horarioAgendado}` : null,
     aula.materia,
   ]
     .filter(Boolean)

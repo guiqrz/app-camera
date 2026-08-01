@@ -34,9 +34,23 @@ export type AulaCard = {
   data: string;
   /** Nome do dia em portugues, ja pronto ("sexta"). Derivado do timestamp da sessao, nunca nulo. */
   dia_semana: string;
-  /** Nulo quando a sessao nao tem aula associada (camera ligada na mao, ou aula excluida depois). */
+  /**
+   * Horario AGENDADO, da aula da grade. "HH:MM".
+   *
+   * Nulo quando a sessao nao tem aula associada (camera ligada na mao, ou aula
+   * excluida depois) — nesse caso so' existe o horario real abaixo.
+   */
   hora_inicio: string | null;
   hora_fim: string | null;
+  /**
+   * Horario REAL da captura, de sessoes.iniciada_em/encerrada_em. "HH:MM".
+   *
+   * O inicio sempre existe: a sessao so' entra no banco quando a captura comeca.
+   * O fim e' nulo enquanto a aula esta em andamento — nunca "agora", porque isso
+   * faria o card afirmar que ela ja acabou.
+   */
+  hora_real_inicio: string;
+  hora_real_fim: string | null;
   /** Nulo pelo mesmo motivo de hora_inicio/hora_fim. */
   materia: string | null;
   /** 0-100. Nulo enquanto a aula nao tem leitura de engajamento. */
@@ -355,4 +369,54 @@ export type EstadoCamera =
        * verdade nao ha medicao nenhuma acontecendo.
        */
       mede_atencao?: boolean;
+      /**
+       * true = a camera esta GRAVANDO audio da aula neste instante.
+       *
+       * Vem da captura, nao do comando: e' a confirmacao de que a gravacao
+       * comecou de fato, e nao apenas que alguem clicou no botao. E' o que
+       * autoriza a tela a mostrar a faixa "Gravando audio" — sem aviso visivel
+       * seria gravacao silenciosa de uma sala com menores.
+       *
+       * Opcional porque um estado escrito por um backend anterior a esta versao
+       * nao traz o campo; ausente e' tratado como false (nao gravando).
+       */
+      audio_ativo?: boolean;
     };
+
+/* ------------------------------------------------------------------ */
+/* Transcricao                                                         */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Em que pe esta a transcricao de uma aula.
+ *
+ * A distincao existe porque "sem transcricao" escondia tres casos diferentes:
+ * a aula nao gravou audio, esta transcrevendo agora, ou falhou. O professor
+ * precisa saber qual — so' o terceiro pede acao dele.
+ */
+export type EstadoTranscricao = "transcrevendo" | "pronta" | "falhou";
+
+export type TrechoTranscricao = {
+  segundo_inicio: number;
+  segundo_fim: number;
+  texto: string;
+};
+
+export type Transcricao = {
+  sessao_id: number;
+  turma: string;
+  /** null quando a sessao nao tem aula agendada vinculada. */
+  materia: string | null;
+  data: string;
+  texto: string;
+  modelo: string;
+  duracao_seg: number | null;
+  gerada_em: string;
+  /** Quando a transcricao sera apagada. Visivel na tela de proposito: e' o
+   *  contrato de privacidade dos 60 dias, nao um detalhe interno. */
+  expira_em: string;
+  estado: EstadoTranscricao;
+  /** Motivo da falha, ou null. */
+  erro: string | null;
+  trechos: TrechoTranscricao[];
+};

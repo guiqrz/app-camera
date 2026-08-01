@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { ControleMicrofone } from "@/components/camera/controle-microfone";
 import { SeletorModo } from "@/components/camera/seletor-modo";
 import {
   IconCamera,
@@ -12,6 +13,7 @@ import {
 } from "@/components/ui/icons";
 import { StatCard } from "@/components/ui/stat-card";
 import { MODOS_CAMERA_FALLBACK, MODO_PADRAO } from "@/lib/modos-camera";
+import { lerSempreGravar } from "@/lib/preferencias-audio";
 import type { EstadoCamera, ModoCamera, ModoCameraInfo, Turma } from "@/lib/types";
 
 const INTERVALO_MS = 3000;
@@ -74,6 +76,12 @@ export function VistaCamera({ turmas }: VistaCameraProps) {
   // Ultimo modo clicado com a camera rodando. Vira `modoPendente` (derivado)
   // ate' o polling confirmar que a camera realmente trocou.
   const [modoPedido, setModoPedido] = useState<ModoCamera | null>(null);
+  // Ultimo estado de microfone pedido, ate' o polling confirmar. Mesma logica
+  // do modo: o que a tela mostra como "gravando" vem SEMPRE da captura.
+  const [audioPedido, setAudioPedido] = useState<boolean | null>(null);
+  // Escolha do microfone na tela PARADA (antes de ligar). Comeca em false e
+  // e' substituida pela preferencia "sempre gravar" assim que ela for lida.
+  const [audioInicial, setAudioInicial] = useState(false);
 
   // Evita "piscar" de erro de rede num polling que ainda nao rodou nenhuma vez.
   const primeiraLeituraFeita = useRef(false);
@@ -134,6 +142,12 @@ export function VistaCamera({ turmas }: VistaCameraProps) {
     };
   }, []);
 
+  // localStorage e' sistema externo: mesmo setTimeout(0) dos outros efeitos.
+  useEffect(() => {
+    const id = setTimeout(() => setAudioInicial(lerSempreGravar()), 0);
+    return () => clearTimeout(id);
+  }, []);
+
   // Assim que o polling confirma rodando:true, sai do estado "iniciando" e
   // limpa qualquer aviso de acao que tenha piscado durante o boot.
   useEffect(() => {
@@ -157,15 +171,23 @@ export function VistaCamera({ turmas }: VistaCameraProps) {
   // causaria); `modoPedido` continua sendo estado porque so' o clique o define.
   const modoPendente = modoPedido !== null && modoPedido !== modoAtivo ? modoPedido : null;
 
+  // Gravando de FATO, segundo a captura — nunca o que foi clicado. Backend
+  // anterior a esta versao nao manda o campo, e ausente significa nao gravando:
+  // na duvida, a tela nao pode dizer que esta gravando audio de uma sala.
+  const audioGravando = (estado?.rodando && estado.audio_ativo) === true;
+  const audioPendente =
+    audioPedido !== null && audioPedido !== audioGravando ? audioPedido : null;
+
   const ligar = useCallback(async () => {
     setLigando(true);
     setAvisoAcao(null);
     try {
       // Turma e modo escolhidos a mao vao no corpo. Sem turma e no modo padrao,
       // manda POST sem corpo nenhum: e' o caminho automatico de producao.
-      const escolhas: { turma_id?: number; modo?: ModoCamera } = {};
+      const escolhas: { turma_id?: number; modo?: ModoCamera; audio?: boolean } = {};
       if (turmaEscolhida) escolhas.turma_id = Number(turmaEscolhida);
       if (modoInicial !== MODO_PADRAO) escolhas.modo = modoInicial;
+      if (audioInicial) escolhas.audio = true;
       const corpo =
         Object.keys(escolhas).length > 0
           ? {
@@ -189,7 +211,7 @@ export function VistaCamera({ turmas }: VistaCameraProps) {
       setAvisoAcao("Não foi possível ligar a câmera. Verifique a conexão com o notebook da sala.");
       setLigando(false);
     }
-  }, [buscar, turmaEscolhida, modoInicial]);
+  }, [buscar, turmaEscolhida, modoInicial, audioInicial]);
 
   const trocarModo = useCallback(
     async (modo: ModoCamera) => {
@@ -219,6 +241,34 @@ export function VistaCamera({ turmas }: VistaCameraProps) {
       }
     },
     [buscar, modoAtivo],
+  );
+
+  const alternarAudio = useCallback(
+    async (ativo: boolean) => {
+      // Otimista so' no rotulo "Aplicando…": a faixa "Gravando" continua presa
+      // ao que a captura confirmou. Mentir sobre gravacao de audio numa sala com
+      // menores seria pior que a espera de alguns segundos.
+      setAudioPedido(ativo);
+      setAvisoAcao(null);
+      try {
+        const r = await fetch("/api/camera/audio", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ativo }),
+        });
+        if (!r.ok) {
+          const dados = (await r.json().catch(() => null)) as { erro?: string } | null;
+          setAvisoAcao(dados?.erro ?? "Não foi possível mudar o microfone.");
+          setAudioPedido(null);
+          return;
+        }
+        buscar();
+      } catch {
+        setAvisoAcao("Não foi possível mudar o microfone. Verifique a conexão com o notebook da sala.");
+        setAudioPedido(null);
+      }
+    },
+    [buscar],
   );
 
   const desligar = useCallback(async () => {
@@ -284,6 +334,9 @@ export function VistaCamera({ turmas }: VistaCameraProps) {
           modoAtivo={modoAtivo}
           modoPendente={modoPendente}
           aoTrocarModo={trocarModo}
+          audioGravando={audioGravando}
+          audioPendente={audioPendente}
+          aoAlternarAudio={alternarAudio}
         />
       ) : (
         <VistaParada
@@ -297,6 +350,8 @@ export function VistaCamera({ turmas }: VistaCameraProps) {
           modos={modosDisponiveis}
           modoInicial={modoInicial}
           aoEscolherModo={setModoInicial}
+          audioInicial={audioInicial}
+          aoEscolherAudio={setAudioInicial}
         />
       )}
     </div>
@@ -314,6 +369,8 @@ type VistaParadaProps = {
   modos: ModoCameraInfo[];
   modoInicial: ModoCamera;
   aoEscolherModo: (modo: ModoCamera) => void;
+  audioInicial: boolean;
+  aoEscolherAudio: (v: boolean) => void;
 };
 
 /** Estados 1 (parada) e 2 (iniciando) — nenhuma captura rodando ainda. */
@@ -328,6 +385,8 @@ function VistaParada({
   modos,
   modoInicial,
   aoEscolherModo,
+  audioInicial,
+  aoEscolherAudio,
 }: VistaParadaProps) {
   return (
     <div
@@ -411,6 +470,18 @@ function VistaParada({
             />
           </div>
 
+          {/* Microfone antes de ligar: a escolha vale pra esta captura, e o
+              valor inicial vem das Configuracoes. Aqui o controle NAO fala com
+              a API — so' guarda a escolha, aplicada no Ligar. */}
+          <div className="w-full">
+            <ControleMicrofone
+              gravando={audioInicial}
+              desabilitado={ligando}
+              aindaNaoIniciou
+              aoAlternar={aoEscolherAudio}
+            />
+          </div>
+
           <button
             type="button"
             onClick={aoLigar}
@@ -445,6 +516,10 @@ type VistaRodandoProps = {
   modoAtivo: ModoCamera;
   modoPendente: ModoCamera | null;
   aoTrocarModo: (modo: ModoCamera) => void;
+  /** Gravando de fato, segundo a captura (nao o que foi clicado). */
+  audioGravando: boolean;
+  audioPendente: boolean | null;
+  aoAlternarAudio: (ativo: boolean) => void;
 };
 
 /** Estados 3 (rodando com aula) e 4 (rodando sem aula) — captura ativa. */
@@ -457,6 +532,9 @@ function VistaRodando({
   modoAtivo,
   modoPendente,
   aoTrocarModo,
+  audioGravando,
+  audioPendente,
+  aoAlternarAudio,
 }: VistaRodandoProps) {
   // "Tem aula" exige turma E sessao. Usamos o proprio nome da turma como prova:
   // num render transitorio logo apos ligar, o estado pode chegar com sessao_id
@@ -534,6 +612,15 @@ function VistaRodando({
           aoEscolher={aoTrocarModo}
         />
       </div>
+
+      {/* Microfone: bloco proprio, logo abaixo do modo. Fica junto dos controles
+          da captura (e nao na grade de numeros) porque e' uma acao do professor,
+          nao uma metrica da turma. */}
+      <ControleMicrofone
+        gravando={audioGravando}
+        pendente={audioPendente}
+        aoAlternar={aoAlternarAudio}
+      />
 
       {aviso && (
         <p className="text-text-muted -mt-2 text-xs font-semibold" role="status">
