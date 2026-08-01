@@ -163,6 +163,21 @@ export function IconSetaDireita({ size = 14, className }: IconProps) {
   );
 }
 
+/** Espelho exato de IconSetaDireita — mesmo traco, mesma bitola. */
+export function IconSetaEsquerda({ size = 14, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <path
+        d="M19 12H6M11 6l-6 6 6 6"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function IconSino({ size = 18, className }: IconProps) {
   return (
     <svg {...base(size, className)}>
