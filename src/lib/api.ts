@@ -155,9 +155,16 @@ export function listarTurmas(): Promise<Turma[]> {
   return requisitar<Turma[]>("/turmas", { revalidate: 300 });
 }
 
-/** Tela "Minhas Aulas". */
+/**
+ * Tela "Minhas Aulas".
+ *
+ * Sem cache: a lista muda a cada aula dada, e uma aula EM ANDAMENTO precisa
+ * parar de ser mostrada como ao vivo assim que encerra. Com os 30s do padrao o
+ * card ficava afirmando "em andamento" depois do fim da aula (visto em
+ * 31/07/2026).
+ */
 export function buscarAulasDaTurma(turmaId: number): Promise<AulasDaTurma> {
-  return requisitar<AulasDaTurma>(`/turmas/${turmaId}/aulas`);
+  return requisitar<AulasDaTurma>(`/turmas/${turmaId}/aulas`, { revalidate: 0 });
 }
 
 /** Tela "Relatorio" — visao completa de uma aula. */

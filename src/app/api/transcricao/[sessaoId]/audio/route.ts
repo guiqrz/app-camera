@@ -59,10 +59,11 @@ export async function HEAD(
       headers: { "X-API-Key": apiKey, Range: "bytes=0-0" },
       cache: "no-store",
     });
-    // Cancela o corpo explicitamente: com o Range ele e' 1 byte (ou o WAV
-    // inteiro, se o servidor ignorar o cabecalho), e deixar o stream aberto
-    // seguraria a conexao a toa.
-    await resposta.body?.cancel();
+    // Drena o corpo com `arrayBuffer()`, NAO com `body.cancel()`: cancelar o
+    // stream aqui travava a requisicao inteira, e o HEAD nunca respondia (visto
+    // em 31/07/2026 — o player simplesmente nao aparecia). Com o Range o corpo
+    // e' 1 byte, entao le-lo nao custa nada.
+    await resposta.arrayBuffer().catch(() => undefined);
     // Mesma regra do GET: status cru nunca sobe pro navegador, senao um 401 da
     // chave do SERVIDOR viraria "voce nao esta autenticado" pro professor.
     // 206 (Partial Content) e' o sucesso esperado do Range; 200 tambem serve,

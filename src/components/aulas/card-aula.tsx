@@ -40,12 +40,24 @@ export function CardAula({ aula, turmaId, nomeTurma }: CardAulaProps) {
   const aparencia = aparenciaDoStatus(aula.status);
   const temDados = aula.engajamento_pct !== null;
 
-  // Horario REAL da captura. Sempre existe (a sessao so' nasce quando a camera
-  // liga); sem fim, a aula ainda esta rodando — "14:02 · em andamento" em vez de
-  // um intervalo que afirmaria um termino que nao houve.
-  const horarioReal = aula.hora_real_fim
-    ? formatarIntervalo(aula.hora_real_inicio, aula.hora_real_fim)
-    : `${aula.hora_real_inicio} · em andamento`;
+  // Horario REAL da captura.
+  //
+  // O inicio deveria sempre existir (a sessao so' nasce quando a camera liga),
+  // mas a interpolacao direta imprimia a string "undefined" quando o campo
+  // faltava — foi o que apareceu na tela em 31/07/2026, servido pelo cache do
+  // Next populado antes de o backend passar a mandar o campo. Uma legenda que
+  // diz "undefined" e' pior que uma que assume nao saber, entao aqui a ausencia
+  // vira "indefinido" explicito.
+  //
+  // "em andamento" vem de `em_andamento` da API, nao da ausencia do fim: sao
+  // perguntas diferentes, e responder uma com a outra fez o card chamar de ao
+  // vivo uma aula que ja tinha encerrado.
+  const horarioReal = !aula.hora_real_inicio
+    ? "horário indefinido"
+    : aula.em_andamento
+      ? `${aula.hora_real_inicio} · em andamento`
+      : (formatarIntervalo(aula.hora_real_inicio, aula.hora_real_fim) ??
+        `${aula.hora_real_inicio} · fim indefinido`);
 
   // Agendado da grade, mostrado SO' quando destoa do real: repetir "08:00 - 09:40
   // (grade)" ao lado de "08:00 - 09:40" seria ruido em toda aula pontual. Quando
