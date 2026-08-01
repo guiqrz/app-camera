@@ -34,9 +34,23 @@ export type AulaCard = {
   data: string;
   /** Nome do dia em portugues, ja pronto ("sexta"). Derivado do timestamp da sessao, nunca nulo. */
   dia_semana: string;
-  /** Nulo quando a sessao nao tem aula associada (camera ligada na mao, ou aula excluida depois). */
+  /**
+   * Horario AGENDADO, da aula da grade. "HH:MM".
+   *
+   * Nulo quando a sessao nao tem aula associada (camera ligada na mao, ou aula
+   * excluida depois) — nesse caso so' existe o horario real abaixo.
+   */
   hora_inicio: string | null;
   hora_fim: string | null;
+  /**
+   * Horario REAL da captura, de sessoes.iniciada_em/encerrada_em. "HH:MM".
+   *
+   * O inicio sempre existe: a sessao so' entra no banco quando a captura comeca.
+   * O fim e' nulo enquanto a aula esta em andamento — nunca "agora", porque isso
+   * faria o card afirmar que ela ja acabou.
+   */
+  hora_real_inicio: string;
+  hora_real_fim: string | null;
   /** Nulo pelo mesmo motivo de hora_inicio/hora_fim. */
   materia: string | null;
   /** 0-100. Nulo enquanto a aula nao tem leitura de engajamento. */
