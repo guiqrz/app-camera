@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { IconRecomecar, IconTranscricao } from "@/components/ui/icons";
+import { IconLixeira, IconRecomecar, IconTranscricao } from "@/components/ui/icons";
 import { dataDoTimestamp, formatarDataExtensa } from "@/lib/format";
 import type { Transcricao } from "@/lib/types";
 
@@ -32,6 +32,8 @@ export function SecaoTranscricao({ sessaoId }: SecaoTranscricaoProps) {
   // TEMPORARIO (sai com a retencao de audio): se o WAV ainda esta no disco.
   // Comeca false pra nunca piscar um player que a resposta vai desmentir.
   const [audioDisponivel, setAudioDisponivel] = useState(false);
+  const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
+  const [excluindo, setExcluindo] = useState(false);
 
   // Evita "piscar" aviso de rede antes da primeira leitura ter rodado — mesma
   // guarda de vista-camera.tsx.
@@ -134,6 +136,30 @@ export function SecaoTranscricao({ sessaoId }: SecaoTranscricaoProps) {
     }
   }, [sessaoId, buscar]);
 
+  // TEMPORARIO (sai com a retencao de audio). Esconde o player no sucesso em
+  // vez de reconsultar: o backend acabou de confirmar que apagou, e uma segunda
+  // requisicao so' pra ouvir o mesmo "não existe mais" seria desperdicio.
+  const excluirAudio = useCallback(async () => {
+    setExcluindo(true);
+    setAviso(null);
+    try {
+      const r = await fetch(`/api/transcricao/${sessaoId}/audio`, {
+        method: "DELETE",
+      });
+      if (!r.ok) {
+        const dados = (await r.json().catch(() => null)) as { erro?: string } | null;
+        setAviso(dados?.erro ?? "Não foi possível excluir o áudio.");
+        return;
+      }
+      setAudioDisponivel(false);
+      setConfirmandoExclusao(false);
+    } catch {
+      setAviso("Não foi possível excluir o áudio. Verifique a conexão.");
+    } finally {
+      setExcluindo(false);
+    }
+  }, [sessaoId]);
+
   const copiar = useCallback(async () => {
     if (!transcricao) return;
     try {
@@ -235,10 +261,20 @@ export function SecaoTranscricao({ sessaoId }: SecaoTranscricaoProps) {
             </span>
           </div>
 
-          {/* Player da aula transcrita. TEMPORARIO: existe enquanto o backend
-              guarda o WAV por alguns dias (RETENCAO_AUDIO_DIAS) pro professor
-              conferir a transcricao contra a fala. Sai junto com a retencao na
-              versao definitiva, quando o audio voltar a ser apagado assim que a
+          <div
+            className="text-text-body overflow-y-auto text-sm leading-relaxed"
+            style={{ maxHeight: expandido ? "none" : "16rem" }}
+          >
+            {transcricao.texto}
+          </div>
+
+          {/* Audio da aula, ABAIXO do texto: a transcricao e' o conteudo
+              principal, e o player e' o apoio pra conferir um trecho duvidoso —
+              vem depois de ler, nao antes.
+
+              TEMPORARIO: existe enquanto o backend guarda o WAV por alguns dias
+              (RETENCAO_AUDIO_DIAS). Sai junto com a retencao na versao
+              definitiva, quando o audio voltar a ser apagado assim que a
               transcricao sai.
 
               So' renderiza depois que uma requisicao confirma que o audio esta
@@ -249,31 +285,69 @@ export function SecaoTranscricao({ sessaoId }: SecaoTranscricaoProps) {
               `preload="none"` porque o WAV tem dezenas de MB e a maioria das
               visitas ao relatorio nao vai ouvir nada. */}
           {audioDisponivel && (
-            <div className="flex flex-col gap-1.5">
+            <div className="border-border-default flex flex-col gap-2.5 rounded-xl border p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-text-muted text-xs font-bold tracking-wide uppercase">
+                  Áudio da aula
+                </span>
+                {/* Confirmacao INLINE, nao window.confirm: o dialogo nativo
+                    trava o navegador inteiro e nao combina com o resto da tela.
+                    Dois passos porque a exclusao e' irreversivel. */}
+                {confirmandoExclusao ? (
+                  <span className="flex flex-wrap items-center gap-2">
+                    <span className="text-text text-xs font-bold">
+                      Excluir o áudio?
+                    </span>
+                    <button
+                      type="button"
+                      onClick={excluirAudio}
+                      disabled={excluindo}
+                      className="rounded-lg px-3 py-1.5 text-xs font-extrabold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
+                      style={{ background: "var(--danger)" }}
+                    >
+                      {excluindo ? "Excluindo…" : "Sim, excluir"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmandoExclusao(false)}
+                      disabled={excluindo}
+                      className="border-border-default text-text hover:bg-surface-2 rounded-lg border px-3 py-1.5 text-xs font-extrabold transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      Cancelar
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmandoExclusao(true)}
+                    className="border-border-default hover:bg-surface-2 flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-extrabold transition-colors"
+                    style={{ color: "var(--danger-fg)" }}
+                  >
+                    <IconLixeira size={13} />
+                    Excluir áudio
+                  </button>
+                )}
+              </div>
+
               <audio
                 controls
                 preload="none"
                 src={`/api/transcricao/${sessaoId}/audio`}
-                className="w-full max-w-md"
+                className="w-full"
               >
                 Seu navegador não reproduz áudio.{" "}
                 <a href={`/api/transcricao/${sessaoId}/audio`}>
                   Baixar o áudio da aula
                 </a>
               </audio>
-              <p className="text-text-muted text-xs">
-                O áudio fica disponível por alguns dias para você conferir a
-                transcrição. Depois disso, só o texto permanece.
+
+              <p className="text-text-muted text-xs leading-relaxed">
+                O áudio fica guardado por alguns dias para você conferir a
+                transcrição, e some sozinho depois disso. Excluir agora não apaga
+                o texto acima.
               </p>
             </div>
           )}
-
-          <div
-            className="text-text-body overflow-y-auto text-sm leading-relaxed"
-            style={{ maxHeight: expandido ? "none" : "16rem" }}
-          >
-            {transcricao.texto}
-          </div>
 
           <div className="flex flex-wrap gap-2">
             <button

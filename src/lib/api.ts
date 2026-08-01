@@ -453,3 +453,19 @@ export function reprocessarTranscricao(
     { method: "POST" },
   );
 }
+
+/**
+ * Apaga o audio da aula a pedido do professor. Devolve quantos arquivos sairam.
+ *
+ * Apaga TODOS os trechos da sessao (o microfone pode ter sido religado no meio
+ * da aula), e nunca toca na transcricao — o texto continua la'.
+ *
+ * Lanca ApiError 404 quando nao ha audio guardado.
+ */
+export function excluirAudioDaSessao(
+  sessaoId: number,
+): Promise<{ apagados: number }> {
+  return requisitar<{ apagados: number }>(`/sessoes/${sessaoId}/audio`, {
+    method: "DELETE",
+  });
+}

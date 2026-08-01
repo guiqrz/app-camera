@@ -1,12 +1,20 @@
+import { NextResponse } from "next/server";
+
+import { statusSeguro } from "@/app/api/admin/_lib/status-seguro";
+import { ApiError, excluirAudioDaSessao } from "@/lib/api";
+
 /**
- * Ponte do audio da aula, pro player da tela.
+ * Ponte do audio da aula: tocar (GET), checar existencia (HEAD), excluir (DELETE).
  *
- * Diferente das outras rotas, esta NAO usa lib/api.ts: o corpo e' binario, e
- * `requisitar` devolve JSON. O fetch aqui repassa o stream direto, sem carregar
- * dezenas de MB na memoria do servidor Next. Mesmo motivo do irmao binario em
- * admin/alunos/[ra]/foto/route.ts: le as variaveis de ambiente na mao, sem
+ * GET e HEAD NAO usam lib/api.ts: o corpo e' binario, e `requisitar` devolve
+ * JSON. O fetch neles repassa o stream direto, sem carregar dezenas de MB na
+ * memoria do servidor Next. Mesmo motivo do irmao binario em
+ * admin/alunos/[ra]/foto/route.ts: leem as variaveis de ambiente na mao, sem
  * passar por `lerConfiguracao` (que lanca `Error` cru, nao pensado pra um
  * handler devolver ao navegador).
+ *
+ * O DELETE devolve JSON, entao passa por lib/api.ts como as demais rotas de
+ * escrita, com o mesmo tratamento de erro.
  */
 
 export const dynamic = "force-dynamic";
@@ -113,4 +121,38 @@ export async function GET(
       "Cache-Control": "no-store",
     },
   });
+}
+
+/**
+ * Exclui o audio da aula a pedido do professor.
+ *
+ * Apaga TODOS os trechos da sessao no backend e NUNCA toca na transcricao — o
+ * texto continua na tela depois disso. E' irreversivel, e por isso a tela pede
+ * confirmacao antes de chamar aqui.
+ */
+export async function DELETE(
+  _requisicao: Request,
+  { params }: { params: Promise<{ sessaoId: string }> },
+) {
+  const { sessaoId } = await params;
+  const id = Number(sessaoId);
+  if (!Number.isInteger(id) || id <= 0) {
+    return NextResponse.json({ erro: "Sessão inválida." }, { status: 422 });
+  }
+
+  try {
+    return NextResponse.json(await excluirAudioDaSessao(id));
+  } catch (causa) {
+    if (causa instanceof ApiError) {
+      // Mesma regra do reprocessar: cada status ganha a mensagem do SEU caso.
+      // Dizer "não há áudio" quando a sala esta fora do ar mandaria o professor
+      // procurar problema no lugar errado.
+      const mensagem =
+        causa.status === 404
+          ? "Este áudio já não está mais guardado."
+          : "Não foi possível excluir o áudio. Verifique se o notebook da sala está ligado.";
+      return NextResponse.json({ erro: mensagem }, { status: statusSeguro(causa) });
+    }
+    throw causa;
+  }
 }
