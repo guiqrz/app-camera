@@ -3,15 +3,17 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { ChipAnexo } from "@/components/ia/chip-anexo";
+import {
+  BarraAnexos,
+  FORMATOS_ACEITOS,
+  validarArquivo,
+} from "@/components/ia/barra-anexos";
 import { CompositorPergunta } from "@/components/ia/compositor-pergunta";
 import { ListaConversas } from "@/components/ia/lista-conversas";
 import { MascoteCup } from "@/components/ia/mascote-cup";
 import { SeletorAula } from "@/components/ia/seletor-aula";
+import { guardarAnexosPendentes } from "@/lib/anexos-pendentes";
 import type { Anexo, Conversa } from "@/lib/types";
-
-/** O ramo de aula da uniao — o unico que a abertura sabe carregar. */
-type AnexoDeAula = Extract<Anexo, { tipo: "aula" }>;
 
 /** Quantas conversas aparecem antes de o professor pedir o resto. */
 const CONVERSAS_VISIVEIS = 3;
@@ -62,13 +64,10 @@ export function PainelConversas({
   const [erro, setErro] = useState<string | null>(null);
   const [mostrarTodas, setMostrarTodas] = useState(false);
 
-  // Aula anexada ANTES de a conversa existir. Vai como `sessao` no endereco,
-  // e quem de fato anexa e' a tela da conversa.
-  //
-  // So' aula, nunca arquivo: um `File` nao cabe numa URL, e guarda-lo aqui
-  // exigiria segura-lo ate' a proxima tela montar. Anexar arquivo continua
-  // dentro da conversa, onde o envio acontece.
-  const [aulaEscolhida, setAulaEscolhida] = useState<AnexoDeAula | null>(null);
+  // Anexos escolhidos ANTES de a conversa existir. Quem de fato os envia e' a
+  // tela da conversa: a aula viaja como `sessao` no endereco, e os arquivos
+  // pelo modulo de pendentes — `File` nao cabe numa URL.
+  const [anexos, setAnexos] = useState<Anexo[]>([]);
   const [seletorAberto, setSeletorAberto] = useState(false);
 
   // `useState` com funcao: a saudacao e' lida uma vez, na montagem. Recalcular
@@ -113,12 +112,19 @@ export function PainelConversas({
       }
 
       const conversa = (await r.json()) as Conversa;
+
+      // Os arquivos ficam em memoria ate' a proxima tela monta-los: o
+      // `router.push` navega no cliente, sem recarregar a pagina.
+      const arquivos = anexos.filter((anexo) => anexo.tipo === "arquivo");
+      if (arquivos.length > 0) guardarAnexosPendentes(arquivos);
+
       // A pergunta viaja no endereco pra tela da conversa envia-la sozinha —
       // sem isso o professor digitaria a mesma coisa duas vezes. `sessao` vai
       // junto quando ha aula anexada: a escolhida aqui, ou a que veio do
       // relatorio (`/ia?sessao=`).
       const parametros = new URLSearchParams({ pergunta: texto });
-      const sessao = aulaEscolhida?.sessaoId ?? sessaoAnexada;
+      const aula = anexos.find((anexo) => anexo.tipo === "aula");
+      const sessao = aula?.sessaoId ?? sessaoAnexada;
       if (sessao !== null && sessao !== undefined) {
         parametros.set("sessao", String(sessao));
       }
@@ -128,6 +134,24 @@ export function PainelConversas({
     } finally {
       setCriando(false);
     }
+  };
+
+  /** Mesma validacao da tela da conversa — ver `validarArquivo`. */
+  const anexarArquivos = (lista: FileList | null) => {
+    if (!lista || lista.length === 0) return;
+
+    const aceitos: Anexo[] = [];
+    const recusados: string[] = [];
+    for (const arquivo of Array.from(lista)) {
+      // Os aceitos deste mesmo lote entram na conta do limite de corpo: sem
+      // isso, tres arquivos de 10 MB escolhidos de uma vez passariam juntos.
+      const motivo = validarArquivo(arquivo, [...anexos, ...aceitos]);
+      if (motivo) recusados.push(motivo);
+      else aceitos.push({ tipo: "arquivo", arquivo });
+    }
+
+    if (aceitos.length > 0) setAnexos((anteriores) => [...anteriores, ...aceitos]);
+    setErro(recusados.length > 0 ? recusados.join(" ") : null);
   };
 
   const visiveis = mostrarTodas
@@ -154,11 +178,11 @@ export function PainelConversas({
       {/* As margens negativas cortam o vao vazio do viewBox: o desenho ocupa
           so' a faixa central, e sem o corte o mascote flutuaria longe do
           titulo, com um bloco de nada no meio. */}
-      <span className="-mt-3.5 -mb-[26px]">
-        <MascoteCup size={132} animado titulo="Cup, o assistente" />
+      <span className="-mt-4 -mb-[22px]">
+        <MascoteCup size={108} animado titulo="Cup, o assistente" />
       </span>
 
-      <h1 className="text-text text-center text-[28px] leading-tight font-semibold tracking-tight sm:text-[34px]" style={{ fontFamily: "var(--font-geologica)" }}>
+      <h1 className="text-text text-center text-[24px] leading-tight font-semibold tracking-tight sm:text-[29px]" style={{ fontFamily: "var(--font-geologica)" }}>
         {saudacao}, professor.
         <br />
         {/* O gradiente da marca vive so' aqui: e' o maior texto da tela e o
@@ -179,16 +203,26 @@ export function PainelConversas({
       </p>
 
       {seletorAberto && (
-        <SeletorAula
-          aoEscolher={(anexo) => {
-            setAulaEscolhida(anexo);
-            setErro(null);
-          }}
-          aoFechar={() => setSeletorAberto(false)}
-        />
+        <div className="mt-5 w-full">
+          <SeletorAula
+            aoEscolher={(anexo) => {
+              // Mesma aula duas vezes mandaria a transcricao repetida pro
+              // modelo e dobraria o contexto sem acrescentar nada.
+              setAnexos((anteriores) =>
+                anteriores.some(
+                  (a) => a.tipo === "aula" && a.sessaoId === anexo.sessaoId,
+                )
+                  ? anteriores
+                  : [...anteriores, anexo],
+              );
+              setErro(null);
+            }}
+            aoFechar={() => setSeletorAberto(false)}
+          />
+        </div>
       )}
 
-      <div className="mt-6 w-full">
+      <div className="mt-5 w-full">
         <CompositorPergunta
           valor={pergunta}
           aoMudar={setPergunta}
@@ -197,16 +231,18 @@ export function PainelConversas({
           rotuloOcupado="Começando…"
           aria="Sua primeira pergunta"
           anexos={
-            aulaEscolhida && (
-              <div className="px-4 pt-4">
-                <ChipAnexo
-                  anexo={aulaEscolhida}
-                  aoRemover={() => setAulaEscolhida(null)}
-                />
-              </div>
-            )
+            <BarraAnexos
+              anexos={anexos}
+              aoRemover={(indice) =>
+                setAnexos((anteriores) =>
+                  anteriores.filter((_, i) => i !== indice),
+                )
+              }
+            />
           }
           aoAnexarAula={() => setSeletorAberto((aberto) => !aberto)}
+          aoAnexarArquivos={anexarArquivos}
+          formatosAceitos={FORMATOS_ACEITOS}
           seletorAulaAberto={seletorAberto}
           linhas={2}
         />
@@ -223,7 +259,7 @@ export function PainelConversas({
       )}
 
       {conversas.length > 0 && (
-        <section className="mt-9 w-full">
+        <section className="mt-7 w-full">
           <h2 className="text-text-muted mb-3 text-[11.5px] font-extrabold tracking-[0.09em] uppercase">
             Últimas conversas
           </h2>

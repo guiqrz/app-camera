@@ -82,8 +82,13 @@ export default async function ConversaPage({ params, searchParams }: Props) {
       {/* `h-[calc(...)]` e nao `h-full`: o historico rola dentro da conversa,
           com o campo de pergunta sempre visivel no rodape. Sem altura fixa aqui
           a pagina inteira e' que rolaria, e o campo sumiria da tela justamente
-          numa conversa longa — quando ele mais e' usado. */}
-      <div className="mx-auto flex h-[calc(100vh-14rem)] max-w-3xl flex-col">
+          numa conversa longa — quando ele mais e' usado.
+
+          A largura NAO e' limitada aqui: quem rola e' a lista de mensagens la'
+          dentro, e limitar por fora colocaria a barra de rolagem na borda de
+          uma caixa estreita, no meio da tela. A largura de leitura e' aplicada
+          no conteudo, dentro do proprio VistaChat. */}
+      <div className="flex h-[calc(100vh-14rem)] flex-col">
         <VistaChat
           conversa={conversa}
           perguntaPendente={pergunta}

@@ -11,6 +11,7 @@ import { BolhaMensagem } from "@/components/ia/bolha-mensagem";
 import { CompositorPergunta } from "@/components/ia/compositor-pergunta";
 import { MascoteCup } from "@/components/ia/mascote-cup";
 import { SeletorAula } from "@/components/ia/seletor-aula";
+import { retirarAnexosPendentes } from "@/lib/anexos-pendentes";
 import type { Anexo, Conversa, MensagemConversa } from "@/lib/types";
 
 type VistaChatProps = {
@@ -58,9 +59,14 @@ export function VistaChat({
   const [pergunta, setPergunta] = useState("");
   const [pensando, setPensando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
-  const [anexos, setAnexos] = useState<Anexo[]>(
-    anexoInicial ? [anexoInicial] : [],
-  );
+  // A aula chega pelo endereco (`?sessao=`) e os arquivos pelo modulo de
+  // pendentes, que a abertura preencheu antes de navegar. `useState` com
+  // funcao pra retirada acontecer UMA vez, na montagem: fora dela, cada
+  // desenho novo esvaziaria a caixa e os arquivos sumiriam.
+  const [anexos, setAnexos] = useState<Anexo[]>(() => [
+    ...(anexoInicial ? [anexoInicial] : []),
+    ...retirarAnexosPendentes(),
+  ]);
   const [seletorAberto, setSeletorAberto] = useState(false);
 
   const listaDeMensagens = useRef<HTMLDivElement>(null);
@@ -207,12 +213,21 @@ export function VistaChat({
     // So' na conversa recem-criada: com mensagem gravada, a pergunta ja' foi.
     if (!texto || pendenteEnviada.current || mensagens.length > 0) return;
     pendenteEnviada.current = true;
+
+    // Leva TUDO que estava anexado na abertura — a aula e os arquivos que
+    // vieram pelo modulo de pendentes. Mandar so' a aula (como era antes)
+    // faria o professor ver o PDF escolhido sumir sem aviso.
+    //
+    // `anexos` aqui e' seguramente o valor da montagem: a guarda acima so'
+    // deixa passar quando a conversa ainda nao tem mensagem, e nesse ponto
+    // ninguem mexeu na lista.
+    const escolhidos = anexos;
     setAnexos([]);
-    void enviarTexto(texto, anexoInicial ? [anexoInicial] : []);
+    void enviarTexto(texto, escolhidos);
     // `mensagens` e `anexos` de proposito fora das dependencias: mudam a cada
     // resposta, e reexecutar o efeito por isso e' o que a guarda evita.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [perguntaPendente, anexoInicial, enviarTexto]);
+  }, [perguntaPendente, enviarTexto]);
 
   const enviar = () => {
     const texto = pergunta.trim();
@@ -245,10 +260,14 @@ export function VistaChat({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
+      {/* Quem rola e' esta caixa, em largura PLENA: assim a barra de rolagem
+          nasce na borda da area de conteudo, e nao no meio da tela. A largura
+          de leitura fica no miolo, um nivel abaixo. */}
       <div
         ref={listaDeMensagens}
-        className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-1"
+        className="min-h-0 flex-1 overflow-y-auto"
       >
+        <div className="mx-auto flex max-w-3xl flex-col gap-4 px-1">
         {mensagens.length === 0 && !pensando && (
           <p className="text-text-muted py-6 text-sm leading-relaxed">
             Faça a primeira pergunta sobre suas aulas.
@@ -275,9 +294,12 @@ export function VistaChat({
             </div>
           </div>
         )}
-
+        </div>
       </div>
 
+      {/* Mesma largura de leitura da lista acima: o campo tem que ficar
+          alinhado com as mensagens, nao com a borda da tela. */}
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
       {erro && (
         <p
           className="text-xs font-semibold"
@@ -326,6 +348,7 @@ export function VistaChat({
         seletorAulaAberto={seletorAberto}
         linhas={2}
       />
+      </div>
     </div>
   );
 }
