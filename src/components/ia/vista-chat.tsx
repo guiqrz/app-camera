@@ -112,6 +112,12 @@ export function VistaChat({
       papel: "professor",
       texto,
       criada_em: carimbo,
+      // Mesmos rotulos que o backend vai gravar: sem isto o chip sumia no
+      // instante do envio e so' voltava na recarga, como se o anexo tivesse
+      // sido perdido.
+      anexos: anexados.map((anexo) =>
+        anexo.tipo === "aula" ? anexo.rotulo : anexo.arquivo.name,
+      ),
     };
     setMensagens((anteriores) => [...anteriores, otimista]);
 
