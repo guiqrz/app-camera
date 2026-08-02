@@ -41,6 +41,14 @@ type ReconhecimentoDeFala = {
 
 type ConstrutorDeReconhecimento = new () => ReconhecimentoDeFala;
 
+/**
+ * Quantas vezes o motor pode religar sem reconhecer NADA antes de desistir.
+ *
+ * Cinco cobre com folga as pausas normais de quem esta pensando na pergunta,
+ * e ainda assim corta o laco de um motor que morre na hora.
+ */
+const LIMITE_RELIGAMENTOS = 5;
+
 /** O construtor, com o prefixo que o Chrome ainda exige. */
 function acharConstrutor(): ConstrutorDeReconhecimento | null {
   if (typeof window === "undefined") return null;
@@ -117,6 +125,11 @@ export function BotaoMicrofone({
 
     if (ouvindo) {
       queroParar.current = true;
+      // Desliga o estado JA', sem esperar o `onend`: num motor lento o botao
+      // continuava vermelho depois do clique, e um segundo clique ali criava
+      // um SEGUNDO motor — o `onend` do primeiro entao apagava o estado do
+      // que estava de fato ouvindo.
+      setOuvindo(false);
       reconhecimento.current?.stop();
       return;
     }
@@ -135,7 +148,16 @@ export function BotaoMicrofone({
     // `entregues` guarda quantos resultados ja' foram para o campo. Sem esse
     // controle, o Chrome — que reenvia o mesmo resultado quando ele passa de
     // parcial para final — duplicava a frase inteira.
+    //
+    // ZERA a cada `start()`, inclusive no religamento do `onend`: a API
+    // reinicia `results` do zero em cada sessao de reconhecimento. Mantendo a
+    // contagem antiga, a comparacao `i < results.length` ficava falsa pra
+    // sempre e o ditado emudecia depois da primeira pausa — sem erro nenhum,
+    // com o botao ainda vermelho.
     let entregues = 0;
+
+    // Religamentos seguidos SEM nenhuma fala reconhecida. Ver `onend`.
+    let religamentosVazios = 0;
 
     motor.onresult = (evento) => {
       let novo = "";
@@ -146,7 +168,11 @@ export function BotaoMicrofone({
           entregues = i + 1;
         }
       }
-      if (novo.trim()) aoTranscreverAgora.current(novo.trim());
+      if (novo.trim()) {
+        // Houve fala: zera a conta de religamentos vazios (ver `onend`).
+        religamentosVazios = 0;
+        aoTranscreverAgora.current(novo.trim());
+      }
     };
 
     motor.onerror = (evento) => {
@@ -171,14 +197,27 @@ export function BotaoMicrofone({
     // mesmo com `continuous`. Religar enquanto o professor nao clicou em parar
     // e' o que faz o ditado durar o quanto ele quiser — sem isso o microfone
     // "morria" no meio da frase e so' o comeco entrava no campo.
+    //
+    // O teto de religamentos VAZIOS existe porque um motor que falha na hora
+    // (microfone tomado por outro programa, servico de voz fora do ar) acabaria
+    // na mesma hora, religaria, acabaria de novo — um laco apertado que
+    // consome CPU ate' a aba fechar. Com fala reconhecida a conta zera, entao
+    // um ditado longo e' ilimitado; so' a falha em sequencia e' que desiste.
     motor.onend = () => {
-      if (!queroParar.current) {
+      if (!queroParar.current && religamentosVazios < LIMITE_RELIGAMENTOS) {
+        religamentosVazios += 1;
         try {
+          // `results` recomeca do zero no motor religado.
+          entregues = 0;
           motor.start();
           return;
         } catch {
           // Se o navegador recusar o religamento, cai no encerramento normal.
         }
+      }
+
+      if (religamentosVazios >= LIMITE_RELIGAMENTOS) {
+        setErro("O microfone parou de responder. Tente de novo.");
       }
       setOuvindo(false);
     };

@@ -480,10 +480,7 @@ export type RespostaDoAssistente = {
  * Aula vai como ID, nunca como texto: o conteudo da transcricao e' lido no
  * servidor do CUPCAM e nunca trafega pelo navegador. Regra de privacidade da
  * transcricao, nao detalhe de implementacao.
- *
- * `caracteres` alimenta o contador de contexto — vem do tamanho do texto da
- * transcricao, ja' conhecido quando a aula e' escolhida.
  */
 export type Anexo =
-  | { tipo: "aula"; sessaoId: number; rotulo: string; caracteres: number }
+  | { tipo: "aula"; sessaoId: number; rotulo: string }
   | { tipo: "arquivo"; arquivo: File };

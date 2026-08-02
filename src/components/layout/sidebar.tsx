@@ -24,22 +24,15 @@ type ItemMenu = {
   emBreve?: boolean;
 };
 
-/**
- * A marca do CUPCAM como icone do item do assistente.
- *
- * Em SVG de cor unica (`currentColor`), entao acompanha a cor do item — que
- * muda quando ele esta ativo e entre os temas claro/escuro.
- */
-function IconeCupAI({ size = 19 }: { size?: number }) {
-  return <LogoCupcam size={size} />;
-}
-
 const ITENS: ItemMenu[] = [
   { rotulo: "Minhas Aulas", href: "/aulas", Icone: IconAulas },
   { rotulo: "Chamada", href: "/chamada", Icone: IconChamada },
   { rotulo: "Relatórios", href: "/relatorios", Icone: IconRelatorios },
   { rotulo: "Câmera", href: "/camera", Icone: IconCamera },
-  { rotulo: "Cup AI", href: "/ia", Icone: IconeCupAI },
+  // A marca do CUPCAM no lugar de um icone de traco. Em SVG de cor unica,
+  // entao acompanha a cor do item — que muda quando ele esta ativo e entre os
+  // temas claro/escuro.
+  { rotulo: "Cup AI", href: "/ia", Icone: LogoCupcam },
   { rotulo: "Coordenação", href: "/coordenacao", Icone: IconAdministracao },
   { rotulo: "Configurações", href: "/configuracoes", Icone: IconConfiguracoes },
 ];

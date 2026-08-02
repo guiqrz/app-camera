@@ -18,21 +18,39 @@ import type { Anexo } from "@/lib/types";
  * continuasse anexado.
  */
 
-let pendentes: Anexo[] = [];
+type Pendencia = {
+  /** Conversa que deve receber estes anexos. */
+  conversaId: number;
+  anexos: Anexo[];
+};
 
-/** Guarda os anexos que a proxima tela de conversa deve receber. */
-export function guardarAnexosPendentes(anexos: Anexo[]): void {
-  pendentes = anexos;
+let pendencia: Pendencia | null = null;
+
+/** Guarda os anexos que a conversa `conversaId` deve receber ao montar. */
+export function guardarAnexosPendentes(
+  conversaId: number,
+  anexos: Anexo[],
+): void {
+  pendencia = { conversaId, anexos };
 }
 
 /**
- * Devolve os anexos guardados e LIMPA a caixa.
+ * Devolve os anexos guardados PARA ESTA conversa, e limpa a caixa.
  *
- * Consumo unico de proposito: sem isso, abrir outra conversa depois herdaria
- * os arquivos da anterior, e o professor mandaria a prova errada sem ver.
+ * O id e' conferido, e nao so' consumido: se a navegacao pra conversa nova
+ * nunca terminar (o professor clica na barra lateral no meio, ou a pagina
+ * falha), a caixa fica cheia. Sem a conferencia, a PROXIMA conversa aberta —
+ * uma antiga, sem relacao nenhuma — herdaria aqueles arquivos e os mandaria
+ * pro modelo sem o professor ter escolhido nada. Anexo errado numa pergunta
+ * errada e' pior do que anexo nenhum.
+ *
+ * A caixa e' limpa nos dois casos: pra conversa certa porque os anexos foram
+ * entregues, e pra errada porque aquela pendencia ja' nao serve a ninguem.
  */
-export function retirarAnexosPendentes(): Anexo[] {
-  const guardados = pendentes;
-  pendentes = [];
-  return guardados;
+export function retirarAnexosPendentes(conversaId: number): Anexo[] {
+  const guardada = pendencia;
+  pendencia = null;
+
+  if (guardada === null || guardada.conversaId !== conversaId) return [];
+  return guardada.anexos;
 }

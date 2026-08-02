@@ -59,14 +59,17 @@ export function MascoteCup({
       style={{ overflow: "visible" }}
     >
       <defs>
+        {/* Tokens SEMANTICOS, nao a escala crua: no tema escuro o fim do
+            gradiente clareia, senao a metade de baixo da xicara se dissolvia
+            no fundo da pagina. Ver `--brand-grad-*` em semantic.css. */}
         <linearGradient id={idCorpo} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#b57bff" />
-          <stop offset="50%" stopColor="var(--violet-500)" />
-          <stop offset="100%" stopColor="var(--violet-900)" />
+          <stop offset="0%" stopColor="var(--brand-grad-1)" />
+          <stop offset="50%" stopColor="var(--brand-grad-2)" />
+          <stop offset="100%" stopColor="var(--brand-grad-3)" />
         </linearGradient>
         <linearGradient id={idAro} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="var(--violet-400)" />
-          <stop offset="100%" stopColor="var(--cyan-500)" />
+          <stop offset="0%" stopColor="var(--brand-aro-1)" />
+          <stop offset="100%" stopColor="var(--brand-aro-2)" />
         </linearGradient>
       </defs>
 

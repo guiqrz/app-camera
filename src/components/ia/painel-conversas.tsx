@@ -114,9 +114,11 @@ export function PainelConversas({
       const conversa = (await r.json()) as Conversa;
 
       // Os arquivos ficam em memoria ate' a proxima tela monta-los: o
-      // `router.push` navega no cliente, sem recarregar a pagina.
+      // `router.push` navega no cliente, sem recarregar a pagina. Vao
+      // carimbados com o id da conversa — se esta navegacao nao terminar, a
+      // pendencia nao pode acabar numa conversa antiga qualquer.
       const arquivos = anexos.filter((anexo) => anexo.tipo === "arquivo");
-      if (arquivos.length > 0) guardarAnexosPendentes(arquivos);
+      if (arquivos.length > 0) guardarAnexosPendentes(conversa.id, arquivos);
 
       // A pergunta viaja no endereco pra tela da conversa envia-la sozinha —
       // sem isso o professor digitaria a mesma coisa duas vezes. `sessao` vai
@@ -191,7 +193,7 @@ export function PainelConversas({
           className="bg-clip-text text-transparent"
           style={{
             backgroundImage:
-              "linear-gradient(92deg, var(--violet-500), var(--cyan-500))",
+              "linear-gradient(92deg, var(--brand-aro-1), var(--brand-aro-2))",
           }}
         >
           O que vamos ver hoje?

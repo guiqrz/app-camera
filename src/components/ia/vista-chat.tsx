@@ -32,6 +32,14 @@ type VistaChatProps = {
 let proximoIdLocal = -1;
 
 /**
+ * Conversas cuja pergunta pendente ja' foi despachada nesta navegacao.
+ *
+ * De nivel de modulo de proposito: sobrevive ao ciclo montar/desmontar/montar
+ * do Strict Mode, que um `useRef` nao sobrevive. Ver o efeito que a usa.
+ */
+const despachadas = new Set<number>();
+
+/**
  * Conversa aberta: historico, campo de pergunta e o estado "pensando…".
  *
  * A pergunta aparece na hora, com id local negativo, antes de a API responder.
@@ -60,14 +68,11 @@ export function VistaChat({
   const [pergunta, setPergunta] = useState("");
   const [pensando, setPensando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
-  // A aula chega pelo endereco (`?sessao=`) e os arquivos pelo modulo de
-  // pendentes, que a abertura preencheu antes de navegar. `useState` com
-  // funcao pra retirada acontecer UMA vez, na montagem: fora dela, cada
-  // desenho novo esvaziaria a caixa e os arquivos sumiriam.
-  const [anexos, setAnexos] = useState<Anexo[]>(() => [
-    ...(anexoInicial ? [anexoInicial] : []),
-    ...retirarAnexosPendentes(),
-  ]);
+  // A aula chega pelo endereco (`?sessao=`); os arquivos entram no efeito
+  // abaixo.
+  const [anexos, setAnexos] = useState<Anexo[]>(
+    anexoInicial ? [anexoInicial] : [],
+  );
   const [seletorAberto, setSeletorAberto] = useState(false);
 
   const listaDeMensagens = useRef<HTMLDivElement>(null);
@@ -127,6 +132,10 @@ export function VistaChat({
   const enviarTexto = useCallback(async (texto: string, anexados: Anexo[]) => {
     setErro(null);
     setPensando(true);
+    // Os anexos ja' viajam em `anexados`: esvaziar a barra aqui, e nao em quem
+    // chama, mantem a limpeza junto do envio — inclusive no despacho da
+    // pergunta pendente, onde chamar setState de fora seria dentro de efeito.
+    setAnexos([]);
 
     // Timestamp local so' pro rotulo de hora da bolha otimista, que vive ate' o
     // envio terminar. `recarregarMensagens` troca isto pelo horario do banco.
@@ -148,13 +157,6 @@ export function VistaChat({
     setMensagens((anteriores) => [...anteriores, otimista]);
 
     try {
-      // Guarda as imagens pra bolha da mensagem poder mostra-las: o backend
-      // grava so' o rotulo, entao sem isto a foto enviada viraria um chip com
-      // o nome do arquivo. Vale ate' o fim da navegacao — ver o modulo.
-      for (const anexo of anexados) {
-        if (anexo.tipo === "arquivo") guardarImagemDaSessao(anexo.arquivo);
-      }
-
       // FormData e nao JSON porque a pergunta carrega arquivos. As aulas vao
       // como ID em `sessao_ids`: o TEXTO da transcricao e' lido no servidor do
       // CUPCAM e nunca trafega pelo navegador (regra de privacidade).
@@ -197,6 +199,16 @@ export function VistaChat({
         return;
       }
 
+      // Guarda as imagens SO' AGORA, com o envio aceito: o backend grava
+      // apenas o rotulo, entao sem isto a foto enviada viraria um chip com o
+      // nome do arquivo. Cachear antes do `fetch` encheria a memoria com
+      // imagens de envios que falharam e nunca viraram mensagem.
+      for (const anexo of anexados) {
+        if (anexo.tipo === "arquivo") {
+          guardarImagemDaSessao(conversa.id, anexo.arquivo);
+        }
+      }
+
       // Sucesso: a resposta veio, mas quem tem os ids reais das duas mensagens
       // (pergunta e resposta) e' o banco. Recarregar troca as bolhas locais
       // pelas gravadas, com o horario real em vez do carimbo do navegador.
@@ -211,31 +223,49 @@ export function VistaChat({
     }
   }, [conversa.id, recarregarMensagens]);
 
-  // A pergunta que criou a conversa, enviada uma unica vez ao abrir a tela.
-  // O `useRef` guarda o envio ja' feito: sem ele, um novo desenho do componente
-  // (ou o Strict Mode em desenvolvimento) reenviaria a mesma pergunta e o
-  // professor pagaria duas chamadas ao modelo pelo texto que escreveu uma vez.
-  const pendenteEnviada = useRef(false);
+  /**
+   * Abre a conversa recem-criada: pega os arquivos que a tela anterior deixou
+   * e envia a pergunta que ainda nao foi.
+   *
+   * Os dois passos vivem no MESMO efeito porque sao a mesma acao — a pergunta
+   * precisa sair com os anexos junto, e separa-los abria uma janela em que a
+   * mensagem partia sem o PDF.
+   *
+   * A guarda e' `despachadas`, um Set de nivel de MODULO, e nao um `useRef`:
+   * ref e estado sao descartados quando o componente desmonta, e o Strict Mode
+   * do `next dev` monta, desmonta e monta de novo. Com ref, a segunda montagem
+   * via a guarda zerada e mandava a mesma pergunta outra vez — duas chamadas
+   * ao modelo, duas perguntas gravadas, pelo texto que o professor escreveu
+   * uma vez. O Set sobrevive a isso porque nao pertence ao componente.
+   */
   useEffect(() => {
     const texto = perguntaPendente?.trim();
     // So' na conversa recem-criada: com mensagem gravada, a pergunta ja' foi.
-    if (!texto || pendenteEnviada.current || mensagens.length > 0) return;
-    pendenteEnviada.current = true;
+    if (!texto || mensagens.length > 0) return;
+    if (despachadas.has(conversa.id)) return;
+    despachadas.add(conversa.id);
 
-    // Leva TUDO que estava anexado na abertura — a aula e os arquivos que
-    // vieram pelo modulo de pendentes. Mandar so' a aula (como era antes)
-    // faria o professor ver o PDF escolhido sumir sem aviso.
+    // A retirada tambem acontece aqui, e nao no `useState`: o inicializador
+    // roda a cada MONTAGEM, e como retirar esvazia a caixa, a segunda montagem
+    // recebia lista vazia — o professor veria a pergunta sair sem o arquivo
+    // que ele anexou, sem aviso nenhum.
+    const doOutroLado = retirarAnexosPendentes(conversa.id);
+    const escolhidos = [...anexos, ...doOutroLado];
+
+    // O `setTimeout(0)` tira o envio de dentro do corpo do efeito: `enviarTexto`
+    // mexe em varios estados de uma vez, e o lint (com razao, no geral) recusa
+    // setState sincrono ali. Um tique depois, o envio e' so' um efeito colateral
+    // comum — e a guarda `despachadas` ja' garantiu que roda uma vez so'.
     //
-    // `anexos` aqui e' seguramente o valor da montagem: a guarda acima so'
-    // deixa passar quando a conversa ainda nao tem mensagem, e nesse ponto
-    // ninguem mexeu na lista.
-    const escolhidos = anexos;
-    setAnexos([]);
-    void enviarTexto(texto, escolhidos);
+    // SEM limpeza que cancele o timer: o Strict Mode desmonta e remonta logo
+    // apos a montagem, e cancelar aqui mataria o unico envio — a guarda ja'
+    // marcou a conversa como despachada, entao a remontagem nao tentaria de
+    // novo e a pergunta ficaria eternamente sem sair.
+    setTimeout(() => void enviarTexto(texto, escolhidos), 0);
     // `mensagens` e `anexos` de proposito fora das dependencias: mudam a cada
     // resposta, e reexecutar o efeito por isso e' o que a guarda evita.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [perguntaPendente, enviarTexto]);
+  }, [perguntaPendente, conversa.id, enviarTexto]);
 
   const enviar = () => {
     const texto = pergunta.trim();
@@ -243,7 +273,7 @@ export function VistaChat({
 
     const anexados = anexos;
     setPergunta("");
-    setAnexos([]);
+    // `enviarTexto` esvazia a barra de anexos.
     void enviarTexto(texto, anexados);
   };
 
@@ -285,7 +315,11 @@ export function VistaChat({
         )}
 
         {mensagens.map((mensagem) => (
-          <BolhaMensagem key={mensagem.id} mensagem={mensagem} />
+          <BolhaMensagem
+            key={mensagem.id}
+            mensagem={mensagem}
+            conversaId={conversa.id}
+          />
         ))}
 
         {/* Mesma estrutura de uma resposta (avatar + nome + texto): a espera

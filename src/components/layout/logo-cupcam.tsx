@@ -1,5 +1,5 @@
 type LogoCupcamProps = {
-  /** Lado do desenho em pixels. */
+  /** Lado do desenho em pixels. Padrao 19, o tamanho usado no menu. */
   size?: number;
   className?: string;
 };
@@ -15,7 +15,7 @@ type LogoCupcamProps = {
  * Usada SO' no menu lateral. O mascote do assistente e' outro desenho
  * (`components/ia/mascote-cup.tsx`) e nao se confunde com este.
  */
-export function LogoCupcam({ size = 36, className }: LogoCupcamProps) {
+export function LogoCupcam({ size = 19, className }: LogoCupcamProps) {
   return (
     <svg
       width={size}

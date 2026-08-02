@@ -41,7 +41,6 @@ async function montarAnexoDaAula(bruto: string | undefined): Promise<Anexo | und
     rotulo: transcricao.materia
       ? `Aula ${data} · ${transcricao.materia}`
       : `Aula ${data}`,
-    caracteres: transcricao.texto.length,
   };
 }
 

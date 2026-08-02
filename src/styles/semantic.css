@@ -41,6 +41,15 @@
   --primary-active: var(--violet-700);
   --accent: var(--cyan-500);
 
+  /* Gradiente da marca, em pares que respeitam o tema.
+     O mascote e o titulo da abertura do Cup AI usam estes — no escuro o
+     `violet-900` do fim quase se confunde com o fundo da pagina. */
+  --brand-grad-1: #b57bff;
+  --brand-grad-2: var(--violet-500);
+  --brand-grad-3: var(--violet-900);
+  --brand-aro-1: var(--violet-400);
+  --brand-aro-2: var(--cyan-500);
+
   /* Elevacao */
   --shadow-card: 0 4px 4px rgba(0, 0, 0, 0.04);
   --shadow-raise: 2px 4px 4px 1px rgba(0, 0, 0, 0.25);
@@ -104,6 +113,15 @@
   --primary-hover: #b57bff;
   --primary-active: var(--violet-500);
   --accent: var(--cyan-500);
+
+  /* O fim do gradiente clareia no escuro: `violet-900` (#2b0052) sobre o
+     `coal-950` (#130f19) do fundo sumia — a metade de baixo do mascote se
+     dissolvia na pagina. */
+  --brand-grad-1: #d0a8ff;
+  --brand-grad-2: var(--violet-400);
+  --brand-grad-3: var(--violet-700);
+  --brand-aro-1: #b57bff;
+  --brand-aro-2: var(--cyan-500);
 
   --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.45);
   --shadow-raise: 2px 4px 16px rgba(0, 0, 0, 0.55);
@@ -169,6 +187,13 @@
     --primary: var(--violet-400);
     --primary-hover: #b57bff;
     --primary-active: var(--violet-500);
+
+    /* Mesmos tons do bloco [data-theme="dark"] — ver o comentario la'. */
+    --brand-grad-1: #d0a8ff;
+    --brand-grad-2: var(--violet-400);
+    --brand-grad-3: var(--violet-700);
+    --brand-aro-1: #b57bff;
+    --brand-aro-2: var(--cyan-500);
 
     --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.45);
     --shadow-raise: 2px 4px 16px rgba(0, 0, 0, 0.55);

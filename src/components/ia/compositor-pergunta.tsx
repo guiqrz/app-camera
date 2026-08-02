@@ -27,8 +27,8 @@ function Faisca() {
     >
       <defs>
         <linearGradient id="faisca-cup" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="var(--violet-400)" />
-          <stop offset="100%" stopColor="var(--cyan-500)" />
+          <stop offset="0%" stopColor="var(--brand-aro-1)" />
+          <stop offset="100%" stopColor="var(--brand-aro-2)" />
         </linearGradient>
       </defs>
       <path
@@ -154,7 +154,9 @@ export function CompositorPergunta({
         // Sem isto o navegador recusa o "soltar" e abre o arquivo por conta.
         if (!aoAnexarArquivos || ocupado) return;
         evento.preventDefault();
-        setArrastando(true);
+        // `dragover` dispara sem parar enquanto o ponteiro se move; so' marca
+        // na primeira vez.
+        if (!arrastando) setArrastando(true);
       }}
       onDragLeave={(evento) => {
         // So' apaga o destaque quando o ponteiro sai da CAIXA — sem esta
@@ -165,10 +167,11 @@ export function CompositorPergunta({
       }}
       onDrop={aoSoltar}
       onPaste={aoColar}
-      className={`bg-surface w-full overflow-hidden rounded-2xl border shadow-[0_6px_22px_rgba(28,24,44,0.07)] transition-colors ${
-        arrastando
-          ? "border-primary border-dashed"
-          : "border-border-default focus-within:border-primary"
+      // `focus-within` FORA do ternario: dentro do ramo do arrasto, quem navega
+      // por teclado ficava sem nenhuma pista de foco enquanto um arquivo era
+      // arrastado — e o anel do <textarea> esta desligado.
+      className={`bg-surface focus-within:border-primary w-full overflow-hidden rounded-2xl border shadow-[0_6px_22px_rgba(28,24,44,0.07)] transition-colors ${
+        arrastando ? "border-primary border-dashed" : "border-border-default"
       }`}
     >
       {/* Aviso durante o arrasto: sem ele o professor nao sabe se a caixa

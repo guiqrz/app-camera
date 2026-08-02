@@ -34,6 +34,8 @@ function classificarRotulo(rotulo: string): {
 
 type BolhaMensagemProps = {
   mensagem: MensagemConversa;
+  /** Conversa a que a mensagem pertence — chaveia a miniatura da imagem. */
+  conversaId: number;
 };
 
 /**
@@ -46,7 +48,7 @@ type BolhaMensagemProps = {
  * bolha de 75% da largura era o principal motivo de a tela parecer aplicativo
  * de conversa em vez de assistente.
  */
-export function BolhaMensagem({ mensagem }: BolhaMensagemProps) {
+export function BolhaMensagem({ mensagem, conversaId }: BolhaMensagemProps) {
   const doProfessor = mensagem.papel === "professor";
   const anexos = mensagem.anexos ?? [];
 
@@ -97,7 +99,9 @@ export function BolhaMensagem({ mensagem }: BolhaMensagemProps) {
           {anexos.map((rotulo, indice) => {
             const { tipo, extensao } = classificarRotulo(rotulo);
             const miniatura =
-              montado && tipo === "imagem" ? buscarImagemDaSessao(rotulo) : null;
+              montado && tipo === "imagem"
+                ? buscarImagemDaSessao(conversaId, rotulo)
+                : null;
 
             return (
               <li
