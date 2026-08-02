@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 
+import { BotaoMicrofone } from "@/components/ia/botao-microfone";
 import { IconCalendario, IconFoto } from "@/components/ui/icons";
 
 /**
@@ -96,16 +97,84 @@ export function CompositorPergunta({
   linhas = 2,
 }: CompositorPerguntaProps) {
   const campoDeArquivo = useRef<HTMLInputElement>(null);
+  const [arrastando, setArrastando] = useState(false);
 
   const vazio = !valor.trim();
 
+  /**
+   * Solta o arquivo arrastado de fora do navegador.
+   *
+   * `preventDefault` obrigatorio: sem ele o navegador ABRE o arquivo solto,
+   * trocando a pagina do professor por um PDF em tela cheia.
+   */
+  const aoSoltar = (evento: React.DragEvent) => {
+    evento.preventDefault();
+    setArrastando(false);
+    if (!aoAnexarArquivos || ocupado) return;
+
+    const arquivos = evento.dataTransfer?.files;
+    if (arquivos && arquivos.length > 0) aoAnexarArquivos(arquivos);
+  };
+
+  /**
+   * Cola imagem da area de transferencia (Ctrl+V).
+   *
+   * So' age quando ha ARQUIVO no clipboard — colar texto continua colando
+   * texto. E' o caso do print de tela, que nao existe como arquivo em disco e
+   * de outro jeito exigiria salvar antes pra so' entao anexar.
+   *
+   * O `preventDefault` fica dentro do `if`: fora dele, colar um trecho de
+   * texto normal deixaria de funcionar.
+   */
+  const aoColar = (evento: React.ClipboardEvent) => {
+    if (!aoAnexarArquivos || ocupado) return;
+
+    const arquivos = evento.clipboardData?.files;
+    if (arquivos && arquivos.length > 0) {
+      evento.preventDefault();
+      aoAnexarArquivos(arquivos);
+    }
+  };
+
   return (
-    // `focus-within` na CAIXA em vez do anel no <textarea>: o campo nao tem
-    // borda propria (a borda e' da caixa), entao o contorno do foco caia no
-    // meio do bloco, riscando o texto. Aqui a caixa inteira se acende, que e'
-    // o que o professor le' como "estou escrevendo aqui" — e a pista continua
-    // existindo pra quem navega por teclado.
-    <div className="border-border-default bg-surface focus-within:border-primary w-full overflow-hidden rounded-2xl border shadow-[0_6px_22px_rgba(28,24,44,0.07)] transition-colors">
+    // O foco acende a CAIXA (`focus-within`) em vez de pintar um anel no
+    // <textarea>: o campo nao tem borda propria, entao o contorno caia no meio
+    // do bloco, riscando o texto. A pista continua existindo pra quem navega
+    // por teclado — ver tambem `data-campo-sem-anel` em globals.css.
+    <div
+      onDragOver={(evento) => {
+        // Sem isto o navegador recusa o "soltar" e abre o arquivo por conta.
+        if (!aoAnexarArquivos || ocupado) return;
+        evento.preventDefault();
+        setArrastando(true);
+      }}
+      onDragLeave={(evento) => {
+        // So' apaga o destaque quando o ponteiro sai da CAIXA — sem esta
+        // checagem, passar por cima de um botao interno ja' o desligava.
+        if (!evento.currentTarget.contains(evento.relatedTarget as Node)) {
+          setArrastando(false);
+        }
+      }}
+      onDrop={aoSoltar}
+      onPaste={aoColar}
+      className={`bg-surface w-full overflow-hidden rounded-2xl border shadow-[0_6px_22px_rgba(28,24,44,0.07)] transition-colors ${
+        arrastando
+          ? "border-primary border-dashed"
+          : "border-border-default focus-within:border-primary"
+      }`}
+    >
+      {/* Aviso durante o arrasto: sem ele o professor nao sabe se a caixa
+          aceita o arquivo, e a borda tracejada sozinha e' pista fraca. */}
+      {arrastando && (
+        <p
+          className="text-text-on-brand px-4 py-2 text-center text-xs font-bold"
+          style={{ background: "var(--primary)" }}
+          role="status"
+        >
+          Solte o arquivo para anexar
+        </p>
+      )}
+
       {anexos}
 
       <div className="flex gap-2.5 px-4 pt-4 pb-1">
@@ -180,10 +249,21 @@ export function CompositorPergunta({
           )}
         </div>
 
-        <div className="flex items-center gap-2.5">
-          <span className="text-text-muted hidden text-xs sm:inline">
+        <div className="flex items-center gap-2">
+          <span className="text-text-muted mr-0.5 hidden text-xs sm:inline">
             Enter envia
           </span>
+
+          {/* O ditado ACRESCENTA ao que ja' esta escrito, com um espaco entre
+              as falas: sobrescrever apagaria o que o professor digitou antes
+              de decidir falar o resto. */}
+          <BotaoMicrofone
+            desabilitado={ocupado}
+            aoTranscrever={(texto) =>
+              aoMudar(valor ? `${valor.trimEnd()} ${texto}` : texto)
+            }
+          />
+
           <button
             type="button"
             onClick={aoEnviar}

@@ -46,18 +46,24 @@ const ITENS: ItemMenu[] = [
 
 function Logo() {
   return (
-    <div className="flex items-center gap-2.5 px-2">
+    // `px-3.5` e `gap-3` sao os MESMOS do item de menu (ver `classes` abaixo):
+    // assim a marca e os itens comecam na mesma coluna, em vez de a logo ficar
+    // deslocada meio passo pra esquerda.
+    <div className="flex items-center gap-3 px-3.5">
       {/* O PNG ja vem recortado e quadrado (public/logo-cupcam.png, 144px),
-          servido a 36 pra ficar nitido em tela retina. `priority` porque o
+          servido a 2x pra ficar nitido em tela retina. `priority` porque o
           logo aparece acima da dobra em toda pagina — sem isso ele entra
-          depois do primeiro desenho e o menu "pisca" sem marca. */}
+          depois do primeiro desenho e o menu "pisca" sem marca.
+
+          18px e' o mesmo lado dos icones do menu: com 36 a marca destoava e
+          empurrava o titulo pra fora do alinhamento dos itens. */}
       <Image
         src="/logo-cupcam.png"
         alt=""
         width={36}
         height={36}
         priority
-        className="h-9 w-9 flex-none"
+        className="h-[18px] w-[18px] flex-none"
         aria-hidden
       />
       <span

@@ -31,11 +31,16 @@ export default async function IaPage({ searchParams }: Props) {
 
   return (
     <AppShell titulo="Cup AI">
-      <PainelConversas
-        conversasIniciais={conversas}
-        chaveConfigurada={configuracao.chave_configurada}
-        sessaoAnexada={sessaoAnexada}
-      />
+      {/* Altura da area util pro conteudo poder se centralizar no eixo Y.
+          `justify-center` sem altura nao teria o que centralizar — o bloco
+          ficaria colado no topo, que e' o que acontecia antes. */}
+      <div className="flex min-h-[calc(100dvh-11rem)] flex-col justify-center">
+        <PainelConversas
+          conversasIniciais={conversas}
+          chaveConfigurada={configuracao.chave_configurada}
+          sessaoAnexada={sessaoAnexada}
+        />
+      </div>
     </AppShell>
   );
 }
