@@ -1,3 +1,4 @@
+import { TextoFormatado } from "@/components/ia/texto-formatado";
 import { horaDoTimestamp } from "@/lib/format";
 import type { MensagemConversa } from "@/lib/types";
 
@@ -30,12 +31,38 @@ export function BolhaMensagem({ mensagem }: BolhaMensagemProps) {
       </span>
 
       <div
-        className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap sm:max-w-[75%] ${
+        className={`flex max-w-[85%] flex-col gap-2 rounded-2xl px-4 py-3 text-sm leading-relaxed sm:max-w-[75%] ${
           doProfessor ? "text-text-on-brand" : "border-border-default text-text-body border"
         }`}
         style={doProfessor ? { background: "var(--primary)" } : { background: "var(--surface-2)" }}
       >
-        {mensagem.texto}
+        {/* O que foi anexado, DENTRO da bolha e acima do texto: reabrindo a
+            conversa dias depois, a pergunta sozinha nao diz sobre qual aula ou
+            arquivo ela era. So' o rotulo — o arquivo nao fica guardado, entao
+            nao ha o que abrir. */}
+        {mensagem.anexos && mensagem.anexos.length > 0 && (
+          <ul className="flex flex-wrap gap-1.5">
+            {mensagem.anexos.map((rotulo, indice) => (
+              <li
+                key={`${rotulo}-${indice}`}
+                className={`max-w-full truncate rounded-lg px-2 py-1 text-xs font-bold ${
+                  doProfessor ? "bg-white/20" : "bg-surface border-border-default border"
+                }`}
+              >
+                {rotulo}
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {/* So' a resposta do assistente passa pelo formatador: o que o
+            professor digitou aparece exatamente como ele escreveu — se ele usou
+            um asterisco, era um asterisco. */}
+        {doProfessor ? (
+          <span className="whitespace-pre-wrap">{mensagem.texto}</span>
+        ) : (
+          <TextoFormatado texto={mensagem.texto} />
+        )}
       </div>
 
       <span className="text-text-muted px-1 text-[11px]">

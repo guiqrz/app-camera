@@ -62,13 +62,32 @@ export function VistaChat({
   );
   const [seletorAberto, setSeletorAberto] = useState(false);
 
-  const fimDaLista = useRef<HTMLDivElement>(null);
+  const listaDeMensagens = useRef<HTMLDivElement>(null);
   const campoDeArquivo = useRef<HTMLInputElement>(null);
 
-  // Rola pro fim a cada mensagem nova. `behavior: "smooth"` porque o salto seco
-  // faz perder de vista de onde a conversa estava.
+  /**
+   * Rola pro fim a cada mensagem nova.
+   *
+   * Rola o PROPRIO container (scrollTop), e nao um `scrollIntoView` numa ancora
+   * no fim da lista: o scrollIntoView procura o ancestral rolavel mais proximo
+   * e, numa pagina com varios niveis de overflow, acertava o errado — a
+   * resposta longa chegava e a tela ficava parada na mensagem anterior, com o
+   * professor tendo que rolar na mao justamente quando havia mais o que ler.
+   *
+   * O rAF duplo espera o navegador PINTAR a mensagem nova antes de medir
+   * scrollHeight. Sem ele, a conta usava a altura de antes da resposta entrar,
+   * e a rolagem parava no meio dela.
+   */
   useEffect(() => {
-    fimDaLista.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    const container = listaDeMensagens.current;
+    if (!container) return;
+
+    const id = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+      });
+    });
+    return () => cancelAnimationFrame(id);
   }, [mensagens, pensando]);
 
   /**
@@ -112,6 +131,12 @@ export function VistaChat({
       papel: "professor",
       texto,
       criada_em: carimbo,
+      // Mesmos rotulos que o backend vai gravar: sem isto o chip sumia no
+      // instante do envio e so' voltava na recarga, como se o anexo tivesse
+      // sido perdido.
+      anexos: anexados.map((anexo) =>
+        anexo.tipo === "aula" ? anexo.rotulo : anexo.arquivo.name,
+      ),
     };
     setMensagens((anteriores) => [...anteriores, otimista]);
 
@@ -226,7 +251,10 @@ export function VistaChat({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-1">
+      <div
+        ref={listaDeMensagens}
+        className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-1"
+      >
         {mensagens.length === 0 && !pensando && (
           <p className="text-text-muted py-6 text-sm leading-relaxed">
             Faça a primeira pergunta sobre suas aulas.
@@ -255,7 +283,6 @@ export function VistaChat({
           </div>
         )}
 
-        <div ref={fimDaLista} />
       </div>
 
       {erro && (

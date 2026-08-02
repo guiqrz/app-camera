@@ -195,7 +195,8 @@ export function VistaRelatorio({ relatorio }: VistaRelatorioProps) {
       />
 
       {/* Transcricao por ultimo: e' a secao mais longa, e o professor abre o
-          relatorio pra ver presenca e atencao primeiro. */}
+          relatorio pra ver presenca e atencao primeiro. O resumo mora DENTRO
+          dela — e' a versao curta do mesmo texto. */}
       <SecaoTranscricao sessaoId={relatorio.sessao.id} />
     </div>
   );

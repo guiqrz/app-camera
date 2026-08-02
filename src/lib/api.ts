@@ -550,3 +550,22 @@ export function trocarModeloIA(modelo: string): Promise<{ modelo: string }> {
     body: { modelo },
   });
 }
+
+/**
+ * Resumo da aula, gerado na hora pro botao do relatorio.
+ *
+ * POST e nao GET porque a chamada CUSTA — cada clique e' uma consulta ao
+ * modelo. Com GET, um prefetch do navegador ou um retry automatico gastaria
+ * chamada sem ninguem ter pedido.
+ *
+ * Lanca ApiError 404 (aula sem transcricao), 409 (transcricao ainda rodando),
+ * 502 (o modelo falhou) ou 503 (sem chave no servidor).
+ */
+export function resumirAula(
+  sessaoId: number,
+): Promise<{ resumo: string; modelo: string }> {
+  return requisitar<{ resumo: string; modelo: string }>(
+    `/sessoes/${sessaoId}/resumo`,
+    { method: "POST" },
+  );
+}

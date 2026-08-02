@@ -433,6 +433,14 @@ export type MensagemConversa = {
   papel: PapelMensagem;
   texto: string;
   criada_em: string;
+  /**
+   * Rotulos do que foi anexado ("prova.pdf", "Aula 31/07 · Biologia").
+   *
+   * So' o rotulo — o arquivo em si nunca e' guardado. Serve pro professor
+   * lembrar o que mandou ao reabrir a conversa. Vazio nas mensagens sem anexo,
+   * nas do assistente e nas gravadas antes desta coluna existir.
+   */
+  anexos?: string[];
 };
 
 export type Conversa = {
