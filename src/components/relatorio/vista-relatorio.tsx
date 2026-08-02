@@ -189,7 +189,10 @@ export function VistaRelatorio({ relatorio }: VistaRelatorioProps) {
       </div>
 
       {/* Recomendacao da I.A, largura cheia */}
-      <CardRecomendacao recomendacoes={relatorio.recomendacoes} />
+      <CardRecomendacao
+        recomendacoes={relatorio.recomendacoes}
+        sessaoId={relatorio.sessao.id}
+      />
 
       {/* Transcricao por ultimo: e' a secao mais longa, e o professor abre o
           relatorio pra ver presenca e atencao primeiro. */}

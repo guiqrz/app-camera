@@ -23,7 +23,9 @@ import type {
   Aula,
   AulasDaTurma,
   ChamadaDaSessao,
+  ConfiguracaoIA,
   ConfirmacaoPresencaResposta,
+  Conversa,
   EstadoCamera,
   EstatisticasDaTurma,
   Materia,
@@ -33,6 +35,7 @@ import type {
   NovaMateria,
   NovaTurma,
   RelatorioDaSessao,
+  RespostaDoAssistente,
   Transcricao,
   Turma,
   VisaoAdmin,
@@ -474,5 +477,76 @@ export function excluirAudioDaSessao(
 ): Promise<{ apagados: number }> {
   return requisitar<{ apagados: number }>(`/sessoes/${sessaoId}/audio`, {
     method: "DELETE",
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* Cup AI                                                              */
+/* ------------------------------------------------------------------ */
+
+/** Conversas do professor, da mais recente pra mais antiga. Sem mensagens. */
+export function listarConversas(): Promise<Conversa[]> {
+  // Sem cache: o professor acabou de perguntar e volta pra lista — 30s de
+  // cache mostrariam a conversa com o titulo e a data velhos.
+  return requisitar<Conversa[]>("/ia/conversas", { revalidate: 0 });
+}
+
+/** Conversa com as mensagens em ordem cronologica. Lanca ApiError 404. */
+export function buscarConversa(conversaId: number): Promise<Conversa> {
+  return requisitar<Conversa>(`/ia/conversas/${conversaId}`, { revalidate: 0 });
+}
+
+/**
+ * Cria a conversa a partir da primeira pergunta.
+ *
+ * A pergunta so' vira TITULO aqui — ela ainda nao foi respondida. Quem a envia
+ * de fato e' `perguntarNaConversa`, logo depois, com a conversa ja' existindo.
+ */
+export function criarConversa(primeiraPergunta: string): Promise<Conversa> {
+  return requisitar<Conversa>("/ia/conversas", {
+    method: "POST",
+    body: { primeira_pergunta: primeiraPergunta },
+  });
+}
+
+/** Apaga a conversa e as mensagens dela. Lanca ApiError 404. */
+export function apagarConversa(conversaId: number): Promise<{ apagada: boolean }> {
+  return requisitar<{ apagada: boolean }>(`/ia/conversas/${conversaId}`, {
+    method: "DELETE",
+  });
+}
+
+/**
+ * Manda a pergunta e devolve a resposta do assistente.
+ *
+ * Vai como FormData (multipart) porque carrega arquivo anexado. As aulas vao
+ * como IDs em `sessao_ids`: o TEXTO da transcricao e' lido no servidor do
+ * CUPCAM e nunca trafega pelo navegador — regra de privacidade, nao detalhe
+ * de implementacao.
+ *
+ * Lanca ApiError 404 (conversa nao existe), 400 (aula sem transcricao),
+ * 413 (anexo grande demais), 502 (o modelo falhou) ou 503 (sem chave no
+ * servidor). O 503 e' capacidade nao configurada, nao bug.
+ */
+export function perguntarNaConversa(
+  conversaId: number,
+  corpo: FormData,
+): Promise<RespostaDoAssistente> {
+  return requisitar<RespostaDoAssistente>(`/ia/conversas/${conversaId}/perguntar`, {
+    method: "POST",
+    body: corpo,
+  });
+}
+
+/** Modelo ativo, lista curada e se ha chave de API no servidor. */
+export function lerConfiguracaoIA(): Promise<ConfiguracaoIA> {
+  return requisitar<ConfiguracaoIA>("/ia/config", { revalidate: 0 });
+}
+
+/** Troca o modelo do assistente. Vale ja' na proxima pergunta. */
+export function trocarModeloIA(modelo: string): Promise<{ modelo: string }> {
+  return requisitar<{ modelo: string }>("/ia/config", {
+    method: "PUT",
+    body: { modelo },
   });
 }

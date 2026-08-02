@@ -420,3 +420,62 @@ export type Transcricao = {
   erro: string | null;
   trechos: TrechoTranscricao[];
 };
+
+/* ------------------------------------------------------------------ */
+/* Cup AI                                                              */
+/* ------------------------------------------------------------------ */
+
+/** Quem escreveu a mensagem. O backend so' aceita estes dois valores. */
+export type PapelMensagem = "professor" | "assistente";
+
+export type MensagemConversa = {
+  id: number;
+  papel: PapelMensagem;
+  texto: string;
+  criada_em: string;
+};
+
+export type Conversa = {
+  id: number;
+  titulo: string;
+  atualizada_em: string;
+  /** So' na busca por id; a listagem traz apenas o cabecalho. */
+  criada_em?: string;
+  /** So' vem na busca por id; a listagem traz apenas o cabecalho. */
+  mensagens?: MensagemConversa[];
+};
+
+/** Modelo da lista curada do backend (cupcam/ia/modelos.py). */
+export type ModeloIA = {
+  id: string;
+  rotulo: string;
+  descricao: string;
+};
+
+export type ConfiguracaoIA = {
+  modelo: string;
+  modelos: ModeloIA[];
+  /** Sem chave no servidor o assistente responde 503 — a tela avisa em vez de
+   *  deixar o professor perguntar no vazio. */
+  chave_configurada: boolean;
+};
+
+/** Resposta de uma pergunta: o texto do assistente e o modelo que respondeu. */
+export type RespostaDoAssistente = {
+  resposta: string;
+  modelo: string;
+};
+
+/**
+ * Algo anexado a' pergunta.
+ *
+ * Aula vai como ID, nunca como texto: o conteudo da transcricao e' lido no
+ * servidor do CUPCAM e nunca trafega pelo navegador. Regra de privacidade da
+ * transcricao, nao detalhe de implementacao.
+ *
+ * `caracteres` alimenta o contador de contexto — vem do tamanho do texto da
+ * transcricao, ja' conhecido quando a aula e' escolhida.
+ */
+export type Anexo =
+  | { tipo: "aula"; sessaoId: number; rotulo: string; caracteres: number }
+  | { tipo: "arquivo"; arquivo: File };
