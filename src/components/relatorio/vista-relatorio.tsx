@@ -2,6 +2,7 @@ import { CardRecomendacao } from "@/components/relatorio/card-recomendacao";
 import { FeedInsights } from "@/components/relatorio/feed-insights";
 import { GraficoLinhaTempo } from "@/components/relatorio/grafico-linha-tempo";
 import { PainelPresenca } from "@/components/relatorio/painel-presenca";
+import { ResumoDaAula } from "@/components/relatorio/resumo-da-aula";
 import { SecaoTranscricao } from "@/components/relatorio/secao-transcricao";
 import {
   IconCheck,
@@ -193,6 +194,10 @@ export function VistaRelatorio({ relatorio }: VistaRelatorioProps) {
         recomendacoes={relatorio.recomendacoes}
         sessaoId={relatorio.sessao.id}
       />
+
+      {/* Resumo ANTES da transcricao: e' a versao curta do mesmo conteudo, e
+          quem abre o relatorio quer a conclusao antes do texto inteiro. */}
+      <ResumoDaAula sessaoId={relatorio.sessao.id} />
 
       {/* Transcricao por ultimo: e' a secao mais longa, e o professor abre o
           relatorio pra ver presenca e atencao primeiro. */}
