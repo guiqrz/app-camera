@@ -178,11 +178,11 @@ export function PainelConversas({
       {/* As margens negativas cortam o vao vazio do viewBox: o desenho ocupa
           so' a faixa central, e sem o corte o mascote flutuaria longe do
           titulo, com um bloco de nada no meio. */}
-      <span className="-mt-4 -mb-[22px]">
-        <MascoteCup size={108} animado titulo="Cup, o assistente" />
+      <span className="-mt-4 -mb-[26px]">
+        <MascoteCup size={126} animado titulo="Cup, o assistente" />
       </span>
 
-      <h1 className="text-text text-center text-[24px] leading-tight font-semibold tracking-tight sm:text-[29px]" style={{ fontFamily: "var(--font-geologica)" }}>
+      <h1 className="text-text text-center text-[27px] leading-tight font-semibold tracking-tight sm:text-[33px]" style={{ fontFamily: "var(--font-geologica)" }}>
         {saudacao}, professor.
         <br />
         {/* O gradiente da marca vive so' aqui: e' o maior texto da tela e o
@@ -222,7 +222,7 @@ export function PainelConversas({
         </div>
       )}
 
-      <div className="mt-5 w-full">
+      <div className="mt-7 w-full">
         <CompositorPergunta
           valor={pergunta}
           aoMudar={setPergunta}
@@ -259,8 +259,8 @@ export function PainelConversas({
       )}
 
       {conversas.length > 0 && (
-        <section className="mt-7 w-full">
-          <h2 className="text-text-muted mb-3 text-[11.5px] font-extrabold tracking-[0.09em] uppercase">
+        <section className="mt-12 w-full">
+          <h2 className="text-text-muted mb-2 text-[10.5px] font-bold tracking-[0.1em] uppercase opacity-80">
             Últimas conversas
           </h2>
 
@@ -271,7 +271,7 @@ export function PainelConversas({
               type="button"
               onClick={() => setMostrarTodas((aberto) => !aberto)}
               aria-expanded={mostrarTodas}
-              className="border-border-strong text-text-body hover:bg-surface-2 mt-2 w-full rounded-2xl border border-dashed py-2.5 text-xs font-bold transition-colors"
+              className="border-border-strong text-text-muted hover:bg-surface-2 hover:text-text-body mt-1.5 w-full rounded-xl border border-dashed py-2 text-[11px] font-bold transition-colors"
             >
               {mostrarTodas
                 ? "Ver menos"

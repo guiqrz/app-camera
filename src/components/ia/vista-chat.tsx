@@ -12,6 +12,7 @@ import { CompositorPergunta } from "@/components/ia/compositor-pergunta";
 import { MascoteCup } from "@/components/ia/mascote-cup";
 import { SeletorAula } from "@/components/ia/seletor-aula";
 import { retirarAnexosPendentes } from "@/lib/anexos-pendentes";
+import { guardarImagemDaSessao } from "@/lib/imagens-da-sessao";
 import type { Anexo, Conversa, MensagemConversa } from "@/lib/types";
 
 type VistaChatProps = {
@@ -147,6 +148,13 @@ export function VistaChat({
     setMensagens((anteriores) => [...anteriores, otimista]);
 
     try {
+      // Guarda as imagens pra bolha da mensagem poder mostra-las: o backend
+      // grava so' o rotulo, entao sem isto a foto enviada viraria um chip com
+      // o nome do arquivo. Vale ate' o fim da navegacao — ver o modulo.
+      for (const anexo of anexados) {
+        if (anexo.tipo === "arquivo") guardarImagemDaSessao(anexo.arquivo);
+      }
+
       // FormData e nao JSON porque a pergunta carrega arquivos. As aulas vao
       // como ID em `sessao_ids`: o TEXTO da transcricao e' lido no servidor do
       // CUPCAM e nunca trafega pelo navegador (regra de privacidade).
@@ -303,7 +311,7 @@ export function VistaChat({
           alinhado com as mensagens, nao com a borda da tela. O padding
           lateral repoe o do <main>, que a pagina anulou; o de baixo e' a
           folga entre o campo e o fim da janela. */}
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-5 pb-4 lg:px-10 lg:pb-6">
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-5 pb-3 lg:px-10 lg:pb-4">
       {erro && (
         <p
           className="text-xs font-semibold"

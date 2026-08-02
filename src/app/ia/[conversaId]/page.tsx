@@ -92,7 +92,7 @@ export default async function ConversaPage({ params, searchParams }: Props) {
           A largura tambem nao e' limitada aqui: quem rola e' a lista de
           mensagens la' dentro, e limitar por fora colocaria a barra na borda
           de uma caixa estreita, no meio da tela. */}
-      <div className="-mx-5 -mb-7 flex h-[calc(100dvh-12.25rem)] flex-col lg:-mx-10 lg:-mb-9">
+      <div className="-mx-5 -mb-7 flex h-[calc(100dvh-9rem)] flex-col lg:-mx-10 lg:-mb-9">
         <VistaChat
           conversa={conversa}
           perguntaPendente={pergunta}

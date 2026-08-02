@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, type ComponentType } from "react";
 
-import { MascoteCup } from "@/components/ia/mascote-cup";
+import { LogoCupcam } from "@/components/layout/logo-cupcam";
 import {
   IconAdministracao,
   IconAulas,
@@ -25,13 +25,13 @@ type ItemMenu = {
 };
 
 /**
- * O mascote no lugar de um icone de traco.
+ * A marca do CUPCAM como icone do item do assistente.
  *
- * Parado de proposito: no menu ele e' um marcador de destino, e balancar ali
- * competiria com a leitura dos outros itens. Anima so' na abertura da tela.
+ * Em SVG de cor unica (`currentColor`), entao acompanha a cor do item — que
+ * muda quando ele esta ativo e entre os temas claro/escuro.
  */
-function IconeCupAI({ size = 18 }: { size?: number }) {
-  return <MascoteCup size={size} />;
+function IconeCupAI({ size = 19 }: { size?: number }) {
+  return <LogoCupcam size={size} />;
 }
 
 const ITENS: ItemMenu[] = [
