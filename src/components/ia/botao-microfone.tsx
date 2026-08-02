@@ -83,6 +83,11 @@ export function BotaoMicrofone({
 
   const reconhecimento = useRef<ReconhecimentoDeFala | null>(null);
 
+  // Separa "o professor mandou parar" de "o navegador desistiu sozinho": o
+  // Chrome encerra o motor apos alguns segundos de silencio, e so' no primeiro
+  // caso o ditado deve mesmo acabar. Ver `onend`.
+  const queroParar = useRef(false);
+
   // Espelho do callback: o `onresult` e' registrado uma vez, e sem isto ele
   // ficaria preso na primeira versao da funcao.
   const aoTranscreverAgora = useRef(aoTranscrever);
@@ -98,15 +103,20 @@ export function BotaoMicrofone({
   }, []);
 
   // Encerra o reconhecimento se a tela sair no meio de uma fala: sem isto o
-  // microfone continuaria aberto depois de sair da conversa.
+  // microfone continuaria aberto depois de sair da conversa. A marca impede
+  // que o `onend` religue o motor de uma tela que ja' nao existe.
   useEffect(() => {
-    return () => reconhecimento.current?.abort();
+    return () => {
+      queroParar.current = true;
+      reconhecimento.current?.abort();
+    };
   }, []);
 
   const alternar = () => {
     setErro(null);
 
     if (ouvindo) {
+      queroParar.current = true;
       reconhecimento.current?.stop();
       return;
     }
@@ -119,22 +129,36 @@ export function BotaoMicrofone({
     motor.continuous = true;
     motor.interimResults = true;
 
-    // So' os trechos FINAIS entram no campo. Os parciais mudam a cada palavra
-    // e, se entrassem, o professor veria o texto se reescrever sozinho.
+    // So' os trechos FINAIS entram no campo: os parciais mudam a cada palavra
+    // e, se entrassem, o texto se reescreveria sozinho na tela.
+    //
+    // `entregues` guarda quantos resultados ja' foram para o campo. Sem esse
+    // controle, o Chrome — que reenvia o mesmo resultado quando ele passa de
+    // parcial para final — duplicava a frase inteira.
+    let entregues = 0;
+
     motor.onresult = (evento) => {
-      let finalizado = "";
-      for (let i = evento.resultIndex; i < evento.results.length; i++) {
+      let novo = "";
+      for (let i = entregues; i < evento.results.length; i++) {
         const resultado = evento.results[i];
-        if (resultado.isFinal) finalizado += resultado[0].transcript;
+        if (resultado.isFinal) {
+          novo += resultado[0].transcript;
+          entregues = i + 1;
+        }
       }
-      if (finalizado.trim()) aoTranscreverAgora.current(finalizado);
+      if (novo.trim()) aoTranscreverAgora.current(novo.trim());
     };
 
     motor.onerror = (evento) => {
+      // "no-speech" e' rotina: o professor ficou em silencio e o Chrome
+      // desistiu. O `onend` religa em seguida, entao NAO desliga o estado nem
+      // avisa nada — para ele, o microfone continua aberto.
+      if (evento.error === "no-speech") return;
+
+      queroParar.current = true;
       setOuvindo(false);
-      // "aborted" e "no-speech" sao rotina (o professor parou, ou ficou em
-      // silencio) — avisar ali seria ruido.
-      if (evento.error === "aborted" || evento.error === "no-speech") return;
+      // "aborted" e' o proprio encerramento pedido pelo professor.
+      if (evento.error === "aborted") return;
 
       setErro(
         evento.error === "not-allowed"
@@ -143,9 +167,24 @@ export function BotaoMicrofone({
       );
     };
 
-    motor.onend = () => setOuvindo(false);
+    // O Chrome encerra o motor sozinho depois de alguns segundos de silencio,
+    // mesmo com `continuous`. Religar enquanto o professor nao clicou em parar
+    // e' o que faz o ditado durar o quanto ele quiser — sem isso o microfone
+    // "morria" no meio da frase e so' o comeco entrava no campo.
+    motor.onend = () => {
+      if (!queroParar.current) {
+        try {
+          motor.start();
+          return;
+        } catch {
+          // Se o navegador recusar o religamento, cai no encerramento normal.
+        }
+      }
+      setOuvindo(false);
+    };
 
     reconhecimento.current = motor;
+    queroParar.current = false;
     try {
       motor.start();
       setOuvindo(true);

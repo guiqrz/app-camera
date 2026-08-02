@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { BotaoMicrofone } from "@/components/ia/botao-microfone";
 import { IconCalendario, IconFoto } from "@/components/ui/icons";
@@ -98,6 +98,14 @@ export function CompositorPergunta({
 }: CompositorPerguntaProps) {
   const campoDeArquivo = useRef<HTMLInputElement>(null);
   const [arrastando, setArrastando] = useState(false);
+
+  // Espelho de `valor` para o ditado por voz — ver o comentario no
+  // <BotaoMicrofone>. Atualizado em efeito porque escrever num ref durante o
+  // render e' proibido.
+  const valorAgora = useRef(valor);
+  useEffect(() => {
+    valorAgora.current = valor;
+  }, [valor]);
 
   const vazio = !valor.trim();
 
@@ -256,12 +264,18 @@ export function CompositorPergunta({
 
           {/* O ditado ACRESCENTA ao que ja' esta escrito, com um espaco entre
               as falas: sobrescrever apagaria o que o professor digitou antes
-              de decidir falar o resto. */}
+              de decidir falar o resto.
+
+              Le' do ref, e nao de `valor`: o motor de voz guarda esta funcao
+              no `onresult` uma unica vez, entao um `valor` capturado aqui
+              ficaria congelado no texto de quando o microfone ligou — cada
+              trecho ditado sobrescreveria o anterior. */}
           <BotaoMicrofone
             desabilitado={ocupado}
-            aoTranscrever={(texto) =>
-              aoMudar(valor ? `${valor.trimEnd()} ${texto}` : texto)
-            }
+            aoTranscrever={(texto) => {
+              const atual = valorAgora.current;
+              aoMudar(atual ? `${atual.trimEnd()} ${texto}` : texto);
+            }}
           />
 
           <button
