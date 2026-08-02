@@ -13,10 +13,10 @@ type Props = {
 };
 
 /**
- * Tela do Cup AI: conversas anteriores e o campo pra comecar uma nova.
+ * Abertura do Cup AI: mascote, campo de pergunta e as ultimas conversas.
  *
- * As duas leituras vao em paralelo porque nao dependem uma da outra — em serie,
- * o professor esperaria a soma das duas idas ate a API da sala.
+ * As tres leituras vao em paralelo porque nao dependem uma da outra — em
+ * serie, o professor esperaria a soma das idas ate a API da sala.
  */
 export default async function IaPage({ searchParams }: Props) {
   const [{ sessao }, conversas, configuracao] = await Promise.all([

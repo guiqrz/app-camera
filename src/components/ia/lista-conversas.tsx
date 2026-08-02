@@ -33,13 +33,10 @@ export function ListaConversas({
   const [confirmandoId, setConfirmandoId] = useState<number | null>(null);
   const [apagandoId, setApagandoId] = useState<number | null>(null);
 
-  if (conversas.length === 0) {
-    return (
-      <p className="text-text-muted px-1 py-6 text-sm leading-relaxed">
-        Nenhuma conversa ainda. Faça a primeira pergunta abaixo.
-      </p>
-    );
-  }
+  // Sem texto de vazio: na abertura quem chama ja' esconde a secao inteira
+  // quando nao ha conversa, e o campo de perguntar fica ACIMA — um aviso
+  // dizendo "pergunte abaixo" apontaria para o lugar errado.
+  if (conversas.length === 0) return null;
 
   const apagar = async (conversaId: number) => {
     setApagandoId(conversaId);
@@ -61,7 +58,7 @@ export function ListaConversas({
         return (
           <li
             key={conversa.id}
-            className={`border-border-default bg-surface flex items-center gap-2 rounded-xl border px-3 py-2.5 transition-colors ${
+            className={`border-border-default bg-surface hover:border-border-strong flex items-center gap-2 rounded-2xl border px-3.5 py-3 transition-colors ${
               ativa ? "border-l-4" : ""
             }`}
             style={ativa ? { borderLeftColor: "var(--primary)" } : undefined}

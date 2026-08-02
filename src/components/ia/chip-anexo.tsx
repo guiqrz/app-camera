@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo } from "react";
 
 import { IconCalendario, IconFechar } from "@/components/ui/icons";
 import type { Anexo } from "@/lib/types";
@@ -36,27 +36,17 @@ function extensaoDe(arquivo: File): string {
  * ele cada anexo escolhido vaza um blob que so' sai no refresh da pagina.
  */
 function MiniaturaImagem({ arquivo, lado }: { arquivo: File; lado: number }) {
-  const [url, setUrl] = useState<string | null>(null);
+  // `useMemo` e nao `useState`+efeito: a URL e' derivada do arquivo e existe
+  // ja' no primeiro desenho, sem o quadro intermediario em branco que o
+  // efeito criaria. O efeito abaixo cuida so' de devolver a memoria.
+  const url = useMemo(() => URL.createObjectURL(arquivo), [arquivo]);
 
-  useEffect(() => {
-    const criada = URL.createObjectURL(arquivo);
-    setUrl(criada);
-    return () => URL.revokeObjectURL(criada);
-  }, [arquivo]);
+  useEffect(() => () => URL.revokeObjectURL(url), [url]);
 
-  if (!url) {
-    return (
-      <span
-        className="bg-surface-2 block flex-none rounded-lg"
-        style={{ width: lado, height: lado }}
-        aria-hidden
-      />
-    );
-  }
-
+  /* O next/image otimiza no servidor, que nunca ve este arquivo: o blob so'
+     existe neste navegador, nesta sessao. Aqui o <img> nativo e' o certo. */
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- blob local do
-    // navegador: o next/image otimiza no servidor, que nunca ve este arquivo.
+    // eslint-disable-next-line @next/next/no-img-element
     <img
       src={url}
       alt=""
