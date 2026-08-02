@@ -41,7 +41,6 @@ async function montarAnexoDaAula(bruto: string | undefined): Promise<Anexo | und
     rotulo: transcricao.materia
       ? `Aula ${data} · ${transcricao.materia}`
       : `Aula ${data}`,
-    caracteres: transcricao.texto.length,
   };
 }
 
@@ -82,8 +81,17 @@ export default async function ConversaPage({ params, searchParams }: Props) {
       {/* `h-[calc(...)]` e nao `h-full`: o historico rola dentro da conversa,
           com o campo de pergunta sempre visivel no rodape. Sem altura fixa aqui
           a pagina inteira e' que rolaria, e o campo sumiria da tela justamente
-          numa conversa longa — quando ele mais e' usado. */}
-      <div className="mx-auto flex h-[calc(100vh-14rem)] max-w-3xl flex-col">
+          numa conversa longa — quando ele mais e' usado.
+
+          As margens negativas anulam o padding do <main> (px-5 py-7, lg:px-10
+          lg:py-9) so' nesta tela: a barra de rolagem precisa nascer na BORDA
+          da janela, e nao a 40px dela. O respiro volta por dentro, no proprio
+          VistaChat, onde nao empurra a barra pra dentro da tela.
+
+          A largura tambem nao e' limitada aqui: quem rola e' a lista de
+          mensagens la' dentro, e limitar por fora colocaria a barra na borda
+          de uma caixa estreita, no meio da tela. */}
+      <div className="-mx-5 -mb-7 flex h-[calc(100dvh-9rem)] flex-col lg:-mx-10 lg:-mb-9">
         <VistaChat
           conversa={conversa}
           perguntaPendente={pergunta}

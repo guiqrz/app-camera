@@ -151,7 +151,6 @@ export function SeletorAula({ aoEscolher, aoFechar }: SeletorAulaProps) {
         tipo: "aula",
         sessaoId: aula.sessao_id,
         rotulo: rotularAula(aula),
-        caracteres: transcricao.texto.length,
       });
       aoFechar();
     } catch {

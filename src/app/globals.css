@@ -81,6 +81,54 @@ body {
   border-radius: var(--radius-sm);
 }
 
+/* Excecao: campos que NAO tem borda propria porque vivem dentro de uma caixa
+   que ja' desenha a borda (o compositor do Cup AI). Ali o contorno cairia no
+   meio do bloco, riscando o texto em vez de contornar o controle.
+   A pista de foco nao some — a caixa inteira acende via focus-within. */
+[data-campo-sem-anel]:focus-visible {
+  outline: none;
+}
+
+/* --- Mascote Cup (src/components/ia/mascote-cup.tsx) ---
+   Fica aqui, e nao em style inline, porque @keyframes nao existe em atributo
+   style. O bloco de prefers-reduced-motion abaixo ja neutraliza as duas. */
+
+.cup-balanca {
+  transform-origin: 51px 76px; /* a base da xicara, o ponto de apoio */
+  animation: cup-balancar 4.5s ease-in-out infinite;
+}
+
+.cup-olho {
+  /* fill-box faz o transform-origin ser o centro do proprio traco, e nao o
+     do SVG inteiro — sem isso o olho "escorrega" ao inves de piscar. */
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: cup-piscar 5.5s ease-in-out infinite;
+}
+
+@keyframes cup-balancar {
+  0%,
+  100% {
+    transform: rotate(-2.5deg);
+  }
+  50% {
+    transform: rotate(2.5deg);
+  }
+}
+
+/* O olho e' um traco curvo: fechar = achatar no eixo Y. Rapido e espacado,
+   como piscada de verdade — 92% do ciclo com o olho aberto. */
+@keyframes cup-piscar {
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  95% {
+    transform: scaleY(0.1);
+  }
+}
+
 /* Respeita quem pediu menos animacao no sistema operacional. */
 @media (prefers-reduced-motion: reduce) {
   *,

@@ -13,10 +13,10 @@ type Props = {
 };
 
 /**
- * Tela do Cup AI: conversas anteriores e o campo pra comecar uma nova.
+ * Abertura do Cup AI: mascote, campo de pergunta e as ultimas conversas.
  *
- * As duas leituras vao em paralelo porque nao dependem uma da outra — em serie,
- * o professor esperaria a soma das duas idas ate a API da sala.
+ * As tres leituras vao em paralelo porque nao dependem uma da outra — em
+ * serie, o professor esperaria a soma das idas ate a API da sala.
  */
 export default async function IaPage({ searchParams }: Props) {
   const [{ sessao }, conversas, configuracao] = await Promise.all([
@@ -31,11 +31,16 @@ export default async function IaPage({ searchParams }: Props) {
 
   return (
     <AppShell titulo="Cup AI">
-      <PainelConversas
-        conversasIniciais={conversas}
-        chaveConfigurada={configuracao.chave_configurada}
-        sessaoAnexada={sessaoAnexada}
-      />
+      {/* Altura da area util pro conteudo poder se centralizar no eixo Y.
+          `justify-center` sem altura nao teria o que centralizar — o bloco
+          ficaria colado no topo, que e' o que acontecia antes. */}
+      <div className="flex min-h-[calc(100dvh-11rem)] flex-col justify-center">
+        <PainelConversas
+          conversasIniciais={conversas}
+          chaveConfigurada={configuracao.chave_configurada}
+          sessaoAnexada={sessaoAnexada}
+        />
+      </div>
     </AppShell>
   );
 }

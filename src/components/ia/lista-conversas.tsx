@@ -33,13 +33,10 @@ export function ListaConversas({
   const [confirmandoId, setConfirmandoId] = useState<number | null>(null);
   const [apagandoId, setApagandoId] = useState<number | null>(null);
 
-  if (conversas.length === 0) {
-    return (
-      <p className="text-text-muted px-1 py-6 text-sm leading-relaxed">
-        Nenhuma conversa ainda. Faça a primeira pergunta abaixo.
-      </p>
-    );
-  }
+  // Sem texto de vazio: na abertura quem chama ja' esconde a secao inteira
+  // quando nao ha conversa, e o campo de perguntar fica ACIMA — um aviso
+  // dizendo "pergunte abaixo" apontaria para o lugar errado.
+  if (conversas.length === 0) return null;
 
   const apagar = async (conversaId: number) => {
     setApagandoId(conversaId);
@@ -52,7 +49,7 @@ export function ListaConversas({
   };
 
   return (
-    <ul className="flex flex-col gap-2">
+    <ul className="flex flex-col gap-1.5">
       {conversas.map((conversa) => {
         const ativa = conversa.id === conversaAtivaId;
         const confirmando = confirmandoId === conversa.id;
@@ -61,22 +58,25 @@ export function ListaConversas({
         return (
           <li
             key={conversa.id}
-            className={`border-border-default bg-surface flex items-center gap-2 rounded-xl border px-3 py-2.5 transition-colors ${
+            className={`border-border-default bg-surface hover:border-border-strong flex items-center gap-2 rounded-lg border px-3 py-2 transition-colors ${
               ativa ? "border-l-4" : ""
             }`}
             style={ativa ? { borderLeftColor: "var(--primary)" } : undefined}
           >
+            {/* Titulo e data na MESMA linha: empilhados, cada card ganhava duas
+                alturas de texto e a lista roubava a enfase da abertura. A data
+                encolhe (`flex-none`) e quem cede espaco e' o titulo. */}
             <Link
               href={`/ia/${conversa.id}`}
               aria-current={ativa ? "page" : undefined}
-              className="min-w-0 flex-1"
+              className="flex min-w-0 flex-1 items-baseline gap-2"
             >
               {/* `truncate` porque o titulo e' a primeira pergunta cortada pelo
                   backend e ainda assim pode estourar a largura no celular. */}
-              <span className="text-text block truncate text-sm font-extrabold">
+              <span className="text-text min-w-0 flex-1 truncate text-[13px] font-bold">
                 {conversa.titulo}
               </span>
-              <span className="text-text-muted text-xs">
+              <span className="text-text-muted flex-none text-[11px]">
                 {formatarDataCurta(dataDoTimestamp(conversa.atualizada_em))} ·{" "}
                 {horaDoTimestamp(conversa.atualizada_em)}
               </span>
@@ -106,7 +106,7 @@ export function ListaConversas({
               <button
                 type="button"
                 onClick={() => setConfirmandoId(conversa.id)}
-                className="hover:bg-surface-2 flex-none rounded-lg p-2 transition-colors"
+                className="hover:bg-surface-2 flex-none rounded-lg p-1.5 transition-colors"
                 style={{ color: "var(--danger-fg)" }}
                 aria-label={`Apagar a conversa ${conversa.titulo}`}
               >

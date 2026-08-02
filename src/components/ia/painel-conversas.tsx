@@ -3,8 +3,34 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import {
+  BarraAnexos,
+  FORMATOS_ACEITOS,
+  validarArquivo,
+} from "@/components/ia/barra-anexos";
+import { CompositorPergunta } from "@/components/ia/compositor-pergunta";
 import { ListaConversas } from "@/components/ia/lista-conversas";
-import type { Conversa } from "@/lib/types";
+import { MascoteCup } from "@/components/ia/mascote-cup";
+import { SeletorAula } from "@/components/ia/seletor-aula";
+import { guardarAnexosPendentes } from "@/lib/anexos-pendentes";
+import type { Anexo, Conversa } from "@/lib/types";
+
+/** Quantas conversas aparecem antes de o professor pedir o resto. */
+const CONVERSAS_VISIVEIS = 3;
+
+/**
+ * Saudacao pela hora do relogio do professor.
+ *
+ * Roda no navegador de proposito: no servidor sairia o fuso da maquina que
+ * hospeda a API, e "Boa noite" as tres da tarde e' o tipo de erro que faz a
+ * tela inteira parecer desligada da realidade.
+ */
+function saudacaoDaHora(): string {
+  const hora = new Date().getHours();
+  if (hora < 12) return "Bom dia";
+  if (hora < 18) return "Boa tarde";
+  return "Boa noite";
+}
 
 type PainelConversasProps = {
   conversasIniciais: Conversa[];
@@ -18,7 +44,8 @@ type PainelConversasProps = {
 };
 
 /**
- * Tela de lista do Cup AI: conversas existentes e o campo que comeca uma nova.
+ * Abertura do Cup AI: mascote, saudacao, campo de pergunta e as ultimas
+ * conversas.
  *
  * Comecar uma conversa sao DUAS chamadas, nesta ordem: `POST /ia/conversas`
  * cria e usa a pergunta como titulo, e so' entao a pergunta e' de fato enviada
@@ -35,6 +62,17 @@ export function PainelConversas({
   const [pergunta, setPergunta] = useState("");
   const [criando, setCriando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const [mostrarTodas, setMostrarTodas] = useState(false);
+
+  // Anexos escolhidos ANTES de a conversa existir. Quem de fato os envia e' a
+  // tela da conversa: a aula viaja como `sessao` no endereco, e os arquivos
+  // pelo modulo de pendentes — `File` nao cabe numa URL.
+  const [anexos, setAnexos] = useState<Anexo[]>([]);
+  const [seletorAberto, setSeletorAberto] = useState(false);
+
+  // `useState` com funcao: a saudacao e' lida uma vez, na montagem. Recalcular
+  // a cada desenho trocaria "Boa tarde" por "Boa noite" no meio do uso.
+  const [saudacao] = useState(saudacaoDaHora);
 
   const apagar = async (conversaId: number) => {
     setErro(null);
@@ -53,9 +91,7 @@ export function PainelConversas({
     }
   };
 
-  const comecar = async (evento: React.FormEvent) => {
-    evento.preventDefault();
-
+  const comecar = async () => {
     const texto = pergunta.trim();
     if (!texto || criando) return;
 
@@ -76,12 +112,23 @@ export function PainelConversas({
       }
 
       const conversa = (await r.json()) as Conversa;
+
+      // Os arquivos ficam em memoria ate' a proxima tela monta-los: o
+      // `router.push` navega no cliente, sem recarregar a pagina. Vao
+      // carimbados com o id da conversa — se esta navegacao nao terminar, a
+      // pendencia nao pode acabar numa conversa antiga qualquer.
+      const arquivos = anexos.filter((anexo) => anexo.tipo === "arquivo");
+      if (arquivos.length > 0) guardarAnexosPendentes(conversa.id, arquivos);
+
       // A pergunta viaja no endereco pra tela da conversa envia-la sozinha —
       // sem isso o professor digitaria a mesma coisa duas vezes. `sessao` vai
-      // junto quando ele veio do relatorio, pra aula ja' entrar anexada.
+      // junto quando ha aula anexada: a escolhida aqui, ou a que veio do
+      // relatorio (`/ia?sessao=`).
       const parametros = new URLSearchParams({ pergunta: texto });
-      if (sessaoAnexada !== null) {
-        parametros.set("sessao", String(sessaoAnexada));
+      const aula = anexos.find((anexo) => anexo.tipo === "aula");
+      const sessao = aula?.sessaoId ?? sessaoAnexada;
+      if (sessao !== null && sessao !== undefined) {
+        parametros.set("sessao", String(sessao));
       }
       router.push(`/ia/${conversa.id}?${parametros}`);
     } catch {
@@ -91,14 +138,37 @@ export function PainelConversas({
     }
   };
 
+  /** Mesma validacao da tela da conversa — ver `validarArquivo`. */
+  const anexarArquivos = (lista: FileList | null) => {
+    if (!lista || lista.length === 0) return;
+
+    const aceitos: Anexo[] = [];
+    const recusados: string[] = [];
+    for (const arquivo of Array.from(lista)) {
+      // Os aceitos deste mesmo lote entram na conta do limite de corpo: sem
+      // isso, tres arquivos de 10 MB escolhidos de uma vez passariam juntos.
+      const motivo = validarArquivo(arquivo, [...anexos, ...aceitos]);
+      if (motivo) recusados.push(motivo);
+      else aceitos.push({ tipo: "arquivo", arquivo });
+    }
+
+    if (aceitos.length > 0) setAnexos((anteriores) => [...anteriores, ...aceitos]);
+    setErro(recusados.length > 0 ? recusados.join(" ") : null);
+  };
+
+  const visiveis = mostrarTodas
+    ? conversas
+    : conversas.slice(0, CONVERSAS_VISIVEIS);
+  const escondidas = conversas.length - CONVERSAS_VISIVEIS;
+
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-2xl flex-col items-center">
       {/* Aviso ANTES do campo, nao depois de perguntar: sem chave o backend
           responde 503, e descobrir isso so' depois de escrever um paragrafo
           inteiro seria perder o texto por nada. */}
       {!chaveConfigurada && (
         <p
-          className="rounded-xl px-4 py-3 text-sm leading-relaxed"
+          className="mb-6 w-full rounded-xl px-4 py-3 text-sm leading-relaxed"
           style={{ background: "var(--warn-bg)", color: "var(--warn-fg)" }}
           role="status"
         >
@@ -107,43 +177,82 @@ export function PainelConversas({
         </p>
       )}
 
-      <form onSubmit={comecar} className="flex flex-col gap-2">
-        <label htmlFor="primeira-pergunta" className="text-text text-sm font-extrabold">
-          Nova conversa
-        </label>
-        <textarea
-          id="primeira-pergunta"
-          value={pergunta}
-          onChange={(evento) => setPergunta(evento.target.value)}
-          onKeyDown={(evento) => {
-            if (evento.key === "Enter" && !evento.shiftKey) {
-              evento.preventDefault();
-              comecar(evento);
-            }
+      {/* As margens negativas cortam o vao vazio do viewBox: o desenho ocupa
+          so' a faixa central, e sem o corte o mascote flutuaria longe do
+          titulo, com um bloco de nada no meio. */}
+      <span className="-mt-4 -mb-[26px]">
+        <MascoteCup size={126} animado titulo="Cup, o assistente" />
+      </span>
+
+      <h1 className="text-text text-center text-[27px] leading-tight font-semibold tracking-tight sm:text-[33px]" style={{ fontFamily: "var(--font-geologica)" }}>
+        {saudacao}, professor.
+        <br />
+        {/* O gradiente da marca vive so' aqui: e' o maior texto da tela e o
+            unico lugar onde a cor carrega identidade em vez de hierarquia. */}
+        <span
+          className="bg-clip-text text-transparent"
+          style={{
+            backgroundImage:
+              "linear-gradient(92deg, var(--brand-aro-1), var(--brand-aro-2))",
           }}
-          rows={3}
-          placeholder="Pergunte sobre suas aulas…"
-          disabled={criando}
-          className="border-border-default bg-surface text-text-body focus:border-primary w-full resize-y rounded-xl border px-4 py-3 text-sm leading-relaxed outline-none disabled:cursor-not-allowed disabled:opacity-60"
-        />
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-text-muted text-xs">
-            Enter envia · Shift+Enter quebra linha
-          </span>
-          <button
-            type="submit"
-            disabled={criando || !pergunta.trim()}
-            className="text-text-on-brand rounded-xl px-5 py-2.5 text-sm font-extrabold transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
-            style={{ background: "var(--primary)" }}
-          >
-            {criando ? "Começando…" : "Começar conversa"}
-          </button>
+        >
+          O que vamos ver hoje?
+        </span>
+      </h1>
+
+      <p className="text-text-muted mt-2 text-center text-sm">
+        Pergunte sobre suas aulas, anexe uma prova ou peça um resumo.
+      </p>
+
+      {seletorAberto && (
+        <div className="mt-5 w-full">
+          <SeletorAula
+            aoEscolher={(anexo) => {
+              // Mesma aula duas vezes mandaria a transcricao repetida pro
+              // modelo e dobraria o contexto sem acrescentar nada.
+              setAnexos((anteriores) =>
+                anteriores.some(
+                  (a) => a.tipo === "aula" && a.sessaoId === anexo.sessaoId,
+                )
+                  ? anteriores
+                  : [...anteriores, anexo],
+              );
+              setErro(null);
+            }}
+            aoFechar={() => setSeletorAberto(false)}
+          />
         </div>
-      </form>
+      )}
+
+      <div className="mt-7 w-full">
+        <CompositorPergunta
+          valor={pergunta}
+          aoMudar={setPergunta}
+          aoEnviar={comecar}
+          ocupado={criando}
+          rotuloOcupado="Começando…"
+          aria="Sua primeira pergunta"
+          anexos={
+            <BarraAnexos
+              anexos={anexos}
+              aoRemover={(indice) =>
+                setAnexos((anteriores) =>
+                  anteriores.filter((_, i) => i !== indice),
+                )
+              }
+            />
+          }
+          aoAnexarAula={() => setSeletorAberto((aberto) => !aberto)}
+          aoAnexarArquivos={anexarArquivos}
+          formatosAceitos={FORMATOS_ACEITOS}
+          seletorAulaAberto={seletorAberto}
+          linhas={2}
+        />
+      </div>
 
       {erro && (
         <p
-          className="text-xs font-semibold"
+          className="mt-3 w-full text-xs font-semibold"
           style={{ color: "var(--danger-fg)" }}
           role="alert"
         >
@@ -151,10 +260,28 @@ export function PainelConversas({
         </p>
       )}
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-text text-sm font-extrabold">Conversas anteriores</h2>
-        <ListaConversas conversas={conversas} aoApagar={apagar} />
-      </section>
+      {conversas.length > 0 && (
+        <section className="mt-12 w-full">
+          <h2 className="text-text-muted mb-2 text-[10.5px] font-bold tracking-[0.1em] uppercase opacity-80">
+            Últimas conversas
+          </h2>
+
+          <ListaConversas conversas={visiveis} aoApagar={apagar} />
+
+          {escondidas > 0 && (
+            <button
+              type="button"
+              onClick={() => setMostrarTodas((aberto) => !aberto)}
+              aria-expanded={mostrarTodas}
+              className="border-border-strong text-text-muted hover:bg-surface-2 hover:text-text-body mt-1.5 w-full rounded-xl border border-dashed py-2 text-[11px] font-bold transition-colors"
+            >
+              {mostrarTodas
+                ? "Ver menos"
+                : `Ver todas as conversas (${conversas.length})`}
+            </button>
+          )}
+        </section>
+      )}
     </div>
   );
 }

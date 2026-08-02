@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, type ComponentType } from "react";
 
+import { LogoCupcam } from "@/components/layout/logo-cupcam";
 import {
   IconAdministracao,
   IconAulas,
@@ -12,7 +13,6 @@ import {
   IconChamada,
   IconConfiguracoes,
   IconFechar,
-  IconIA,
   IconRelatorios,
 } from "@/components/ui/icons";
 
@@ -29,14 +29,20 @@ const ITENS: ItemMenu[] = [
   { rotulo: "Chamada", href: "/chamada", Icone: IconChamada },
   { rotulo: "Relatórios", href: "/relatorios", Icone: IconRelatorios },
   { rotulo: "Câmera", href: "/camera", Icone: IconCamera },
-  { rotulo: "Inteligência Artificial", href: "/ia", Icone: IconIA },
+  // A marca do CUPCAM no lugar de um icone de traco. Em SVG de cor unica,
+  // entao acompanha a cor do item — que muda quando ele esta ativo e entre os
+  // temas claro/escuro.
+  { rotulo: "Cup AI", href: "/ia", Icone: LogoCupcam },
   { rotulo: "Coordenação", href: "/coordenacao", Icone: IconAdministracao },
   { rotulo: "Configurações", href: "/configuracoes", Icone: IconConfiguracoes },
 ];
 
 function Logo() {
   return (
-    <div className="flex items-center gap-2.5 px-2">
+    // `px-2` alinha a BORDA da logo (36px) com a dos icones do menu (18px em
+    // `px-3.5`): a diferenca de meio icone e' compensada no padding, senao a
+    // marca fica recuada em relacao aos itens logo abaixo.
+    <div className="flex items-center gap-2 px-2">
       {/* O PNG ja vem recortado e quadrado (public/logo-cupcam.png, 144px),
           servido a 36 pra ficar nitido em tela retina. `priority` porque o
           logo aparece acima da dobra em toda pagina — sem isso ele entra

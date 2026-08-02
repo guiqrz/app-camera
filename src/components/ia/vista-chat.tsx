@@ -8,8 +8,11 @@ import {
   validarArquivo,
 } from "@/components/ia/barra-anexos";
 import { BolhaMensagem } from "@/components/ia/bolha-mensagem";
+import { CompositorPergunta } from "@/components/ia/compositor-pergunta";
+import { MascoteCup } from "@/components/ia/mascote-cup";
 import { SeletorAula } from "@/components/ia/seletor-aula";
-import { IconCalendario, IconFoto } from "@/components/ui/icons";
+import { retirarAnexosPendentes } from "@/lib/anexos-pendentes";
+import { guardarImagemDaSessao } from "@/lib/imagens-da-sessao";
 import type { Anexo, Conversa, MensagemConversa } from "@/lib/types";
 
 type VistaChatProps = {
@@ -27,6 +30,14 @@ type VistaChatProps = {
 
 /** Id negativo pras mensagens que ainda nao existem no banco — ver `enviar`. */
 let proximoIdLocal = -1;
+
+/**
+ * Conversas cuja pergunta pendente ja' foi despachada nesta navegacao.
+ *
+ * De nivel de modulo de proposito: sobrevive ao ciclo montar/desmontar/montar
+ * do Strict Mode, que um `useRef` nao sobrevive. Ver o efeito que a usa.
+ */
+const despachadas = new Set<number>();
 
 /**
  * Conversa aberta: historico, campo de pergunta e o estado "pensando…".
@@ -57,13 +68,14 @@ export function VistaChat({
   const [pergunta, setPergunta] = useState("");
   const [pensando, setPensando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  // A aula chega pelo endereco (`?sessao=`); os arquivos entram no efeito
+  // abaixo.
   const [anexos, setAnexos] = useState<Anexo[]>(
     anexoInicial ? [anexoInicial] : [],
   );
   const [seletorAberto, setSeletorAberto] = useState(false);
 
   const listaDeMensagens = useRef<HTMLDivElement>(null);
-  const campoDeArquivo = useRef<HTMLInputElement>(null);
 
   /**
    * Rola pro fim a cada mensagem nova.
@@ -120,6 +132,10 @@ export function VistaChat({
   const enviarTexto = useCallback(async (texto: string, anexados: Anexo[]) => {
     setErro(null);
     setPensando(true);
+    // Os anexos ja' viajam em `anexados`: esvaziar a barra aqui, e nao em quem
+    // chama, mantem a limpeza junto do envio — inclusive no despacho da
+    // pergunta pendente, onde chamar setState de fora seria dentro de efeito.
+    setAnexos([]);
 
     // Timestamp local so' pro rotulo de hora da bolha otimista, que vive ate' o
     // envio terminar. `recarregarMensagens` troca isto pelo horario do banco.
@@ -183,6 +199,16 @@ export function VistaChat({
         return;
       }
 
+      // Guarda as imagens SO' AGORA, com o envio aceito: o backend grava
+      // apenas o rotulo, entao sem isto a foto enviada viraria um chip com o
+      // nome do arquivo. Cachear antes do `fetch` encheria a memoria com
+      // imagens de envios que falharam e nunca viraram mensagem.
+      for (const anexo of anexados) {
+        if (anexo.tipo === "arquivo") {
+          guardarImagemDaSessao(conversa.id, anexo.arquivo);
+        }
+      }
+
       // Sucesso: a resposta veio, mas quem tem os ids reais das duas mensagens
       // (pergunta e resposta) e' o banco. Recarregar troca as bolhas locais
       // pelas gravadas, com o horario real em vez do carimbo do navegador.
@@ -197,32 +223,57 @@ export function VistaChat({
     }
   }, [conversa.id, recarregarMensagens]);
 
-  // A pergunta que criou a conversa, enviada uma unica vez ao abrir a tela.
-  // O `useRef` guarda o envio ja' feito: sem ele, um novo desenho do componente
-  // (ou o Strict Mode em desenvolvimento) reenviaria a mesma pergunta e o
-  // professor pagaria duas chamadas ao modelo pelo texto que escreveu uma vez.
-  const pendenteEnviada = useRef(false);
+  /**
+   * Abre a conversa recem-criada: pega os arquivos que a tela anterior deixou
+   * e envia a pergunta que ainda nao foi.
+   *
+   * Os dois passos vivem no MESMO efeito porque sao a mesma acao — a pergunta
+   * precisa sair com os anexos junto, e separa-los abria uma janela em que a
+   * mensagem partia sem o PDF.
+   *
+   * A guarda e' `despachadas`, um Set de nivel de MODULO, e nao um `useRef`:
+   * ref e estado sao descartados quando o componente desmonta, e o Strict Mode
+   * do `next dev` monta, desmonta e monta de novo. Com ref, a segunda montagem
+   * via a guarda zerada e mandava a mesma pergunta outra vez — duas chamadas
+   * ao modelo, duas perguntas gravadas, pelo texto que o professor escreveu
+   * uma vez. O Set sobrevive a isso porque nao pertence ao componente.
+   */
   useEffect(() => {
     const texto = perguntaPendente?.trim();
     // So' na conversa recem-criada: com mensagem gravada, a pergunta ja' foi.
-    if (!texto || pendenteEnviada.current || mensagens.length > 0) return;
-    pendenteEnviada.current = true;
-    setAnexos([]);
-    void enviarTexto(texto, anexoInicial ? [anexoInicial] : []);
+    if (!texto || mensagens.length > 0) return;
+    if (despachadas.has(conversa.id)) return;
+    despachadas.add(conversa.id);
+
+    // A retirada tambem acontece aqui, e nao no `useState`: o inicializador
+    // roda a cada MONTAGEM, e como retirar esvazia a caixa, a segunda montagem
+    // recebia lista vazia — o professor veria a pergunta sair sem o arquivo
+    // que ele anexou, sem aviso nenhum.
+    const doOutroLado = retirarAnexosPendentes(conversa.id);
+    const escolhidos = [...anexos, ...doOutroLado];
+
+    // O `setTimeout(0)` tira o envio de dentro do corpo do efeito: `enviarTexto`
+    // mexe em varios estados de uma vez, e o lint (com razao, no geral) recusa
+    // setState sincrono ali. Um tique depois, o envio e' so' um efeito colateral
+    // comum — e a guarda `despachadas` ja' garantiu que roda uma vez so'.
+    //
+    // SEM limpeza que cancele o timer: o Strict Mode desmonta e remonta logo
+    // apos a montagem, e cancelar aqui mataria o unico envio — a guarda ja'
+    // marcou a conversa como despachada, entao a remontagem nao tentaria de
+    // novo e a pergunta ficaria eternamente sem sair.
+    setTimeout(() => void enviarTexto(texto, escolhidos), 0);
     // `mensagens` e `anexos` de proposito fora das dependencias: mudam a cada
     // resposta, e reexecutar o efeito por isso e' o que a guarda evita.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [perguntaPendente, anexoInicial, enviarTexto]);
+  }, [perguntaPendente, conversa.id, enviarTexto]);
 
-  const enviar = (evento: React.FormEvent) => {
-    evento.preventDefault();
-
+  const enviar = () => {
     const texto = pergunta.trim();
     if (!texto || pensando) return;
 
     const anexados = anexos;
     setPergunta("");
-    setAnexos([]);
+    // `enviarTexto` esvazia a barra de anexos.
     void enviarTexto(texto, anexados);
   };
 
@@ -243,18 +294,20 @@ export function VistaChat({
     // Recusa parcial e' comum (o professor seleciona varios de uma vez): anexa
     // o que serve e explica so' o que ficou de fora.
     setErro(recusados.length > 0 ? recusados.join(" ") : null);
-
-    // Limpa o input pra reanexar o MESMO arquivo depois de remove-lo funcionar:
-    // sem isso o `change` nao dispara na segunda escolha do mesmo caminho.
-    if (campoDeArquivo.current) campoDeArquivo.current.value = "";
   };
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
+      {/* Quem rola e' esta caixa, em largura PLENA: assim a barra de rolagem
+          nasce na borda da area de conteudo, e nao no meio da tela. A largura
+          de leitura fica no miolo, um nivel abaixo. */}
       <div
         ref={listaDeMensagens}
-        className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-1"
+        className="min-h-0 flex-1 overflow-y-auto"
       >
+        {/* O respiro que o <main> perdeu volta AQUI DENTRO: assim o texto nao
+            encosta na borda, mas a barra de rolagem continua na ponta. */}
+        <div className="mx-auto flex max-w-3xl flex-col gap-4 px-5 pt-1 lg:px-10">
         {mensagens.length === 0 && !pensando && (
           <p className="text-text-muted py-6 text-sm leading-relaxed">
             Faça a primeira pergunta sobre suas aulas.
@@ -262,29 +315,37 @@ export function VistaChat({
         )}
 
         {mensagens.map((mensagem) => (
-          <BolhaMensagem key={mensagem.id} mensagem={mensagem} />
+          <BolhaMensagem
+            key={mensagem.id}
+            mensagem={mensagem}
+            conversaId={conversa.id}
+          />
         ))}
 
+        {/* Mesma estrutura de uma resposta (avatar + nome + texto): a espera
+            ocupa o lugar onde a resposta vai nascer, entao a lista nao "pula"
+            quando ela chega. */}
         {pensando && (
-          <div className="flex items-center gap-2.5" role="status">
-            <span className="relative flex h-2.5 w-2.5 shrink-0" aria-hidden>
-              <span
-                className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-75"
-                style={{ background: "var(--primary)" }}
-              />
-              <span
-                className="relative inline-flex h-2.5 w-2.5 rounded-full"
-                style={{ background: "var(--primary)" }}
-              />
+          <div className="flex items-start gap-3" role="status">
+            <span className="-my-2 -mr-1 flex-none">
+              <MascoteCup size={38} animado />
             </span>
-            <span className="text-text-muted text-sm font-semibold">
-              Cup AI está pensando…
-            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-text-muted mb-1.5 text-xs font-extrabold">
+                Cup AI
+              </p>
+              <p className="text-text-muted text-sm">Pensando…</p>
+            </div>
           </div>
         )}
-
+        </div>
       </div>
 
+      {/* Mesma largura de leitura da lista acima: o campo tem que ficar
+          alinhado com as mensagens, nao com a borda da tela. O padding
+          lateral repoe o do <main>, que a pagina anulou; o de baixo e' a
+          folga entre o campo e o fim da janela. */}
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-5 pb-3 lg:px-10 lg:pb-4">
       {erro && (
         <p
           className="text-xs font-semibold"
@@ -313,84 +374,27 @@ export function VistaChat({
         />
       )}
 
-      <form onSubmit={enviar} className="flex flex-col gap-2">
-        <BarraAnexos
-          anexos={anexos}
-          aoRemover={(indice) =>
-            setAnexos((anteriores) => anteriores.filter((_, i) => i !== indice))
-          }
-        />
-
-        {/* Enter envia, Shift+Enter quebra linha: o professor escreve perguntas
-            de varias linhas, e um <textarea> que so' envia por clique obriga a
-            tirar a mao do teclado a cada pergunta. */}
-        <textarea
-          value={pergunta}
-          onChange={(evento) => setPergunta(evento.target.value)}
-          onKeyDown={(evento) => {
-            if (evento.key === "Enter" && !evento.shiftKey) {
-              evento.preventDefault();
-              enviar(evento);
+      <CompositorPergunta
+        valor={pergunta}
+        aoMudar={setPergunta}
+        aoEnviar={enviar}
+        ocupado={pensando}
+        rotuloOcupado="Enviando…"
+        anexos={
+          <BarraAnexos
+            anexos={anexos}
+            aoRemover={(indice) =>
+              setAnexos((anteriores) => anteriores.filter((_, i) => i !== indice))
             }
-          }}
-          rows={3}
-          placeholder="Pergunte sobre suas aulas…"
-          aria-label="Sua pergunta"
-          disabled={pensando}
-          className="border-border-default bg-surface text-text-body focus:border-primary w-full resize-y rounded-xl border px-4 py-3 text-sm leading-relaxed outline-none disabled:cursor-not-allowed disabled:opacity-60"
-        />
-
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setSeletorAberto((aberto) => !aberto)}
-              disabled={pensando}
-              aria-expanded={seletorAberto}
-              className="border-border-default text-text hover:bg-surface-2 flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-extrabold transition-colors disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <IconCalendario size={14} />
-              Anexar aula
-            </button>
-
-            <button
-              type="button"
-              onClick={() => campoDeArquivo.current?.click()}
-              disabled={pensando}
-              className="border-border-default text-text hover:bg-surface-2 flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-extrabold transition-colors disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <IconFoto size={14} />
-              Anexar arquivo
-            </button>
-
-            {/* O input nativo fica escondido porque o visual dele nao combina
-                com o resto da tela e nao aceita estilo. O botao acima o aciona. */}
-            <input
-              ref={campoDeArquivo}
-              type="file"
-              multiple
-              accept={FORMATOS_ACEITOS.join(",")}
-              onChange={(evento) => anexarArquivos(evento.target.files)}
-              className="hidden"
-              tabIndex={-1}
-            />
-          </div>
-
-          <div className="flex items-center gap-3">
-            <span className="text-text-muted hidden text-xs sm:inline">
-              Enter envia · Shift+Enter quebra linha
-            </span>
-            <button
-              type="submit"
-              disabled={pensando || !pergunta.trim()}
-              className="text-text-on-brand rounded-xl px-5 py-2.5 text-sm font-extrabold transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
-              style={{ background: "var(--primary)" }}
-            >
-              {pensando ? "Enviando…" : "Perguntar"}
-            </button>
-          </div>
-        </div>
-      </form>
+          />
+        }
+        aoAnexarAula={() => setSeletorAberto((aberto) => !aberto)}
+        aoAnexarArquivos={anexarArquivos}
+        formatosAceitos={FORMATOS_ACEITOS}
+        seletorAulaAberto={seletorAberto}
+        linhas={2}
+      />
+      </div>
     </div>
   );
 }
