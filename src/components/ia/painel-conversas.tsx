@@ -3,10 +3,15 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { ChipAnexo } from "@/components/ia/chip-anexo";
 import { CompositorPergunta } from "@/components/ia/compositor-pergunta";
 import { ListaConversas } from "@/components/ia/lista-conversas";
 import { MascoteCup } from "@/components/ia/mascote-cup";
-import type { Conversa } from "@/lib/types";
+import { SeletorAula } from "@/components/ia/seletor-aula";
+import type { Anexo, Conversa } from "@/lib/types";
+
+/** O ramo de aula da uniao — o unico que a abertura sabe carregar. */
+type AnexoDeAula = Extract<Anexo, { tipo: "aula" }>;
 
 /** Quantas conversas aparecem antes de o professor pedir o resto. */
 const CONVERSAS_VISIVEIS = 3;
@@ -57,6 +62,15 @@ export function PainelConversas({
   const [erro, setErro] = useState<string | null>(null);
   const [mostrarTodas, setMostrarTodas] = useState(false);
 
+  // Aula anexada ANTES de a conversa existir. Vai como `sessao` no endereco,
+  // e quem de fato anexa e' a tela da conversa.
+  //
+  // So' aula, nunca arquivo: um `File` nao cabe numa URL, e guarda-lo aqui
+  // exigiria segura-lo ate' a proxima tela montar. Anexar arquivo continua
+  // dentro da conversa, onde o envio acontece.
+  const [aulaEscolhida, setAulaEscolhida] = useState<AnexoDeAula | null>(null);
+  const [seletorAberto, setSeletorAberto] = useState(false);
+
   // `useState` com funcao: a saudacao e' lida uma vez, na montagem. Recalcular
   // a cada desenho trocaria "Boa tarde" por "Boa noite" no meio do uso.
   const [saudacao] = useState(saudacaoDaHora);
@@ -101,10 +115,12 @@ export function PainelConversas({
       const conversa = (await r.json()) as Conversa;
       // A pergunta viaja no endereco pra tela da conversa envia-la sozinha —
       // sem isso o professor digitaria a mesma coisa duas vezes. `sessao` vai
-      // junto quando ele veio do relatorio, pra aula ja' entrar anexada.
+      // junto quando ha aula anexada: a escolhida aqui, ou a que veio do
+      // relatorio (`/ia?sessao=`).
       const parametros = new URLSearchParams({ pergunta: texto });
-      if (sessaoAnexada !== null) {
-        parametros.set("sessao", String(sessaoAnexada));
+      const sessao = aulaEscolhida?.sessaoId ?? sessaoAnexada;
+      if (sessao !== null && sessao !== undefined) {
+        parametros.set("sessao", String(sessao));
       }
       router.push(`/ia/${conversa.id}?${parametros}`);
     } catch {
@@ -162,6 +178,16 @@ export function PainelConversas({
         Pergunte sobre suas aulas, anexe uma prova ou peça um resumo.
       </p>
 
+      {seletorAberto && (
+        <SeletorAula
+          aoEscolher={(anexo) => {
+            setAulaEscolhida(anexo);
+            setErro(null);
+          }}
+          aoFechar={() => setSeletorAberto(false)}
+        />
+      )}
+
       <div className="mt-6 w-full">
         <CompositorPergunta
           valor={pergunta}
@@ -170,6 +196,18 @@ export function PainelConversas({
           ocupado={criando}
           rotuloOcupado="Começando…"
           aria="Sua primeira pergunta"
+          anexos={
+            aulaEscolhida && (
+              <div className="px-4 pt-4">
+                <ChipAnexo
+                  anexo={aulaEscolhida}
+                  aoRemover={() => setAulaEscolhida(null)}
+                />
+              </div>
+            )
+          }
+          aoAnexarAula={() => setSeletorAberto((aberto) => !aberto)}
+          seletorAulaAberto={seletorAberto}
           linhas={2}
         />
       </div>
