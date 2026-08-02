@@ -29,7 +29,7 @@ const ITENS: ItemMenu[] = [
   { rotulo: "Chamada", href: "/chamada", Icone: IconChamada },
   { rotulo: "Relatórios", href: "/relatorios", Icone: IconRelatorios },
   { rotulo: "Câmera", href: "/camera", Icone: IconCamera },
-  { rotulo: "Inteligência Artificial", href: "/ia", Icone: IconIA, emBreve: true },
+  { rotulo: "Inteligência Artificial", href: "/ia", Icone: IconIA },
   { rotulo: "Coordenação", href: "/coordenacao", Icone: IconAdministracao },
   { rotulo: "Configurações", href: "/configuracoes", Icone: IconConfiguracoes },
 ];

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { SecaoAssistente } from "@/components/configuracoes/secao-assistente";
 import { Linha, Secao, ValorFixo } from "@/components/configuracoes/secao";
 import {
   useTheme,
@@ -177,6 +178,10 @@ export function PainelGeral({
           </select>
         </Linha>
       </Secao>
+
+      {/* Antes de "Conexão" e "Sistema": estas duas sao diagnostico, e o
+          assistente e' ajuste de uso, mais perto de "Preferências". */}
+      <SecaoAssistente />
 
       <Secao titulo="Conexão" descricao="De onde o app busca os dados das aulas.">
         <Linha

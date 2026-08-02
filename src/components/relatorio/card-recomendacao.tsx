@@ -1,17 +1,23 @@
+import { BotaoConversarIa } from "@/components/relatorio/botao-conversar-ia";
 import { IconIA } from "@/components/ui/icons";
 
 type CardRecomendacaoProps = {
   recomendacoes: string[];
+  /** Sessao desta aula, pro atalho que abre o Cup AI com ela anexada. */
+  sessaoId: number;
 };
 
 /**
  * Card de recomendacao pedagogica gerada pelo sistema.
  *
- * O campo "Converse com a I.A..." e' decorativo: o chat em si e' de outro
- * servico, fora deste app. Por isso ele nao e' um input funcional — nao
- * prometemos uma acao que esta tela nao entrega.
+ * O rodape era um campo DECORATIVO ("Converse com a I.A..."), de quando o chat
+ * morava fora deste app. Agora e' o atalho real pro Cup AI, e so' aparece
+ * quando a aula tem transcricao pronta — ver BotaoConversarIa.
  */
-export function CardRecomendacao({ recomendacoes }: CardRecomendacaoProps) {
+export function CardRecomendacao({
+  recomendacoes,
+  sessaoId,
+}: CardRecomendacaoProps) {
   const temRecomendacao = recomendacoes.length > 0;
 
   return (
@@ -41,12 +47,7 @@ export function CardRecomendacao({ recomendacoes }: CardRecomendacaoProps) {
         </p>
       )}
 
-      <div
-        className="mt-4 rounded-xl px-4 py-3 text-[13px] opacity-80"
-        style={{ background: "rgba(0,0,0,0.18)" }}
-      >
-        Converse com a I.A...
-      </div>
+      <BotaoConversarIa sessaoId={sessaoId} />
     </div>
   );
 }
