@@ -1,3 +1,4 @@
+import { TextoFormatado } from "@/components/ia/texto-formatado";
 import { horaDoTimestamp } from "@/lib/format";
 import type { MensagemConversa } from "@/lib/types";
 
@@ -54,7 +55,14 @@ export function BolhaMensagem({ mensagem }: BolhaMensagemProps) {
           </ul>
         )}
 
-        <span className="whitespace-pre-wrap">{mensagem.texto}</span>
+        {/* So' a resposta do assistente passa pelo formatador: o que o
+            professor digitou aparece exatamente como ele escreveu — se ele usou
+            um asterisco, era um asterisco. */}
+        {doProfessor ? (
+          <span className="whitespace-pre-wrap">{mensagem.texto}</span>
+        ) : (
+          <TextoFormatado texto={mensagem.texto} />
+        )}
       </div>
 
       <span className="text-text-muted px-1 text-[11px]">
