@@ -84,11 +84,15 @@ export default async function ConversaPage({ params, searchParams }: Props) {
           a pagina inteira e' que rolaria, e o campo sumiria da tela justamente
           numa conversa longa — quando ele mais e' usado.
 
-          A largura NAO e' limitada aqui: quem rola e' a lista de mensagens la'
-          dentro, e limitar por fora colocaria a barra de rolagem na borda de
-          uma caixa estreita, no meio da tela. A largura de leitura e' aplicada
-          no conteudo, dentro do proprio VistaChat. */}
-      <div className="flex h-[calc(100vh-14rem)] flex-col">
+          As margens negativas anulam o padding do <main> (px-5 py-7, lg:px-10
+          lg:py-9) so' nesta tela: a barra de rolagem precisa nascer na BORDA
+          da janela, e nao a 40px dela. O respiro volta por dentro, no proprio
+          VistaChat, onde nao empurra a barra pra dentro da tela.
+
+          A largura tambem nao e' limitada aqui: quem rola e' a lista de
+          mensagens la' dentro, e limitar por fora colocaria a barra na borda
+          de uma caixa estreita, no meio da tela. */}
+      <div className="-mx-5 -mb-7 flex h-[calc(100dvh-12.25rem)] flex-col lg:-mx-10 lg:-mb-9">
         <VistaChat
           conversa={conversa}
           perguntaPendente={pergunta}

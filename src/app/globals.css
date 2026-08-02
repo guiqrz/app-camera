@@ -81,6 +81,14 @@ body {
   border-radius: var(--radius-sm);
 }
 
+/* Excecao: campos que NAO tem borda propria porque vivem dentro de uma caixa
+   que ja' desenha a borda (o compositor do Cup AI). Ali o contorno cairia no
+   meio do bloco, riscando o texto em vez de contornar o controle.
+   A pista de foco nao some — a caixa inteira acende via focus-within. */
+[data-campo-sem-anel]:focus-visible {
+  outline: none;
+}
+
 /* --- Mascote Cup (src/components/ia/mascote-cup.tsx) ---
    Fica aqui, e nao em style inline, porque @keyframes nao existe em atributo
    style. O bloco de prefers-reduced-motion abaixo ja neutraliza as duas. */

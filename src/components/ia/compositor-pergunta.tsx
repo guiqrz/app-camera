@@ -100,7 +100,12 @@ export function CompositorPergunta({
   const vazio = !valor.trim();
 
   return (
-    <div className="border-border-default bg-surface w-full overflow-hidden rounded-2xl border shadow-[0_6px_22px_rgba(28,24,44,0.07)]">
+    // `focus-within` na CAIXA em vez do anel no <textarea>: o campo nao tem
+    // borda propria (a borda e' da caixa), entao o contorno do foco caia no
+    // meio do bloco, riscando o texto. Aqui a caixa inteira se acende, que e'
+    // o que o professor le' como "estou escrevendo aqui" — e a pista continua
+    // existindo pra quem navega por teclado.
+    <div className="border-border-default bg-surface focus-within:border-primary w-full overflow-hidden rounded-2xl border shadow-[0_6px_22px_rgba(28,24,44,0.07)] transition-colors">
       {anexos}
 
       <div className="flex gap-2.5 px-4 pt-4 pb-1">
@@ -110,6 +115,8 @@ export function CompositorPergunta({
             de varias linhas, e obrigar o clique tiraria a mao do teclado a
             cada pergunta. */}
         <textarea
+          // Ver globals.css: o anel de foco fica na caixa, nao no campo.
+          data-campo-sem-anel
           value={valor}
           onChange={(evento) => aoMudar(evento.target.value)}
           onKeyDown={(evento) => {

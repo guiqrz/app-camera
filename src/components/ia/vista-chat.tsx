@@ -267,7 +267,9 @@ export function VistaChat({
         ref={listaDeMensagens}
         className="min-h-0 flex-1 overflow-y-auto"
       >
-        <div className="mx-auto flex max-w-3xl flex-col gap-4 px-1">
+        {/* O respiro que o <main> perdeu volta AQUI DENTRO: assim o texto nao
+            encosta na borda, mas a barra de rolagem continua na ponta. */}
+        <div className="mx-auto flex max-w-3xl flex-col gap-4 px-5 pt-1 lg:px-10">
         {mensagens.length === 0 && !pensando && (
           <p className="text-text-muted py-6 text-sm leading-relaxed">
             Faça a primeira pergunta sobre suas aulas.
@@ -298,8 +300,10 @@ export function VistaChat({
       </div>
 
       {/* Mesma largura de leitura da lista acima: o campo tem que ficar
-          alinhado com as mensagens, nao com a borda da tela. */}
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
+          alinhado com as mensagens, nao com a borda da tela. O padding
+          lateral repoe o do <main>, que a pagina anulou; o de baixo e' a
+          folga entre o campo e o fim da janela. */}
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-5 pb-4 lg:px-10 lg:pb-6">
       {erro && (
         <p
           className="text-xs font-semibold"
