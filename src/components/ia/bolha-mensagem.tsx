@@ -1,73 +1,100 @@
+import { MascoteCup } from "@/components/ia/mascote-cup";
 import { TextoFormatado } from "@/components/ia/texto-formatado";
 import { horaDoTimestamp } from "@/lib/format";
 import type { MensagemConversa } from "@/lib/types";
+
+/**
+ * Reconhece um rotulo de aula entre os anexos gravados.
+ *
+ * O backend grava so' o texto ("Aula 31/07 · Biologia", "prova.pdf"), sem
+ * dizer de que tipo era. O prefixo "Aula " e' o que a tela usa ao montar o
+ * anexo (`montarAnexoDaAula`), entao serve de marca aqui — errar para menos
+ * so' custa um chip neutro no lugar do calendario.
+ */
+function ehRotuloDeAula(rotulo: string): boolean {
+  return /^Aula\s/i.test(rotulo);
+}
 
 type BolhaMensagemProps = {
   mensagem: MensagemConversa;
 };
 
 /**
- * Uma mensagem da conversa, alinhada conforme quem escreveu.
+ * Uma mensagem da conversa, com desenho diferente para cada lado.
  *
- * Professor a' direita com o fundo da marca, assistente a' esquerda em
- * superficie neutra — o mesmo par de pistas (lado + cor) que todo aplicativo de
- * conversa usa. Duas pistas e nao uma porque so' a cor falha pra quem nao
- * distingue bem tons, e so' o lado falha em telas estreitas.
- *
- * `whitespace-pre-wrap` porque a resposta do modelo vem com quebras de linha e
- * listas em texto puro: sem isso tudo virava um paragrafo unico e ilegivel.
+ * A pergunta do professor fica em bolha, alinhada a' direita. A resposta do
+ * assistente NAO fica em bolha: vira coluna de leitura de largura plena, com o
+ * mascote de avatar. A assimetria e' proposital — a pergunta e' uma frase e a
+ * resposta e' texto longo com titulo, lista e negrito. Espremer isso numa
+ * bolha de 75% da largura era o principal motivo de a tela parecer aplicativo
+ * de conversa em vez de assistente.
  */
 export function BolhaMensagem({ mensagem }: BolhaMensagemProps) {
   const doProfessor = mensagem.papel === "professor";
+  const anexos = mensagem.anexos ?? [];
+
+  if (!doProfessor) {
+    return (
+      <div className="flex items-start gap-3">
+        {/* Sem disco de fundo: o mascote ja' tem silhueta propria, e um circulo
+            atras so' somaria um contorno competindo com a xicara. A margem
+            negativa corta o vao vazio do viewBox pro desenho alinhar com o
+            nome em vez de flutuar acima dele. */}
+        <span className="-my-2 -mr-1 flex-none">
+          <MascoteCup size={38} />
+        </span>
+
+        <div className="min-w-0 flex-1">
+          <p className="text-text-muted mb-1.5 text-xs font-extrabold">Cup AI</p>
+          <div className="text-text-body text-sm leading-[1.75]">
+            <TextoFormatado texto={mensagem.texto} />
+          </div>
+          <p className="text-text-muted mt-1.5 text-[11px]">
+            {horaDoTimestamp(mensagem.criada_em)}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div
-      className={`flex flex-col gap-1 ${doProfessor ? "items-end" : "items-start"}`}
-    >
-      {/* O rotulo textual e' o que um leitor de tela usa: o alinhamento e a cor
-          nao existem pra quem ouve a tela. */}
-      <span className="text-text-muted px-1 text-xs font-bold">
-        {doProfessor ? "Você" : "Cup AI"}
-      </span>
+    <div className="flex flex-col items-end gap-1.5">
+      {/* O que foi anexado, ACIMA da bolha: reabrindo a conversa dias depois, a
+          pergunta sozinha nao diz sobre qual aula ou arquivo ela era. So' o
+          rotulo — o arquivo nao fica guardado, entao nao ha o que abrir. */}
+      {anexos.length > 0 && (
+        <ul className="flex max-w-[85%] flex-wrap justify-end gap-1.5">
+          {anexos.map((rotulo, indice) => (
+            <li
+              key={`${rotulo}-${indice}`}
+              className="border-border-default bg-surface text-text max-w-full truncate rounded-xl border px-2.5 py-1.5 text-xs font-bold"
+            >
+              {ehRotuloDeAula(rotulo) && (
+                <span className="text-text-muted mr-1.5" aria-hidden>
+                  ▸
+                </span>
+              )}
+              {rotulo}
+            </li>
+          ))}
+        </ul>
+      )}
 
+      {/* O canto inferior direito fica reto: aponta para quem escreveu, a mesma
+          pista que todo aplicativo de conversa usa. */}
       <div
-        className={`flex max-w-[85%] flex-col gap-2 rounded-2xl px-4 py-3 text-sm leading-relaxed sm:max-w-[75%] ${
-          doProfessor ? "text-text-on-brand" : "border-border-default text-text-body border"
-        }`}
-        style={doProfessor ? { background: "var(--primary)" } : { background: "var(--surface-2)" }}
+        className="text-text-on-brand max-w-[85%] rounded-2xl rounded-br-md px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap sm:max-w-[75%]"
+        style={{ background: "var(--primary)" }}
       >
-        {/* O que foi anexado, DENTRO da bolha e acima do texto: reabrindo a
-            conversa dias depois, a pergunta sozinha nao diz sobre qual aula ou
-            arquivo ela era. So' o rotulo — o arquivo nao fica guardado, entao
-            nao ha o que abrir. */}
-        {mensagem.anexos && mensagem.anexos.length > 0 && (
-          <ul className="flex flex-wrap gap-1.5">
-            {mensagem.anexos.map((rotulo, indice) => (
-              <li
-                key={`${rotulo}-${indice}`}
-                className={`max-w-full truncate rounded-lg px-2 py-1 text-xs font-bold ${
-                  doProfessor ? "bg-white/20" : "bg-surface border-border-default border"
-                }`}
-              >
-                {rotulo}
-              </li>
-            ))}
-          </ul>
-        )}
-
-        {/* So' a resposta do assistente passa pelo formatador: o que o
-            professor digitou aparece exatamente como ele escreveu — se ele usou
-            um asterisco, era um asterisco. */}
-        {doProfessor ? (
-          <span className="whitespace-pre-wrap">{mensagem.texto}</span>
-        ) : (
-          <TextoFormatado texto={mensagem.texto} />
-        )}
+        {/* O que o professor digitou aparece exatamente como ele escreveu — se
+            usou um asterisco, era um asterisco. So' a resposta do assistente
+            passa pelo formatador. */}
+        {mensagem.texto}
       </div>
 
-      <span className="text-text-muted px-1 text-[11px]">
+      <p className="text-text-muted text-[11px]">
         {horaDoTimestamp(mensagem.criada_em)}
-      </span>
+      </p>
     </div>
   );
 }

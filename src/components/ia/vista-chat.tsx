@@ -8,8 +8,9 @@ import {
   validarArquivo,
 } from "@/components/ia/barra-anexos";
 import { BolhaMensagem } from "@/components/ia/bolha-mensagem";
+import { CompositorPergunta } from "@/components/ia/compositor-pergunta";
+import { MascoteCup } from "@/components/ia/mascote-cup";
 import { SeletorAula } from "@/components/ia/seletor-aula";
-import { IconCalendario, IconFoto } from "@/components/ui/icons";
 import type { Anexo, Conversa, MensagemConversa } from "@/lib/types";
 
 type VistaChatProps = {
@@ -63,7 +64,6 @@ export function VistaChat({
   const [seletorAberto, setSeletorAberto] = useState(false);
 
   const listaDeMensagens = useRef<HTMLDivElement>(null);
-  const campoDeArquivo = useRef<HTMLInputElement>(null);
 
   /**
    * Rola pro fim a cada mensagem nova.
@@ -214,9 +214,7 @@ export function VistaChat({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [perguntaPendente, anexoInicial, enviarTexto]);
 
-  const enviar = (evento: React.FormEvent) => {
-    evento.preventDefault();
-
+  const enviar = () => {
     const texto = pergunta.trim();
     if (!texto || pensando) return;
 
@@ -243,10 +241,6 @@ export function VistaChat({
     // Recusa parcial e' comum (o professor seleciona varios de uma vez): anexa
     // o que serve e explica so' o que ficou de fora.
     setErro(recusados.length > 0 ? recusados.join(" ") : null);
-
-    // Limpa o input pra reanexar o MESMO arquivo depois de remove-lo funcionar:
-    // sem isso o `change` nao dispara na segunda escolha do mesmo caminho.
-    if (campoDeArquivo.current) campoDeArquivo.current.value = "";
   };
 
   return (
@@ -265,21 +259,20 @@ export function VistaChat({
           <BolhaMensagem key={mensagem.id} mensagem={mensagem} />
         ))}
 
+        {/* Mesma estrutura de uma resposta (avatar + nome + texto): a espera
+            ocupa o lugar onde a resposta vai nascer, entao a lista nao "pula"
+            quando ela chega. */}
         {pensando && (
-          <div className="flex items-center gap-2.5" role="status">
-            <span className="relative flex h-2.5 w-2.5 shrink-0" aria-hidden>
-              <span
-                className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-75"
-                style={{ background: "var(--primary)" }}
-              />
-              <span
-                className="relative inline-flex h-2.5 w-2.5 rounded-full"
-                style={{ background: "var(--primary)" }}
-              />
+          <div className="flex items-start gap-3" role="status">
+            <span className="-my-2 -mr-1 flex-none">
+              <MascoteCup size={38} animado />
             </span>
-            <span className="text-text-muted text-sm font-semibold">
-              Cup AI está pensando…
-            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-text-muted mb-1.5 text-xs font-extrabold">
+                Cup AI
+              </p>
+              <p className="text-text-muted text-sm">Pensando…</p>
+            </div>
           </div>
         )}
 
@@ -313,84 +306,26 @@ export function VistaChat({
         />
       )}
 
-      <form onSubmit={enviar} className="flex flex-col gap-2">
-        <BarraAnexos
-          anexos={anexos}
-          aoRemover={(indice) =>
-            setAnexos((anteriores) => anteriores.filter((_, i) => i !== indice))
-          }
-        />
-
-        {/* Enter envia, Shift+Enter quebra linha: o professor escreve perguntas
-            de varias linhas, e um <textarea> que so' envia por clique obriga a
-            tirar a mao do teclado a cada pergunta. */}
-        <textarea
-          value={pergunta}
-          onChange={(evento) => setPergunta(evento.target.value)}
-          onKeyDown={(evento) => {
-            if (evento.key === "Enter" && !evento.shiftKey) {
-              evento.preventDefault();
-              enviar(evento);
+      <CompositorPergunta
+        valor={pergunta}
+        aoMudar={setPergunta}
+        aoEnviar={enviar}
+        ocupado={pensando}
+        rotuloOcupado="Enviando…"
+        anexos={
+          <BarraAnexos
+            anexos={anexos}
+            aoRemover={(indice) =>
+              setAnexos((anteriores) => anteriores.filter((_, i) => i !== indice))
             }
-          }}
-          rows={3}
-          placeholder="Pergunte sobre suas aulas…"
-          aria-label="Sua pergunta"
-          disabled={pensando}
-          className="border-border-default bg-surface text-text-body focus:border-primary w-full resize-y rounded-xl border px-4 py-3 text-sm leading-relaxed outline-none disabled:cursor-not-allowed disabled:opacity-60"
-        />
-
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setSeletorAberto((aberto) => !aberto)}
-              disabled={pensando}
-              aria-expanded={seletorAberto}
-              className="border-border-default text-text hover:bg-surface-2 flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-extrabold transition-colors disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <IconCalendario size={14} />
-              Anexar aula
-            </button>
-
-            <button
-              type="button"
-              onClick={() => campoDeArquivo.current?.click()}
-              disabled={pensando}
-              className="border-border-default text-text hover:bg-surface-2 flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-extrabold transition-colors disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <IconFoto size={14} />
-              Anexar arquivo
-            </button>
-
-            {/* O input nativo fica escondido porque o visual dele nao combina
-                com o resto da tela e nao aceita estilo. O botao acima o aciona. */}
-            <input
-              ref={campoDeArquivo}
-              type="file"
-              multiple
-              accept={FORMATOS_ACEITOS.join(",")}
-              onChange={(evento) => anexarArquivos(evento.target.files)}
-              className="hidden"
-              tabIndex={-1}
-            />
-          </div>
-
-          <div className="flex items-center gap-3">
-            <span className="text-text-muted hidden text-xs sm:inline">
-              Enter envia · Shift+Enter quebra linha
-            </span>
-            <button
-              type="submit"
-              disabled={pensando || !pergunta.trim()}
-              className="text-text-on-brand rounded-xl px-5 py-2.5 text-sm font-extrabold transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
-              style={{ background: "var(--primary)" }}
-            >
-              {pensando ? "Enviando…" : "Perguntar"}
-            </button>
-          </div>
-        </div>
-      </form>
+          />
+        }
+        aoAnexarAula={() => setSeletorAberto((aberto) => !aberto)}
+        aoAnexarArquivos={anexarArquivos}
+        formatosAceitos={FORMATOS_ACEITOS}
+        seletorAulaAberto={seletorAberto}
+        linhas={2}
+      />
     </div>
   );
 }
