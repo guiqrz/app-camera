@@ -1,6 +1,6 @@
 "use client";
 
-import { IconFechar } from "@/components/ui/icons";
+import { ChipAnexo } from "@/components/ia/chip-anexo";
 import type { Anexo } from "@/lib/types";
 
 /** Formatos que o modelo lê. Qualquer outro e' recusado na hora do anexo. */
@@ -71,36 +71,6 @@ export function validarArquivo(arquivo: File, jaAnexados: Anexo[] = []): string 
   return null;
 }
 
-/**
- * Estimativa de tokens de um anexo.
- *
- * Texto: ~4 caracteres por token, a regra de bolso usada pra portugues e ingles.
- * PDF: 258 tokens por pagina (numero do proprio Gemini). Como o navegador nao
- * abre o PDF pra contar paginas sem uma biblioteca so' pra isso, estimamos as
- * paginas por tamanho — ~40 KB por pagina em PDF de texto.
- *
- * Imagem tem custo fixo por bloco no Gemini; 258 e' a conta de uma imagem
- * pequena, que e' o caso comum (foto de exercicio, print de slide).
- *
- * E' ESTIMATIVA de contexto, nao cobranca — ver o rotulo em BarraAnexos.
- */
-function estimarTokens(anexo: Anexo): number {
-  if (anexo.tipo === "aula") return Math.ceil(anexo.caracteres / 4);
-
-  const { arquivo } = anexo;
-  if (arquivo.type === "application/pdf") {
-    const paginas = Math.max(1, Math.round(arquivo.size / 40_000));
-    return paginas * 258;
-  }
-  if (arquivo.type.startsWith("image/")) return 258;
-  return Math.ceil(arquivo.size / 4);
-}
-
-/** Soma a estimativa de todos os anexos, pro rotulo do contador. */
-function estimarTotalDeTokens(anexos: Anexo[]): number {
-  return anexos.reduce((total, anexo) => total + estimarTokens(anexo), 0);
-}
-
 type BarraAnexosProps = {
   anexos: Anexo[];
   aoRemover: (indice: number) => void;
@@ -114,48 +84,26 @@ function chaveDoAnexo(anexo: Anexo, indice: number): string {
 }
 
 /**
- * Anexos da pergunta, como chips removiveis, com a estimativa de contexto.
+ * Anexos da pergunta, como chips removiveis.
  *
  * Fica ACIMA do campo de digitar: o professor precisa ver o que vai junto
  * ANTES de enviar, nao descobrir depois pela resposta.
+ *
+ * A contagem de tokens saiu daqui: "token" nao e' vocabulario de professor, e
+ * o numero era uma estimativa que nao correspondia a cobranca nenhuma. O peso
+ * do arquivo, que o `ChipAnexo` mostra, responde a pergunta real ("isso e'
+ * grande demais?") sem inventar unidade.
  */
 export function BarraAnexos({ anexos, aoRemover }: BarraAnexosProps) {
   if (anexos.length === 0) return null;
 
-  const tokens = estimarTotalDeTokens(anexos);
-
   return (
-    <div className="flex flex-col gap-1.5">
-      <ul className="flex flex-wrap gap-2">
-        {anexos.map((anexo, indice) => {
-          const rotulo =
-            anexo.tipo === "aula" ? anexo.rotulo : anexo.arquivo.name;
-
-          return (
-            <li
-              key={chaveDoAnexo(anexo, indice)}
-              className="border-border-default bg-surface-2 flex max-w-full items-center gap-1.5 rounded-lg border py-1.5 pr-1.5 pl-2.5"
-            >
-              <span className="text-text truncate text-xs font-bold">{rotulo}</span>
-              <button
-                type="button"
-                onClick={() => aoRemover(indice)}
-                className="text-text-muted hover:text-text flex-none rounded p-0.5 transition-colors"
-                aria-label={`Remover ${rotulo}`}
-              >
-                <IconFechar size={13} />
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-
-      {/* "estimativa" no rotulo de proposito: o numero e' aproximado e nao
-          corresponde a cobranca nenhuma. Dizer so' o numero faria o professor
-          tratar como conta fechada. */}
-      <p className="text-text-muted text-xs">
-        ~{tokens.toLocaleString("pt-BR")} tokens no contexto (estimativa)
-      </p>
-    </div>
+    <ul className="flex flex-wrap gap-2 px-4 pt-4">
+      {anexos.map((anexo, indice) => (
+        <li key={chaveDoAnexo(anexo, indice)} className="max-w-full">
+          <ChipAnexo anexo={anexo} aoRemover={() => aoRemover(indice)} />
+        </li>
+      ))}
+    </ul>
   );
 }
