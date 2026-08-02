@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, type ComponentType } from "react";
 
+import { MascoteCup } from "@/components/ia/mascote-cup";
 import {
   IconAdministracao,
   IconAulas,
@@ -12,7 +13,6 @@ import {
   IconChamada,
   IconConfiguracoes,
   IconFechar,
-  IconIA,
   IconRelatorios,
 } from "@/components/ui/icons";
 
@@ -24,12 +24,22 @@ type ItemMenu = {
   emBreve?: boolean;
 };
 
+/**
+ * O mascote no lugar de um icone de traco.
+ *
+ * Parado de proposito: no menu ele e' um marcador de destino, e balancar ali
+ * competiria com a leitura dos outros itens. Anima so' na abertura da tela.
+ */
+function IconeCupAI({ size = 18 }: { size?: number }) {
+  return <MascoteCup size={size} />;
+}
+
 const ITENS: ItemMenu[] = [
   { rotulo: "Minhas Aulas", href: "/aulas", Icone: IconAulas },
   { rotulo: "Chamada", href: "/chamada", Icone: IconChamada },
   { rotulo: "Relatórios", href: "/relatorios", Icone: IconRelatorios },
   { rotulo: "Câmera", href: "/camera", Icone: IconCamera },
-  { rotulo: "Inteligência Artificial", href: "/ia", Icone: IconIA },
+  { rotulo: "Cup AI", href: "/ia", Icone: IconeCupAI },
   { rotulo: "Coordenação", href: "/coordenacao", Icone: IconAdministracao },
   { rotulo: "Configurações", href: "/configuracoes", Icone: IconConfiguracoes },
 ];
