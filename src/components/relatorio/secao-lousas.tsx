@@ -6,9 +6,10 @@ import { IconLousa } from "@/components/ui/icons";
 import { dataDoTimestamp, formatarDataExtensa, horaDoTimestamp } from "@/lib/format";
 import type { Lousa } from "@/lib/types";
 
-/** Polling so' enquanto ha quadro sendo lido. 6s: a leitura de uma imagem leva
- *  segundos, nao minutos como a transcricao de uma aula inteira. */
-const INTERVALO_MS = 6000;
+/** Polling so' enquanto ha quadro sendo lido. 4s: a leitura roda em segundo
+ *  plano no backend e leva segundos, nao minutos como a transcricao de uma
+ *  aula inteira. */
+const INTERVALO_MS = 4000;
 
 type SecaoLousasProps = {
   sessaoId: number;

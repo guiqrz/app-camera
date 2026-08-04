@@ -18,12 +18,19 @@ type PainelLousaProps = {
   desabilitado?: boolean;
 };
 
-/** Quanto tempo esperar antes de buscar a lousa nova depois de pedir a captura.
+/** Ritmo do polling. A camera le o pedido uma vez por ciclo (~1s) e o Gemini
+ *  responde em segundos, entao 2s acompanha as duas coisas sem martelar a API.
  *
- *  A camera le o pedido uma vez por ciclo (~1s), entao buscar na hora traria a
- *  lista sem a foto nova e o professor veria "nada aconteceu". 1,6s da folga
- *  pro ciclo virar sem deixar a espera longa. */
-const ESPERA_ATE_A_FOTO_MS = 1600;
+ *  E' polling e nao uma espera fixa de proposito: a versao anterior dava um
+ *  `await` de 1,6s e buscava UMA vez. No uso real isso quebrou de duas formas —
+ *  se a foto demorasse mais que isso, ela nunca aparecia; e o `await` da busca
+ *  (que na epoca esperava o Gemini) prendia o botao em "Capturando…" por
+ *  dezenas de segundos. */
+const INTERVALO_MS = 2000;
+
+/** Teto do polling depois de uma captura, em ciclos. Protege contra ficar
+ *  batendo na API pra sempre se a camera morrer bem na hora da captura. */
+const MAXIMO_CICLOS_ESPERANDO_FOTO = 15;
 
 /**
  * Captura do quadro e lista dos quadros ja guardados, no modo Lousa.
@@ -40,13 +47,20 @@ const ESPERA_ATE_A_FOTO_MS = 1600;
  */
 export function PainelLousa({ sessaoId, desabilitado = false }: PainelLousaProps) {
   const [lousas, setLousas] = useState<Lousa[]>([]);
-  const [capturando, setCapturando] = useState(false);
-  const [carregando, setCarregando] = useState(false);
+  const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
+  /**
+   * Quantas fotos esperamos ter depois do ultimo clique em Capturar.
+   *
+   * E' o que segura o rotulo em "Capturando…" ate' a foto REALMENTE chegar,
+   * sem depender de um `await` de duracao fixa: o botao volta ao normal quando
+   * `lousas.length` alcanca este numero. null = nao ha captura em curso.
+   */
+  const [esperandoAte, setEsperandoAte] = useState<number | null>(null);
+  const [ciclosEsperando, setCiclosEsperando] = useState(0);
 
   const buscar = useCallback(async () => {
     if (sessaoId === null) return;
-    setCarregando(true);
     try {
       const resposta = await fetch(`/api/lousas/${sessaoId}`, { cache: "no-store" });
       if (!resposta.ok) throw new Error("falha ao listar");
@@ -60,14 +74,51 @@ export function PainelLousa({ sessaoId, desabilitado = false }: PainelLousaProps
     }
   }, [sessaoId]);
 
-  // Busca uma vez ao entrar no modo: a aula pode ja' ter quadros guardados de
-  // antes (o professor entrou na Lousa, saiu e voltou).
+  // Busca ao entrar no modo: a aula pode ja' ter quadros guardados de antes (o
+  // professor entrou na Lousa, saiu e voltou).
   useEffect(() => {
     void buscar();
   }, [buscar]);
 
+  const capturaPendente = esperandoAte !== null && lousas.length < esperandoAte;
+  const lendoAlgum = lousas.some((lousa) => lousa.estado === "lendo");
+
+  // Polling enquanto ha foto pra chegar OU texto pra ficar pronto. Sem isso a
+  // tela ficava parada: a captura acontece no processo da camera e a leitura no
+  // backend, e nenhum dos dois tem como avisar o navegador.
+  useEffect(() => {
+    if (!capturaPendente && !lendoAlgum) return;
+
+    const timer = setInterval(() => {
+      void buscar();
+      // So' conta ciclo enquanto espera a FOTO: a leitura do texto pode
+      // demorar mais e nao deve estourar o teto.
+      if (capturaPendente) setCiclosEsperando((atual) => atual + 1);
+    }, INTERVALO_MS);
+    return () => clearInterval(timer);
+  }, [capturaPendente, lendoAlgum, buscar]);
+
+  // Desiste de esperar a foto depois do teto. A captura pode ter falhado no
+  // processo da camera (disco cheio, camera desligada no meio), e ali o
+  // backend registra no log mas nao tem como avisar a tela.
+  useEffect(() => {
+    if (ciclosEsperando < MAXIMO_CICLOS_ESPERANDO_FOTO) return;
+    setEsperandoAte(null);
+    setCiclosEsperando(0);
+    setErro(
+      "A câmera não confirmou a captura. Verifique se ela continua ligada no modo Lousa.",
+    );
+  }, [ciclosEsperando]);
+
+  // Chegou a foto que esperavamos: para de esperar.
+  useEffect(() => {
+    if (esperandoAte !== null && lousas.length >= esperandoAte) {
+      setEsperandoAte(null);
+      setCiclosEsperando(0);
+    }
+  }, [lousas.length, esperandoAte]);
+
   async function capturar() {
-    setCapturando(true);
     setErro(null);
     try {
       const resposta = await fetch("/api/camera/lousa/capturar", { method: "POST" });
@@ -78,17 +129,18 @@ export function PainelLousa({ sessaoId, desabilitado = false }: PainelLousaProps
         setErro(corpo?.erro ?? "Não foi possível capturar o quadro.");
         return;
       }
-      // A foto ainda nao existe: a camera le o pedido no proximo ciclo.
-      await new Promise((resolver) => setTimeout(resolver, ESPERA_ATE_A_FOTO_MS));
-      await buscar();
+      // A foto ainda nao existe: a camera le o pedido no proximo ciclo. Quem
+      // detecta a chegada e' o polling, comparando com este alvo — em vez de
+      // um `await` fixo, que perdia a foto quando ela demorava mais.
+      setEsperandoAte(lousas.length + 1);
+      setCiclosEsperando(0);
     } catch {
       setErro("Não foi possível falar com a câmera.");
-    } finally {
-      setCapturando(false);
     }
   }
 
   const jaCapturou = lousas.length > 0;
+  const capturando = capturaPendente;
 
   return (
     <div className="border-border-default bg-surface shadow-card flex flex-col gap-3 rounded-2xl border p-5">
@@ -200,7 +252,7 @@ function TextoDaLousa({ lousa }: { lousa: Lousa }) {
   if (lousa.estado === "lendo") {
     return (
       <p className="text-text-muted text-xs" role="status">
-        Lendo o quadro…
+        Lendo o quadro… O texto aparece aqui sozinho.
       </p>
     );
   }
