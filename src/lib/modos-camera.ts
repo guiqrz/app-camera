@@ -17,7 +17,7 @@
 import type { ModoCamera, ModoCameraInfo } from "./types";
 
 /** Ids validos, na ordem de exibicao. Espelha modos.MODOS do backend. */
-export const MODOS_CAMERA = ["aula", "descanso", "prova"] as const;
+export const MODOS_CAMERA = ["aula", "descanso", "prova", "lousa"] as const;
 
 /** Modo em que toda captura comeca. Espelha modos.PADRAO do backend. */
 export const MODO_PADRAO: ModoCamera = "aula";
@@ -56,6 +56,15 @@ export const MODOS_CAMERA_FALLBACK: ModoCameraInfo[] = [
     detalhe:
       "Para avaliações. A presença é marcada e o celular continua sendo detectado, mas a atenção não é medida: durante uma prova o aluno olha para baixo porque está escrevendo, e isso seria contado como distração.",
     cor: "azul",
+    mede_atencao: false,
+  },
+  {
+    id: "lousa",
+    rotulo: "Lousa",
+    resumo: "Guarda o quadro.",
+    detalhe:
+      'Para registrar o que você escreveu no quadro. Ao apertar "Capturar quadro", a câmera guarda uma foto do quadro na aula e lê o que está escrito nela. A presença continua sendo marcada, mas a atenção não é medida enquanto este modo está ativo — a câmera está olhando para o quadro, não para a turma. O engajamento já registrado da aula não é apagado.',
+    cor: "verde",
     mede_atencao: false,
   },
 ];

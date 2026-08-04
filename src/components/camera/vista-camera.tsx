@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ControleMicrofone } from "@/components/camera/controle-microfone";
+import { PainelLousa } from "@/components/camera/painel-lousa";
 import { SeletorModo } from "@/components/camera/seletor-modo";
 import {
   IconCamera,
@@ -621,6 +622,19 @@ function VistaRodando({
         pendente={audioPendente}
         aoAlternar={aoAlternarAudio}
       />
+
+      {/* Captura do quadro: SO' no modo Lousa. Guardar imagem e' excecao
+          autorizada apenas nesse modo (CLAUDE.md do backend), entao um botao
+          visivel fora dele prometeria algo que a API recusa com 409.
+
+          Sai da tela na troca de modo junto com a possibilidade de capturar —
+          e as fotos ja' guardadas continuam na aula, visiveis no relatorio. */}
+      {modoAtivo === "lousa" && (
+        <PainelLousa
+          sessaoId={estado.sessao_id ?? null}
+          desabilitado={modoPendente !== null && modoPendente !== modoAtivo}
+        />
+      )}
 
       {aviso && (
         <p className="text-text-muted -mt-2 text-xs font-semibold" role="status">
