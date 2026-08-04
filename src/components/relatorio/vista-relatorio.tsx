@@ -2,6 +2,7 @@ import { CardRecomendacao } from "@/components/relatorio/card-recomendacao";
 import { FeedInsights } from "@/components/relatorio/feed-insights";
 import { GraficoLinhaTempo } from "@/components/relatorio/grafico-linha-tempo";
 import { PainelPresenca } from "@/components/relatorio/painel-presenca";
+import { SecaoLousas } from "@/components/relatorio/secao-lousas";
 import { SecaoTranscricao } from "@/components/relatorio/secao-transcricao";
 import {
   IconCheck,
@@ -193,6 +194,11 @@ export function VistaRelatorio({ relatorio }: VistaRelatorioProps) {
         recomendacoes={relatorio.recomendacoes}
         sessaoId={relatorio.sessao.id}
       />
+
+      {/* Quadros guardados, quando a aula usou o modo Lousa. Antes da
+          transcricao porque e' curto e visual — e some sozinho nas aulas que
+          nao capturaram nenhum, que sao a maioria. */}
+      <SecaoLousas sessaoId={relatorio.sessao.id} />
 
       {/* Transcricao por ultimo: e' a secao mais longa, e o professor abre o
           relatorio pra ver presenca e atencao primeiro. O resumo mora DENTRO

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { DicaAjuda } from "@/components/ui/dica-ajuda";
 import { IconLousa, IconRecomecar } from "@/components/ui/icons";
+import { horaDoTimestamp } from "@/lib/format";
 import type { Lousa } from "@/lib/types";
 
 type PainelLousaProps = {
@@ -164,7 +165,7 @@ export function PainelLousa({ sessaoId, desabilitado = false }: PainelLousaProps
                       Captura {indice + 1}
                     </span>
                     <span className="text-text-muted text-[11px]">
-                      {formatarHora(lousa.capturada_em)}
+                      {horaDoTimestamp(lousa.capturada_em)}
                     </span>
                   </div>
 
@@ -221,11 +222,4 @@ function TextoDaLousa({ lousa }: { lousa: Lousa }) {
       {lousa.texto}
     </p>
   );
-}
-
-/** "2026-08-04 10:57:58" -> "10:57". Data completa nao cabe e nao ajuda: todas
- *  as capturas sao da mesma aula. */
-function formatarHora(iso: string) {
-  const partes = iso.split(" ")[1]?.split(":") ?? [];
-  return partes.length >= 2 ? `${partes[0]}:${partes[1]}` : iso;
 }
