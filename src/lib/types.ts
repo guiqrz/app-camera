@@ -309,8 +309,12 @@ export type NovaAula = {
  *
  * Nao e' rotulo visual: fora de "aula" o backend nao classifica pose nem grava
  * engajamento. Ver `mede_atencao` no EstadoCamera.
+ *
+ * "lousa" e' de outra natureza que os tres primeiros: eles decidem o que medir
+ * NA TURMA, e ele vira a camera pro QUADRO. E' o unico em que o professor
+ * captura uma imagem, e ela fica guardada na aula.
  */
-export type ModoCamera = "aula" | "descanso" | "prova";
+export type ModoCamera = "aula" | "descanso" | "prova" | "lousa";
 
 /**
  * Um modo com os textos que o backend manda (GET /camera/modos).
@@ -419,6 +423,42 @@ export type Transcricao = {
   /** Motivo da falha, ou null. */
   erro: string | null;
   trechos: TrechoTranscricao[];
+};
+
+/* ------------------------------------------------------------------ */
+/* Lousa (modo Lousa)                                                  */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Em que pe esta a leitura do quadro.
+ *
+ * Mesma logica de EstadoTranscricao, e pelo mesmo motivo: sem o estado, um
+ * texto vazio esconderia dois casos que pedem coisas diferentes do professor —
+ * "o Gemini ainda esta lendo" e "o quadro estava em branco".
+ */
+export type EstadoLousa = "lendo" | "pronta" | "falhou";
+
+/**
+ * Um quadro capturado, com o texto lido dele.
+ *
+ * Sem a imagem: cada JPEG vem pela rota propria
+ * (/api/sessoes/[id]/lousas/[lousaId]/imagem), porque uma aula com varias
+ * capturas devolveria megabytes de base64 num JSON que a tela nem usaria assim.
+ */
+export type Lousa = {
+  id: number;
+  sessao_id: number;
+  /** null enquanto a leitura nao terminou. */
+  texto: string | null;
+  /** null ate' o modelo responder. */
+  modelo: string | null;
+  estado: EstadoLousa;
+  /** Motivo da falha, ou null. */
+  erro: string | null;
+  capturada_em: string;
+  /** Quando a imagem sera apagada. Visivel na tela pelo mesmo motivo da
+   *  transcricao: os 60 dias sao contrato de privacidade, nao detalhe. */
+  expira_em: string;
 };
 
 /* ------------------------------------------------------------------ */

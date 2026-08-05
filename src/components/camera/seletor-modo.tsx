@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 
 import { DicaAjuda } from "@/components/ui/dica-ajuda";
-import { IconAulas, IconRelatorios, IconRelogio } from "@/components/ui/icons";
+import { IconAulas, IconLousa, IconRelatorios, IconRelogio } from "@/components/ui/icons";
 import { aparenciaDaCorMateria } from "@/lib/format";
 import { MODO_PADRAO } from "@/lib/modos-camera";
 import type { ModoCamera, ModoCameraInfo } from "@/lib/types";
@@ -16,6 +16,7 @@ const ICONES: Record<ModoCamera, ReactNode> = {
   aula: <IconAulas size={20} />,
   descanso: <IconRelogio size={20} />,
   prova: <IconRelatorios size={20} />,
+  lousa: <IconLousa size={20} />,
 };
 
 type SeletorModoProps = {
@@ -39,13 +40,13 @@ type SeletorModoProps = {
 /**
  * Cartoes de modo da camera.
  *
- * Cartao em vez de menu suspenso: os tres modos ficam visiveis de uma vez, com
- * o resumo do que cada um faz — uma feature nova escondida atras de um select
+ * Cartao em vez de menu suspenso: os modos ficam visiveis de uma vez, com o
+ * resumo do que cada um faz — uma feature nova escondida atras de um select
  * nao seria descoberta. Renderiza como radiogroup pra leitor de tela anunciar
- * "1 de 3" e as setas navegarem entre as opcoes.
+ * a posicao e as setas navegarem entre as opcoes.
  *
  * Cor: cada modo tem a sua (vem do backend como id de paleta), visivel o tempo
- * todo no icone e na borda, mas o FUNDO tingido e' exclusivo do ativo. Tres
+ * todo no icone e na borda, mas o FUNDO tingido e' exclusivo do ativo. Varios
  * fundos fortes lado a lado competiriam entre si, e "qual esta valendo agora"
  * e' a informacao mais importante da faixa. A cor nunca e' o unico sinal: o
  * selo "Ativo" escrito esta sempre junto (WCAG 1.4.1).
@@ -61,7 +62,11 @@ export function SeletorModo({
     <div
       role="radiogroup"
       aria-label="Modo da câmera"
-      className="grid gap-3 sm:grid-cols-3"
+      /* 2 colunas no tablet e 4 no desktop: com 4 modos, `sm:grid-cols-3`
+         deixava o ultimo sozinho numa linha, parecendo item de outra
+         categoria. Em 2x2 eles ficam equilibrados, e no desktop cabem os 4
+         lado a lado — que e' o que deixa o professor comparar de relance. */
+      className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
     >
       {modos.map((modo) => {
         const selecionado = modo.id === ativo;

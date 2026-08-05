@@ -28,6 +28,7 @@ import type {
   Conversa,
   EstadoCamera,
   EstatisticasDaTurma,
+  Lousa,
   Materia,
   ModoCamera,
   ModoCameraInfo,
@@ -438,6 +439,40 @@ export function trocarAudioCamera(ativo: boolean): Promise<{ ativo: boolean }> {
   return requisitar<{ ativo: boolean }>("/camera/audio", {
     method: "POST",
     body: { ativo },
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* Lousa (modo Lousa)                                                  */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Pede a captura do quadro. Serve tanto o "Capturar" quanto o "Ler de novo".
+ *
+ * `capturando: true` significa "pedido registrado", nao "foto pronta": quem
+ * captura e' o processo da camera, no proximo ciclo (~1s). A tela busca as
+ * lousas logo depois pra ver a nova.
+ *
+ * Lanca ApiError 409 quando a camera esta parada ou fora do modo Lousa —
+ * guardar imagem so' e' autorizado nesse modo.
+ */
+export function capturarLousa(): Promise<{ pedido: string; capturando: boolean }> {
+  return requisitar<{ pedido: string; capturando: boolean }>(
+    "/camera/lousa/capturar",
+    { method: "POST" },
+  );
+}
+
+/**
+ * Lousas da aula, com o texto lido do quadro.
+ *
+ * A leitura pelo Gemini acontece DENTRO desta chamada, no backend, pro que
+ * estiver pendente — por isso pode demorar alguns segundos na primeira vez.
+ * Sem imagem no corpo: cada JPEG vem pela rota propria.
+ */
+export function listarLousas(sessaoId: number): Promise<{ lousas: Lousa[] }> {
+  return requisitar<{ lousas: Lousa[] }>(`/sessoes/${sessaoId}/lousas`, {
+    revalidate: 0,
   });
 }
 

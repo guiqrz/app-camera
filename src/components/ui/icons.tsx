@@ -571,3 +571,39 @@ export function IconRecomecar({ size = 18, className }: IconProps) {
     </svg>
   );
 }
+
+/**
+ * Quadro de sala de aula, com duas linhas escritas e o suporte embaixo.
+ *
+ * As linhas de dentro tem larguras diferentes de proposito: duas linhas iguais
+ * leriam como "documento", e o que este icone precisa dizer e' "quadro com
+ * algo escrito nele" — que e' exatamente o que o modo Lousa guarda.
+ */
+export function IconLousa({ size = 18, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <rect
+        x="3"
+        y="4"
+        width="18"
+        height="13"
+        rx="2"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M6.5 8.5h8M6.5 12h5"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+      <path d="M12 17v3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path
+        d="M9 20h6"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
