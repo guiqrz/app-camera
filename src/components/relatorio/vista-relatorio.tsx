@@ -1,4 +1,5 @@
 import { CardRecomendacao } from "@/components/relatorio/card-recomendacao";
+import { ConteudoDaAula } from "@/components/relatorio/conteudo-da-aula";
 import { FeedInsights } from "@/components/relatorio/feed-insights";
 import { GraficoLinhaTempo } from "@/components/relatorio/grafico-linha-tempo";
 import { PainelPresenca } from "@/components/relatorio/painel-presenca";
@@ -195,14 +196,20 @@ export function VistaRelatorio({ relatorio }: VistaRelatorioProps) {
         sessaoId={relatorio.sessao.id}
       />
 
+      {/* O que foi ensinado. Vem ANTES da lousa e da transcricao porque e' a
+          versao destilada das duas — quem abre o relatorio quer saber o que
+          caiu na aula, nao ler a fala inteira. E' tambem a unica secao que
+          existe em aula sem audio nenhum, por isso card proprio e nao um bloco
+          dentro da transcricao. */}
+      <ConteudoDaAula sessaoId={relatorio.sessao.id} />
+
       {/* Quadros guardados, quando a aula usou o modo Lousa. Antes da
           transcricao porque e' curto e visual — e some sozinho nas aulas que
           nao capturaram nenhum, que sao a maioria. */}
       <SecaoLousas sessaoId={relatorio.sessao.id} />
 
       {/* Transcricao por ultimo: e' a secao mais longa, e o professor abre o
-          relatorio pra ver presenca e atencao primeiro. O resumo mora DENTRO
-          dela — e' a versao curta do mesmo texto. */}
+          relatorio pra ver presenca e atencao primeiro. */}
       <SecaoTranscricao sessaoId={relatorio.sessao.id} />
     </div>
   );

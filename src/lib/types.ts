@@ -524,3 +524,21 @@ export type RespostaDoAssistente = {
 export type Anexo =
   | { tipo: "aula"; sessaoId: number; rotulo: string }
   | { tipo: "arquivo"; arquivo: File };
+
+/**
+ * O que foi ensinado numa aula. Gerado pela IA no fim da aula e editavel pelo
+ * professor — `editado_em` preenchido significa que ele corrigiu, e a geracao
+ * automatica nao sobrescreve mais.
+ */
+export type ConteudoDaAula = {
+  id: number;
+  sessao_id: number;
+  topicos: string[];
+  resumo: string;
+  ate_onde: string;
+  /** 'transcricao' | 'lousa' | 'transcricao+lousa' | 'nenhuma' */
+  fonte: string;
+  modelo: string | null;
+  gerado_em: string;
+  editado_em: string | null;
+};

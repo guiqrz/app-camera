@@ -25,6 +25,7 @@ import type {
   ChamadaDaSessao,
   ConfiguracaoIA,
   ConfirmacaoPresencaResposta,
+  ConteudoDaAula,
   Conversa,
   EstadoCamera,
   EstatisticasDaTurma,
@@ -587,20 +588,37 @@ export function trocarModeloIA(modelo: string): Promise<{ modelo: string }> {
 }
 
 /**
- * Resumo da aula, gerado na hora pro botao do relatorio.
+ * O que foi ensinado na aula: topicos, resumo e ate onde a aula foi.
  *
- * POST e nao GET porque a chamada CUSTA — cada clique e' uma consulta ao
- * modelo. Com GET, um prefetch do navegador ou um retry automatico gastaria
- * chamada sem ninguem ter pedido.
+ * Substituiu o resumo sob demanda que existia aqui ate' 05/08/2026. A diferenca
+ * que importa: aquele gerava na hora e jogava fora, cobrando uma chamada ao
+ * modelo a cada abertura da tela; este LE um registro ja gravado no fim da aula.
  *
- * Lanca ApiError 404 (aula sem transcricao), 409 (transcricao ainda rodando),
- * 502 (o modelo falhou) ou 503 (sem chave no servidor).
+ * GET e cache curto justamente por isso — ler o banco nao custa chamada de IA.
+ *
+ * Lanca ApiError 404 quando a aula ainda nao tem registro (o pos-sessao nao
+ * rodou, ou a sessao nao existe — a tela trata os dois igual).
  */
-export function resumirAula(
+export function buscarConteudoDaAula(sessaoId: number): Promise<ConteudoDaAula> {
+  return requisitar<ConteudoDaAula>(`/sessoes/${sessaoId}/conteudo`, {
+    revalidate: 0,
+  });
+}
+
+/**
+ * Grava a correcao do professor no registro da aula.
+ *
+ * Carimba `editado_em` no backend, o que blinda esta versao contra uma geracao
+ * automatica posterior sobrescrever o trabalho manual dele.
+ *
+ * Lanca ApiError 404 (aula sem registro) ou 422 (campo acima do limite).
+ */
+export function editarConteudoDaAula(
   sessaoId: number,
-): Promise<{ resumo: string; modelo: string }> {
-  return requisitar<{ resumo: string; modelo: string }>(
-    `/sessoes/${sessaoId}/resumo`,
-    { method: "POST" },
-  );
+  conteudo: { topicos: string[]; resumo: string; ate_onde: string },
+): Promise<ConteudoDaAula> {
+  return requisitar<ConteudoDaAula>(`/sessoes/${sessaoId}/conteudo`, {
+    method: "PUT",
+    body: conteudo,
+  });
 }
