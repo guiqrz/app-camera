@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { ResumoDaAula } from "@/components/relatorio/resumo-da-aula";
 import { IconLixeira, IconRecomecar, IconTranscricao } from "@/components/ui/icons";
 import { dataDoTimestamp, formatarDataExtensa } from "@/lib/format";
 import type { Transcricao } from "@/lib/types";
@@ -350,9 +349,9 @@ export function SecaoTranscricao({ sessaoId }: SecaoTranscricaoProps) {
             </div>
           )}
 
-          {/* `items-center` pra o botao preenchido do resumo nao esticar mais
-              que os dois de contorno; o resumo em si volta em linha propria
-              (w-full), por isso flex-wrap. */}
+          {/* So' acoes de leitura aqui. O botao "Resumir aula" saiu em
+              05/08/2026: o resumo virou o card ConteudoDaAula, que e' gravado
+              no fim da aula em vez de gerado a cada clique. */}
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
@@ -368,10 +367,6 @@ export function SecaoTranscricao({ sessaoId }: SecaoTranscricaoProps) {
             >
               {copiado ? "Copiado!" : "Copiar texto"}
             </button>
-
-            {/* Canto inferior direito da secao: o `ml-auto` do proprio botao o
-                empurra pra ponta, longe das acoes de leitura. */}
-            <ResumoDaAula sessaoId={sessaoId} />
           </div>
         </div>
       )}

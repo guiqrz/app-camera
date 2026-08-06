@@ -65,8 +65,11 @@ export function GraficoLinhaTempo({ pontos, periodos = [] }: GraficoProps) {
   const larguraUtil = W - L - R;
   const alturaUtil = H - T - B;
 
-  // Um so' ponto nao forma linha: repete para virar um segmento reto.
-  const dados = pontos.length === 1 ? [pontos[0], pontos[0]] : pontos;
+  // Os pontos como vieram. Um ponto sozinho NAO e' duplicado aqui: repetir a
+  // mesma leitura punha dois filhos com a mesma key (o minuto no eixo X, o x
+  // inicial no segmento) e o React reclamava em toda aula de leitura unica. O
+  // caso de um ponto ja' e' tratado onde importa, no desenho do caminho.
+  const dados = pontos;
 
   // O eixo X vai ate o fim do ultimo VAO, nao ate o ultimo ponto medido: a aula
   // que termina em Descanso tem seu ultimo ponto ANTES do vao, e escalar so' pelos
