@@ -542,3 +542,35 @@ export type ConteudoDaAula = {
   gerado_em: string;
   editado_em: string | null;
 };
+
+/** Uma aula no historico de "onde parei nesta turma". */
+export type AulaNoHistorico = {
+  sessao_id: number;
+  /** Quando a aula aconteceu ("YYYY-MM-DD HH:MM:SS"). */
+  data: string;
+  topicos: string[];
+  resumo: string;
+  ate_onde: string;
+  /** 'nenhuma' quando a aula nao teve transcricao nem quadro. */
+  fonte: string;
+  editado_em: string | null;
+};
+
+/**
+ * Tela "Onde parei nesta turma?" (feature D).
+ *
+ * `paragrafo` e' conveniencia; `aulas` e' o dado. Quando a IA falha — ou quando
+ * a turma ainda nao tem aula com conteudo registrado, que e' caso ESPERADO e
+ * nao erro — o backend devolve 200 com `paragrafo: null` e `erro_ia`
+ * preenchido, e a tela mostra o historico assim mesmo.
+ */
+export type ContinuidadeDaTurma = {
+  turma: TurmaResumo;
+  /** A mais recente. Vem repetida dentro de `aulas`, pro destaque da tela. */
+  ultima_aula: AulaNoHistorico | null;
+  aulas: AulaNoHistorico[];
+  total: number;
+  paragrafo: string | null;
+  modelo: string | null;
+  erro_ia: string | null;
+};
