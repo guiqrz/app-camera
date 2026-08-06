@@ -1,9 +1,15 @@
 import { notFound } from "next/navigation";
 
 import { ListaAulas } from "@/components/aulas/lista-aulas";
+import { OndeParei } from "@/components/aulas/onde-parei";
 import { SeletorTurma } from "@/components/aulas/seletor-turma";
 import { AppShell } from "@/components/layout/app-shell";
-import { ApiError, buscarAulasDaTurma, listarTurmas } from "@/lib/api";
+import {
+  ApiError,
+  buscarAulasDaTurma,
+  buscarContinuidadeDaTurma,
+  listarTurmas,
+} from "@/lib/api";
 
 type Props = {
   // No App Router os parametros de rota e de busca chegam como Promise.
@@ -30,13 +36,18 @@ export default async function AulasDaTurmaPage({ params, searchParams }: Props) 
   // Endereco com id nao numerico (/aulas/abc) e' 404, nao erro de servidor.
   if (!Number.isInteger(id) || id <= 0) notFound();
 
-  // As duas chamadas sao independentes: em paralelo, nao em sequencia.
-  const [turmas, aulas] = await Promise.all([
+  // As tres chamadas sao independentes: em paralelo, nao em sequencia.
+  const [turmas, aulas, continuidade] = await Promise.all([
     listarTurmas(),
     buscarAulasDaTurma(id).catch((causa) => {
       if (causa instanceof ApiError && causa.isNotFound) notFound();
       throw causa;
     }),
+    // Engole a falha em vez de propagar: esta e' a unica chamada da pagina que
+    // depende do Gemini, e a lista de aulas — o conteudo principal da tela —
+    // nao pode sumir porque o assistente esta fora do ar. O card simplesmente
+    // nao aparece.
+    buscarContinuidadeDaTurma(id).catch(() => null),
   ]);
 
   return (
@@ -61,6 +72,11 @@ export default async function AulasDaTurmaPage({ params, searchParams }: Props) 
         <div className="lg:hidden">
           <SeletorTurma turmas={turmas} turmaAtualId={id} />
         </div>
+
+        {/* Antes da lista: "onde parei" e' o que o professor quer saber ao
+            abrir a turma; a lista de aulas e' pra quando ele procura uma aula
+            especifica. */}
+        {continuidade !== null && <OndeParei continuidade={continuidade} />}
 
         <ListaAulas
           aulas={aulas.aulas}

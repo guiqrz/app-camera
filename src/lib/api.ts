@@ -25,8 +25,10 @@ import type {
   ChamadaDaSessao,
   ConfiguracaoIA,
   ConfirmacaoPresencaResposta,
+  ContinuidadeDaTurma,
   ConteudoDaAula,
   Conversa,
+  DiarioDaAula,
   EstadoCamera,
   EstatisticasDaTurma,
   Lousa,
@@ -601,6 +603,39 @@ export function trocarModeloIA(modelo: string): Promise<{ modelo: string }> {
  */
 export function buscarConteudoDaAula(sessaoId: number): Promise<ConteudoDaAula> {
   return requisitar<ConteudoDaAula>(`/sessoes/${sessaoId}/conteudo`, {
+    revalidate: 0,
+  });
+}
+
+/**
+ * Onde a turma parou: historico do conteudo dado + um paragrafo da IA.
+ *
+ * Esta chamada CUSTA uma requisicao ao modelo no backend, ao contrario de
+ * buscarConteudoDaAula — por isso `revalidate: 0` aqui nao e' "de graca" como
+ * la'. Chamar so' quando a tela da turma abre, nunca em polling.
+ *
+ * Nao lanca por falha de IA: o backend devolve 200 com `paragrafo: null` e
+ * `erro_ia` preenchido, porque o historico e' o dado que o professor foi ver.
+ * ApiError 404 significa turma inexistente, que e' outra coisa.
+ */
+export function buscarContinuidadeDaTurma(
+  turmaId: number,
+): Promise<ContinuidadeDaTurma> {
+  return requisitar<ContinuidadeDaTurma>(`/turmas/${turmaId}/continuidade`, {
+    revalidate: 0,
+  });
+}
+
+/**
+ * Diario de classe da aula: conteudo + presenca, com o texto pronto pra copiar.
+ *
+ * Nao custa chamada de IA — o backend so' formata o que ja esta no banco.
+ *
+ * Lanca ApiError 404 apenas quando a sessao nao existe. Aula SEM conteudo
+ * registrado responde normalmente: a presenca sozinha ja vale o diario.
+ */
+export function buscarDiarioDaAula(sessaoId: number): Promise<DiarioDaAula> {
+  return requisitar<DiarioDaAula>(`/sessoes/${sessaoId}/diario`, {
     revalidate: 0,
   });
 }
