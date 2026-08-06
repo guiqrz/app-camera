@@ -28,6 +28,7 @@ import type {
   ContinuidadeDaTurma,
   ConteudoDaAula,
   Conversa,
+  DiarioDaAula,
   EstadoCamera,
   EstatisticasDaTurma,
   Lousa,
@@ -621,6 +622,20 @@ export function buscarContinuidadeDaTurma(
   turmaId: number,
 ): Promise<ContinuidadeDaTurma> {
   return requisitar<ContinuidadeDaTurma>(`/turmas/${turmaId}/continuidade`, {
+    revalidate: 0,
+  });
+}
+
+/**
+ * Diario de classe da aula: conteudo + presenca, com o texto pronto pra copiar.
+ *
+ * Nao custa chamada de IA — o backend so' formata o que ja esta no banco.
+ *
+ * Lanca ApiError 404 apenas quando a sessao nao existe. Aula SEM conteudo
+ * registrado responde normalmente: a presenca sozinha ja vale o diario.
+ */
+export function buscarDiarioDaAula(sessaoId: number): Promise<DiarioDaAula> {
+  return requisitar<DiarioDaAula>(`/sessoes/${sessaoId}/diario`, {
     revalidate: 0,
   });
 }

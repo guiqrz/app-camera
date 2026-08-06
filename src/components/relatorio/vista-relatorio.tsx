@@ -1,5 +1,6 @@
 import { CardRecomendacao } from "@/components/relatorio/card-recomendacao";
 import { ConteudoDaAula } from "@/components/relatorio/conteudo-da-aula";
+import { DiarioDeClasse } from "@/components/relatorio/diario-de-classe";
 import { FeedInsights } from "@/components/relatorio/feed-insights";
 import { GraficoLinhaTempo } from "@/components/relatorio/grafico-linha-tempo";
 import { PainelPresenca } from "@/components/relatorio/painel-presenca";
@@ -202,6 +203,10 @@ export function VistaRelatorio({ relatorio }: VistaRelatorioProps) {
           existe em aula sem audio nenhum, por isso card proprio e nao um bloco
           dentro da transcricao. */}
       <ConteudoDaAula sessaoId={relatorio.sessao.id} />
+
+      {/* O diario junta o conteudo acima com a chamada, entao vem logo depois:
+          e' a versao "pra fora" do que o professor acabou de ler. */}
+      <DiarioDeClasse sessaoId={relatorio.sessao.id} />
 
       {/* Quadros guardados, quando a aula usou o modo Lousa. Antes da
           transcricao porque e' curto e visual — e some sozinho nas aulas que

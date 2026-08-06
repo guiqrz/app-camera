@@ -574,3 +574,34 @@ export type ContinuidadeDaTurma = {
   modelo: string | null;
   erro_ia: string | null;
 };
+
+/**
+ * Diario de classe de uma aula (feature I): conteudo + presenca.
+ *
+ * `texto` e' o diario pronto pro professor copiar no sistema da escola — o
+ * backend monta a string, sem IA, pra que o mesmo diario saia igual toda vez.
+ * Os campos estruturados existem pra tela mostrar a mesma informacao do jeito
+ * dela, sem precisar reanalisar o texto.
+ *
+ * `conteudo` e' null quando a aula nao tem registro; o diario continua valendo
+ * pela presenca.
+ */
+export type DiarioDaAula = {
+  sessao: {
+    id: number;
+    turma: string;
+    materia: string | null;
+    iniciada_em: string;
+    encerrada_em: string | null;
+  };
+  conteudo: ConteudoDaAula | null;
+  chamada: {
+    total: number;
+    presentes: number;
+    ausentes: number;
+    /** null quando a turma nao tem aluno — "0%" seria outra afirmacao. */
+    presenca_pct: number | null;
+    nomes_ausentes: { ra: string; nome: string }[];
+  };
+  texto: string;
+};
