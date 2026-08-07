@@ -83,6 +83,22 @@ function formatarLinha(linha: string, chave: string): ReactNode {
     );
   }
 
+  // Separador ("---", "***", "___", com ou sem espaco entre os simbolos).
+  //
+  // ANTES da regra de lista de proposito: "* * *" tambem casa com "* item", e
+  // na ordem inversa um separador viraria um bullet com "* *" do lado.
+  //
+  // O modelo usa separador com frequencia pra dividir o material do aluno em
+  // secoes — e sem esta regra o "***" aparecia CRU na tela, do jeito que o
+  // professor viu em 07/08/2026.
+  if (/^\s*([-*_])(?:\s*\1){2,}\s*$/.test(linha)) {
+    return (
+      <span key={chave} className="py-2" aria-hidden>
+        <span className="bg-border-default block h-px w-full" />
+      </span>
+    );
+  }
+
   // "- item", "* item" ou "1. item". O marcador vira bullet proprio: manter o
   // "-" cru deixava a resposta com cara de arquivo de texto.
   const item = /^\s*(?:[-*+]|\d+[.)])\s+(.*)$/.exec(linha);
