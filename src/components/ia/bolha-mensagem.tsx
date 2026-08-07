@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+import { AcoesDaResposta } from "@/components/ia/acoes-da-resposta";
 import { MascoteCup } from "@/components/ia/mascote-cup";
 import { TextoFormatado } from "@/components/ia/texto-formatado";
 import { IconCalendario } from "@/components/ui/icons";
@@ -81,6 +82,19 @@ export function BolhaMensagem({ mensagem, conversaId }: BolhaMensagemProps) {
           <div className="text-text-body text-sm leading-[1.75]">
             <TextoFormatado texto={mensagem.texto} />
           </div>
+
+          {/* So' quando ha texto de fato: copiar/baixar o vazio nao faz nada, e
+              um par de botoes embaixo de uma resposta em branco parece defeito.
+              A guarda vale tambem pra mensagem de ERRO do assistente, que chega
+              por este mesmo caminho — mas ali o texto existe, e poder copiar a
+              mensagem de erro ajuda mais do que atrapalha. */}
+          {mensagem.texto.trim() !== "" && (
+            <AcoesDaResposta
+              texto={mensagem.texto}
+              criadaEm={mensagem.criada_em}
+            />
+          )}
+
           <p className="text-text-muted mt-1.5 text-[11px]">
             {horaDoTimestamp(mensagem.criada_em)}
           </p>
