@@ -1,12 +1,55 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 
-import { IconBaixar, IconCopiar } from "@/components/ui/icons";
+import { IconBaixar, IconCopiar, IconSeta } from "@/components/ui/icons";
 import { dataDoTimestamp } from "@/lib/format";
 
 /** Quanto tempo o "Copiado!" fica na tela, igual ao diario de classe. */
 const MS_DO_AVISO_DE_COPIA = 2000;
+
+/** Formatos que o menu "Baixar" oferece, na ordem em que aparecem. */
+const FORMATOS_DE_DOWNLOAD = [
+  { id: "md", rotulo: "Markdown" },
+  { id: "pptx", rotulo: "PowerPoint" },
+  { id: "pdf", rotulo: "PDF" },
+] as const;
+
+type FormatoDeDownload = (typeof FORMATOS_DE_DOWNLOAD)[number]["id"];
+
+/**
+ * Titulo pra mandar pro exportador: a primeira linha `#` do texto.
+ *
+ * Mesma logica que o assistente usa pra abrir o material (`# Titulo` no
+ * topo) — sem essa linha, manda string vazia e a API cai no proprio padrao
+ * ("Material de estudo"), em vez desta tela inventar um nome diferente do
+ * que a API decidiria sozinha.
+ */
+function extrairTitulo(texto: string): string {
+  const primeiraLinha = texto.split("\n")[0] ?? "";
+  const titulo = primeiraLinha.match(/^#\s+(.+)/)?.[1];
+  return titulo?.trim() ?? "";
+}
+
+/**
+ * Baixa um Blob pelo caminho de object URL: cria, clica, revoga.
+ *
+ * Extraido pra ser reusado pelos tres formatos — o Markdown ja usava esse
+ * caminho (validado no navegador real em 07/08), e PowerPoint/PDF entram
+ * nele tambem em vez de reinventar o download.
+ */
+function baixarBlob(blob: Blob, nomeArquivo: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = nomeArquivo;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  // Sem o revoke o blob fica vivo ate' a aba fechar. Numa conversa longa,
+  // baixar varios materiais seguraria todos eles na memoria.
+  URL.revokeObjectURL(url);
+}
 
 type AcoesDaRespostaProps = {
   /** O texto CRU da mensagem — o mesmo que o formatador desenha na tela. */
@@ -28,13 +71,27 @@ type AcoesDaRespostaProps = {
  * mesmo `**negrito**` e `- lista` que o modelo escreveu, e nao um <strong> que
  * so' faz sentido dentro desta tela.
  *
- * Nao ha rota nova no backend de proposito — o texto ja' esta no navegador, e
- * mandar de volta pro servidor so' pra ele devolver o mesmo texto num arquivo
- * seria uma ida e volta sem nenhum ganho.
+ * "Baixar" virou um menu com tres formatos (08/08, fatia 2 da feature). O
+ * Markdown continua 100% no navegador, sem rota nova, pelo mesmo motivo de
+ * antes — e' o texto cru, instantaneo, funciona offline. PowerPoint e PDF SAO
+ * a rota nova: o Gemini nao escreve `.pptx`/PDF, entao a conversao acontece
+ * no servidor do CUPCAM (`POST /ia/exportar`) e so' a ponte em
+ * `app/api/ia/exportar` pode chamar `lib/api.ts` — este componente e'
+ * "use client" e `api.ts` quebraria o build se fosse importado aqui (a chave
+ * da API e' variavel de servidor).
  */
 export function AcoesDaResposta({ texto, criadaEm }: AcoesDaRespostaProps) {
   const [copiado, setCopiado] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
+  const [menuAberto, setMenuAberto] = useState(false);
+  // Guarda QUAL formato esta gerando, nao so' um booleano: o rotulo do item
+  // clicado precisa virar "Gerando…", os outros dois continuam com o nome
+  // deles (so' desabilitados) — sem isso o professor nao sabe qual dos tres
+  // ele pediu.
+  const [gerando, setGerando] = useState<FormatoDeDownload | null>(null);
+
+  const idMenu = useId();
+  const menuRef = useRef<HTMLDivElement>(null);
 
   // O timeout do "Copiado!" precisa morrer junto com o componente: a conversa
   // troca de tela e o setState cairia num componente ja' desmontado.
@@ -44,6 +101,26 @@ export function AcoesDaResposta({ texto, criadaEm }: AcoesDaRespostaProps) {
       if (timeoutRef.current !== null) clearTimeout(timeoutRef.current);
     };
   }, []);
+
+  // Fecha ao clicar fora ou apertar Escape — so' registra os listeners
+  // globais enquanto o menu esta' aberto, mesmo padrao do balao de ajuda.
+  useEffect(() => {
+    if (!menuAberto) return;
+
+    function aoTeclar(evento: KeyboardEvent) {
+      if (evento.key === "Escape") setMenuAberto(false);
+    }
+    function aoApontar(evento: PointerEvent) {
+      if (!menuRef.current?.contains(evento.target as Node)) setMenuAberto(false);
+    }
+
+    document.addEventListener("keydown", aoTeclar);
+    document.addEventListener("pointerdown", aoApontar);
+    return () => {
+      document.removeEventListener("keydown", aoTeclar);
+      document.removeEventListener("pointerdown", aoApontar);
+    };
+  }, [menuAberto]);
 
   const copiar = useCallback(async () => {
     try {
@@ -61,21 +138,51 @@ export function AcoesDaResposta({ texto, criadaEm }: AcoesDaRespostaProps) {
     }
   }, [texto]);
 
-  const baixar = useCallback(() => {
+  const baixarMarkdown = useCallback(() => {
     // Blob com charset explicito: sem ele, acento vira caractere quebrado ao
     // abrir o arquivo em editor que assume a codificacao do sistema.
     const blob = new Blob([texto], { type: "text/markdown;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `material-${dataDoTimestamp(criadaEm)}.md`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    // Sem o revoke o blob fica vivo ate' a aba fechar. Numa conversa longa,
-    // baixar varios materiais seguraria todos eles na memoria.
-    URL.revokeObjectURL(url);
+    baixarBlob(blob, `material-${dataDoTimestamp(criadaEm)}.md`);
   }, [texto, criadaEm]);
+
+  const baixarPeloServidor = useCallback(
+    async (formato: "pdf" | "pptx") => {
+      setGerando(formato);
+      setAviso(null);
+      try {
+        const resposta = await fetch("/api/ia/exportar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ texto, formato, titulo: extrairTitulo(texto) }),
+        });
+        if (!resposta.ok) {
+          const corpo = (await resposta.json().catch(() => null)) as
+            | { erro?: string }
+            | null;
+          throw new Error(corpo?.erro ?? "Não foi possível gerar o arquivo. Tente de novo.");
+        }
+        const blob = await resposta.blob();
+        baixarBlob(blob, `material-${dataDoTimestamp(criadaEm)}.${formato}`);
+      } catch (erro) {
+        setAviso(erro instanceof Error ? erro.message : "Não foi possível gerar o arquivo. Tente de novo.");
+      } finally {
+        setGerando(null);
+      }
+    },
+    [texto, criadaEm],
+  );
+
+  const escolherFormato = useCallback(
+    (formato: FormatoDeDownload) => {
+      setMenuAberto(false);
+      if (formato === "md") {
+        baixarMarkdown();
+      } else {
+        void baixarPeloServidor(formato);
+      }
+    },
+    [baixarMarkdown, baixarPeloServidor],
+  );
 
   return (
     <div className="mt-2 flex flex-col gap-1.5">
@@ -84,9 +191,47 @@ export function AcoesDaResposta({ texto, criadaEm }: AcoesDaRespostaProps) {
           <IconCopiar size={13} />
         </BotaoDeAcao>
 
-        <BotaoDeAcao onClick={baixar} rotulo="Baixar">
-          <IconBaixar size={13} />
-        </BotaoDeAcao>
+        <div ref={menuRef} className="relative">
+          <button
+            type="button"
+            onClick={() => setMenuAberto((estava) => !estava)}
+            aria-haspopup="menu"
+            aria-expanded={menuAberto}
+            aria-controls={idMenu}
+            disabled={gerando !== null}
+            className="text-text-muted hover:text-text flex items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-bold transition-colors hover:bg-[var(--surface-2)] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <span aria-hidden>
+              <IconBaixar size={13} />
+            </span>
+            {gerando !== null ? "Gerando…" : "Baixar"}
+            <span aria-hidden className="-ml-0.5">
+              <IconSeta size={10} />
+            </span>
+          </button>
+
+          {menuAberto && (
+            <div
+              id={idMenu}
+              role="menu"
+              className="absolute left-0 z-20 mt-1 min-w-[9.5rem] rounded-xl border p-1 text-xs shadow-lg"
+              style={{ borderColor: "var(--border)", background: "var(--surface)" }}
+            >
+              {FORMATOS_DE_DOWNLOAD.map((opcao) => (
+                <button
+                  key={opcao.id}
+                  type="button"
+                  role="menuitem"
+                  disabled={gerando !== null}
+                  onClick={() => escolherFormato(opcao.id)}
+                  className="text-text hover:bg-[var(--surface-2)] flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {gerando === opcao.id ? "Gerando…" : opcao.rotulo}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* role="status" pro leitor de tela anunciar o "Copiado!" e o aviso de
