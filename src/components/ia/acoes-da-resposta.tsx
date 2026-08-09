@@ -8,14 +8,37 @@ import { dataDoTimestamp } from "@/lib/format";
 /** Quanto tempo o "Copiado!" fica na tela, igual ao diario de classe. */
 const MS_DO_AVISO_DE_COPIA = 2000;
 
-/** Formatos que o menu "Baixar" oferece, na ordem em que aparecem. */
+/**
+ * Formatos que o menu "Baixar" oferece, na ordem em que aparecem.
+ *
+ * "Slides (PDF)" vem primeiro entre os gerados no servidor por decisao de
+ * 08/08/2026: o professor NAO tem PowerPoint, e um PDF 16:9 abre em modo
+ * apresentacao sozinho no leitor — e' o caminho que funciona pra ele e pro
+ * aluno sem exigir Office de ninguem. O PowerPoint continua na lista pra quem
+ * precisa EDITAR os slides.
+ *
+ * `extensao` existe porque dois formatos compartilham `.pdf`: o nome do
+ * arquivo baixado nao pode sair do `id`, senao o documento e os slides viriam
+ * como "material-<data>.pdf-slides".
+ */
 const FORMATOS_DE_DOWNLOAD = [
-  { id: "md", rotulo: "Markdown" },
-  { id: "pptx", rotulo: "PowerPoint" },
-  { id: "pdf", rotulo: "PDF" },
+  { id: "md", rotulo: "Markdown", extensao: "md" },
+  { id: "pdf-slides", rotulo: "Slides (PDF)", extensao: "pdf" },
+  { id: "pdf", rotulo: "PDF", extensao: "pdf" },
+  { id: "pptx", rotulo: "PowerPoint", extensao: "pptx" },
 ] as const;
 
 type FormatoDeDownload = (typeof FORMATOS_DE_DOWNLOAD)[number]["id"];
+
+/** Formatos gerados no servidor — todos menos o Markdown, que sai do navegador. */
+type FormatoDoServidor = Exclude<FormatoDeDownload, "md">;
+
+/** Sufixo pro nome do arquivo, pra "pdf" e "pdf-slides" nao colidirem. */
+const SUFIXO_DO_ARQUIVO: Record<FormatoDoServidor, string> = {
+  "pdf-slides": "-slides",
+  pdf: "",
+  pptx: "",
+};
 
 /**
  * Titulo pra mandar pro exportador: a primeira linha `#` do texto.
@@ -146,7 +169,7 @@ export function AcoesDaResposta({ texto, criadaEm }: AcoesDaRespostaProps) {
   }, [texto, criadaEm]);
 
   const baixarPeloServidor = useCallback(
-    async (formato: "pdf" | "pptx") => {
+    async (formato: FormatoDoServidor) => {
       setGerando(formato);
       setAviso(null);
       try {
@@ -162,7 +185,11 @@ export function AcoesDaResposta({ texto, criadaEm }: AcoesDaRespostaProps) {
           throw new Error(corpo?.erro ?? "Não foi possível gerar o arquivo. Tente de novo.");
         }
         const blob = await resposta.blob();
-        baixarBlob(blob, `material-${dataDoTimestamp(criadaEm)}.${formato}`);
+        // A extensao vem da tabela, nao do `formato`: "pdf-slides" e' o nome do
+        // formato na API, mas o arquivo continua sendo um `.pdf`.
+        const opcao = FORMATOS_DE_DOWNLOAD.find((f) => f.id === formato);
+        const nome = `material-${dataDoTimestamp(criadaEm)}${SUFIXO_DO_ARQUIVO[formato]}.${opcao?.extensao ?? "pdf"}`;
+        baixarBlob(blob, nome);
       } catch (erro) {
         setAviso(erro instanceof Error ? erro.message : "Não foi possível gerar o arquivo. Tente de novo.");
       } finally {
@@ -177,9 +204,9 @@ export function AcoesDaResposta({ texto, criadaEm }: AcoesDaRespostaProps) {
       setMenuAberto(false);
       if (formato === "md") {
         baixarMarkdown();
-      } else {
-        void baixarPeloServidor(formato);
+        return;
       }
+      void baixarPeloServidor(formato);
     },
     [baixarMarkdown, baixarPeloServidor],
   );

@@ -3,18 +3,34 @@ import { NextResponse } from "next/server";
 import { ApiError, exportarMaterial } from "@/lib/api";
 
 /**
- * Ponte da exportacao do material (.pptx / PDF).
+ * Ponte da exportacao do material (.pptx / PDF / slides em PDF).
  *
  * Diferente das outras pontes, esta devolve BYTES (o arquivo), nao JSON — o
  * corpo da resposta e' o `Blob` cru vindo de `exportarMaterial`, com o
  * `Content-Type` e o `Content-Disposition` da API repassados sem alteracao
  * (o nome do arquivo ja vem sanitizado de la').
  *
- * So' PowerPoint e PDF passam por aqui. Markdown continua 100% no navegador
- * (ver `acoes-da-resposta.tsx`) — nao ha rota pra ele de proposito.
+ * So' os formatos GERADOS NO SERVIDOR passam por aqui. Markdown continua 100%
+ * no navegador (ver `acoes-da-resposta.tsx`) — nao ha rota pra ele de
+ * proposito.
  */
 
 export const dynamic = "force-dynamic";
+
+/**
+ * Formatos aceitos, espelhando `_FORMATOS_DE_EXPORTACAO` do backend.
+ *
+ * Allowlist explicita em vez de repassar o que o cliente mandou: o `formato`
+ * vai direto pra API do CUPCAM, e validar aqui mantem a ponte fechada mesmo se
+ * o backend um dia afrouxar.
+ */
+const FORMATOS_ACEITOS = ["pdf", "pdf-slides", "pptx"] as const;
+
+type FormatoAceito = (typeof FORMATOS_ACEITOS)[number];
+
+function eFormatoAceito(valor: unknown): valor is FormatoAceito {
+  return typeof valor === "string" && (FORMATOS_ACEITOS as readonly string[]).includes(valor);
+}
 
 /**
  * Mensagem pro professor por status da API do CUPCAM.
@@ -77,7 +93,7 @@ export async function POST(requisicao: Request) {
   if (typeof texto !== "string" || !texto.trim()) {
     return NextResponse.json({ erro: "Não há material para exportar." }, { status: 400 });
   }
-  if (formato !== "pdf" && formato !== "pptx") {
+  if (!eFormatoAceito(formato)) {
     return NextResponse.json({ erro: "Formato inválido." }, { status: 400 });
   }
 

@@ -668,7 +668,7 @@ export type MaterialExportado = {
 };
 
 /**
- * Exporta o material do chat em .pptx ou PDF.
+ * Exporta o material do chat em .pptx, PDF ou slides em PDF.
  *
  * Nao usa `requisitar<T>`: aquele helper sempre faz `resposta.json()`, e aqui
  * a resposta e' o ARQUIVO em bytes (a rota devolve `Response` binaria, nao
@@ -686,7 +686,7 @@ export type MaterialExportado = {
  */
 export async function exportarMaterial(
   texto: string,
-  formato: "pdf" | "pptx",
+  formato: "pdf" | "pdf-slides" | "pptx",
   titulo: string,
 ): Promise<MaterialExportado> {
   const { baseUrl, apiKey } = lerConfiguracao();
