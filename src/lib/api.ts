@@ -657,3 +657,77 @@ export function editarConteudoDaAula(
     body: conteudo,
   });
 }
+
+/** Arquivo exportado: os bytes e os dois headers que o navegador precisa pra baixar. */
+export type MaterialExportado = {
+  bytes: Blob;
+  /** Ex.: "application/pdf". Vem da API — esta funcao nunca decide o tipo. */
+  contentType: string;
+  /** Ex.: 'attachment; filename="material-2026-08-08.pdf"'. Nome ja sanitizado pela API. */
+  contentDisposition: string;
+};
+
+/**
+ * Exporta o material do chat em .pptx, PDF ou slides em PDF.
+ *
+ * Nao usa `requisitar<T>`: aquele helper sempre faz `resposta.json()`, e aqui
+ * a resposta e' o ARQUIVO em bytes (a rota devolve `Response` binaria, nao
+ * JSON). Por isso este fetch e' proprio, mas mantem o mesmo padrao das outras
+ * funcoes — mesma base URL, mesmo header de chave.
+ *
+ * Devolve tambem `Content-Type`/`Content-Disposition`: quem chama (a ponte em
+ * app/api/ia/exportar) precisa repassar os dois pro navegador saber que tipo
+ * de arquivo e' e sugerir o nome certo no download.
+ *
+ * O 413 vira mensagem propria porque e' o unico caso que o professor pode
+ * resolver sozinho (pedir um material menor). Qualquer outra falha vira uma
+ * mensagem generica: a tela nao tem como distinguir "IA fora do ar" de "sem
+ * fonte no servidor" sem vazar detalhe de infraestrutura.
+ */
+export async function exportarMaterial(
+  texto: string,
+  formato: "pdf" | "pdf-slides" | "pptx",
+  titulo: string,
+): Promise<MaterialExportado> {
+  const { baseUrl, apiKey } = lerConfiguracao();
+
+  let resposta: Response;
+  try {
+    resposta = await fetch(`${baseUrl}/ia/exportar`, {
+      method: "POST",
+      headers: {
+        "X-API-Key": apiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ texto, formato, titulo }),
+      cache: "no-store",
+    });
+  } catch {
+    throw new ApiError(
+      "Nao foi possivel falar com a API do CUPCAM. O notebook e o tunel estao ligados?",
+      0,
+      "/ia/exportar",
+    );
+  }
+
+  if (!resposta.ok) {
+    if (resposta.status === 413) {
+      throw new ApiError(
+        "Este material é grande demais para exportar.",
+        413,
+        "/ia/exportar",
+      );
+    }
+    throw new ApiError(
+      "Não foi possível gerar o arquivo. Tente de novo.",
+      resposta.status,
+      "/ia/exportar",
+    );
+  }
+
+  return {
+    bytes: await resposta.blob(),
+    contentType: resposta.headers.get("content-type") ?? "application/octet-stream",
+    contentDisposition: resposta.headers.get("content-disposition") ?? "attachment",
+  };
+}
