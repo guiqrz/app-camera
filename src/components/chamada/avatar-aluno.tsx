@@ -43,7 +43,7 @@ export function AvatarAluno({ nome, ra, tamanho = 40 }: AvatarAlunoProps) {
 
   return (
     <span
-      className="flex flex-none items-center justify-center rounded-full font-extrabold"
+      className="flex flex-none items-center justify-center rounded-full font-semibold"
       style={estilo}
       aria-hidden
     >

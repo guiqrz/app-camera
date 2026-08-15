@@ -1,179 +1,191 @@
-"use client";
+import Link from "next/link";
 
-import { useMemo, useState } from "react";
+import { IconSetaDireita } from "@/components/ui/icons";
+import type { AulaCard } from "@/lib/types";
 
-import { IconBusca, IconCalendario } from "@/components/ui/icons";
-import { APARENCIA_STATUS } from "@/lib/format";
-import type { AulaCard, StatusEngajamento } from "@/lib/types";
+/** Quantas aulas a lista mostra antes do botão "Ver todas". */
+const QUANTAS_NA_LISTA = 5;
 
-import { CardAula } from "./card-aula";
+const MES_CURTO = [
+  "jan", "fev", "mar", "abr", "mai", "jun",
+  "jul", "ago", "set", "out", "nov", "dez",
+];
+
+/**
+ * "AAAA-MM-DD" -> { dia: "07", mes: "ago" }. Fatia a string, sem `new Date`.
+ *
+ * `new Date("2026-08-07")` é meia-noite UTC e, no fuso do Brasil (-03), volta
+ * pro dia 6 — o quadrado mostraria a data errada em metade do dia.
+ */
+function partesDaData(iso: string) {
+  const [, mes, dia] = iso.split("-");
+  return { dia, mes: MES_CURTO[Number(mes) - 1] ?? mes };
+}
 
 type ListaAulasProps = {
   aulas: AulaCard[];
-  /** Id da turma desta pagina. Vai nos links dos cards para que o relatorio
-   *  saiba de qual turma o professor veio — `AulaCard` nao carrega esse id. */
+  /** Id da turma desta página — vai nos links, já que `AulaCard` não o carrega. */
   turmaId: number;
   nomeTurma: string;
-  /** Data inicial do filtro, vinda de ?data= (ex.: ao chegar do Relatorio). */
-  dataInicial?: string;
 };
 
-type FiltroStatus = "todos" | StatusEngajamento;
-
 /**
- * Lista de aulas com busca e filtros.
+ * "Aulas desta turma" — a lista compacta do protótipo (`.aulas`).
  *
- * Filtra no navegador o que a API ja devolveu — a rota entrega todas as aulas
- * da turma de uma vez, entao nao ha ida a rede por digito nem paginacao a
- * fazer. Se o volume crescer muito, isso migra para a API.
+ * Mostra as 5 mais recentes e manda o resto pro Relatórios pelo botão do
+ * rodapé. A BUSCA, o filtro de data e os chips de engajamento saíram em
+ * 14/08: eles não existem no protótipo, e a tela de Relatórios já tem busca e
+ * filtros de verdade — ter os dois duplicava a mesma função em duas telas, com
+ * a versão pior aqui.
+ *
+ * Server component: sem estado nem interação depois que os filtros saíram, um
+ * `"use client"` só custaria JavaScript no navegador sem dar nada em troca.
  */
-export function ListaAulas({
-  aulas,
-  turmaId,
-  nomeTurma,
-  dataInicial = "",
-}: ListaAulasProps) {
-  const [busca, setBusca] = useState("");
-  const [data, setData] = useState(dataInicial);
-  const [status, setStatus] = useState<FiltroStatus>("todos");
-
-  const aulasFiltradas = useMemo(() => {
-    const termo = busca.trim().toLowerCase();
-
-    return aulas.filter((aula) => {
-      if (data && aula.data !== data) return false;
-      if (status !== "todos" && aula.status !== status) return false;
-
-      if (termo) {
-        const alvo = `${nomeTurma} ${aula.dia_semana} ${aula.data} ${
-          aula.resumo ?? ""
-        }`.toLowerCase();
-        if (!alvo.includes(termo)) return false;
-      }
-
-      return true;
-    });
-  }, [aulas, busca, data, status, nomeTurma]);
-
-  const temFiltroAtivo = busca.trim() !== "" || data !== "" || status !== "todos";
-
-  const limparFiltros = () => {
-    setBusca("");
-    setData("");
-    setStatus("todos");
-  };
+export function ListaAulas({ aulas, turmaId, nomeTurma }: ListaAulasProps) {
+  const visiveis = aulas.slice(0, QUANTAS_NA_LISTA);
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* Controles */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="border-border-default bg-surface flex min-w-[200px] flex-1 items-center gap-2.5 rounded-xl border px-4 py-2.5">
-          <span className="text-text-muted flex-none">
-            <IconBusca />
-          </span>
-          <input
-            type="search"
-            value={busca}
-            onChange={(evento) => setBusca(evento.target.value)}
-            placeholder="Buscar por dia, data ou resumo..."
-            aria-label="Buscar aulas"
-            className="text-text w-full min-w-0 border-none bg-transparent text-sm outline-none"
-          />
-        </div>
-
-        <label className="border-border-default bg-surface flex items-center gap-2.5 rounded-xl border px-4 py-2.5">
-          <span className="flex-none" style={{ color: "var(--primary)" }}>
-            <IconCalendario />
-          </span>
-          <span className="sr-only">Filtrar por data</span>
-          <input
-            type="date"
-            value={data}
-            onChange={(evento) => setData(evento.target.value)}
-            className="text-text bg-transparent text-sm font-bold outline-none"
-          />
-        </label>
-
-        {temFiltroAtivo && (
-          <button
-            type="button"
-            onClick={limparFiltros}
-            className="text-text-brand hover:bg-surface-2 rounded-xl px-3 py-2.5 text-sm font-bold transition-colors"
+    <section
+      className="bg-surface border-border-default overflow-hidden rounded-[12px] border"
+      style={{ boxShadow: "var(--shadow-card)" }}
+    >
+      {/* `.card-topo`: padding 15px 17px 11px, h2 de 16px e a contagem
+          apagada ao lado — "5 de 17" no protótipo. */}
+      <div className="flex flex-wrap items-center gap-[10px] px-[17px] pt-[15px] pb-[11px]">
+        <h2
+          className="text-text text-[16px] font-semibold"
+          style={{ letterSpacing: "-0.16px" }}
+        >
+          Aulas desta turma
+        </h2>
+        {aulas.length > 0 && (
+          <span
+            className="text-text-muted text-[12.5px] tabular-nums"
+            style={{ fontWeight: 400 }}
           >
-            Limpar filtros
-          </button>
+            {visiveis.length} de {aulas.length}
+          </span>
         )}
       </div>
 
-      {/* Legenda das faixas, que tambem filtra ao ser clicada. */}
-      <div className="flex flex-wrap items-center gap-2">
-        {(
-          [
-            ["todos", "Todas", "var(--text-muted)"],
-            ["alto", APARENCIA_STATUS.alto.rotulo, APARENCIA_STATUS.alto.cor],
-            ["moderado", APARENCIA_STATUS.moderado.rotulo, APARENCIA_STATUS.moderado.cor],
-            ["atencao", APARENCIA_STATUS.atencao.rotulo, APARENCIA_STATUS.atencao.cor],
-          ] as const
-        ).map(([chave, rotulo, cor]) => {
-          const ativo = status === chave;
-
-          return (
-            <button
-              key={chave}
-              type="button"
-              onClick={() => setStatus(chave)}
-              aria-pressed={ativo}
-              className={`flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs transition-colors ${
-                ativo ? "font-extrabold" : "font-semibold"
-              }`}
-              style={{
-                background: ativo ? "var(--surface-2)" : "transparent",
-                color: ativo ? "var(--text)" : "var(--text-muted)",
-                border: `1px solid ${ativo ? "var(--border-strong)" : "var(--border)"}`,
-              }}
-            >
-              {chave !== "todos" && (
-                <span
-                  className="h-2 w-2 flex-none rounded-full"
-                  style={{ background: cor }}
-                  aria-hidden
-                />
-              )}
-              {rotulo}
-            </button>
-          );
-        })}
-      </div>
-
-      <h2
-        className="text-text text-xl font-extrabold sm:text-2xl"
-        style={{ fontFamily: "var(--font-geologica)" }}
-      >
-        Últimas aulas da turma
-        <span className="text-text-muted ml-2 text-sm font-semibold">
-          ({aulasFiltradas.length}
-          {aulasFiltradas.length !== aulas.length && ` de ${aulas.length}`})
-        </span>
-      </h2>
-
-      {aulasFiltradas.length === 0 ? (
-        <p className="border-border-default text-text-muted rounded-2xl border border-dashed p-10 text-center text-sm">
-          {aulas.length === 0
-            ? "Esta turma ainda não teve aulas monitoradas."
-            : "Nenhuma aula corresponde aos filtros."}
+      {aulas.length === 0 ? (
+        <p className="text-text-muted px-[17px] pb-[17px] text-[12.5px]">
+          Nenhuma aula registrada em {nomeTurma} ainda.
         </p>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-          {aulasFiltradas.map((aula) => (
-            <CardAula
-              key={aula.sessao_id}
-              aula={aula}
-              turmaId={turmaId}
-              nomeTurma={nomeTurma}
-            />
-          ))}
-        </div>
+        <>
+          <div className="flex flex-col px-[7px] pt-[2px] pb-[5px]">
+            {visiveis.map((aula) => (
+              <LinhaDaAula key={aula.sessao_id} aula={aula} turmaId={turmaId} />
+            ))}
+          </div>
+
+          {/* Pastilha de tinta suave, alinhada à esquerda na coluna do texto.
+              Não é barra de largura cheia: com as linhas compactas acima, ela
+              pesaria mais que a lista inteira. */}
+          <div className="px-[9px] pt-[3px] pb-[10px]">
+            <Link
+              href={`/relatorios/turma/${turmaId}`}
+              className="text-text-brand inline-flex items-center gap-[6px] rounded-full border px-[13px] py-[7px] text-[12px] font-semibold transition-colors"
+              style={{
+                background: "var(--primary-soft)",
+                borderColor: "var(--border-default)",
+              }}
+            >
+              Ver todas as {aulas.length} aulas
+              <IconSetaDireita size={14} />
+            </Link>
+          </div>
+        </>
       )}
-    </div>
+    </section>
+  );
+}
+
+/**
+ * Uma linha da lista (`.aula`): quadrado de data à esquerda, texto à direita.
+ *
+ * A altura é mandada pelo QUADRADO (37px), não pelo texto — é nele que se mexe
+ * se a linha ficar apertada ou folgada demais.
+ */
+function LinhaDaAula({ aula, turmaId }: { aula: AulaCard; turmaId: number }) {
+  const { dia, mes } = partesDaData(aula.data);
+  // "Sem registro" e' a AUSENCIA DE TITULO (nenhum topico gravado), nao a
+  // ausencia de recomendacao: a aula pode ter recomendacao da IA sem nunca ter
+  // tido o conteudo registrado.
+  const semRegistro = aula.titulo === null;
+
+  return (
+    <Link
+      href={`/relatorios/sessao/${aula.sessao_id}?turma=${turmaId}`}
+      className="hover:bg-surface-2 grid grid-cols-[44px_1fr] items-center gap-[14px] rounded-[9px] px-[9px] py-[10px] no-underline transition-colors"
+    >
+      {/* Quadrado de vidro com a data — mesmo material dos cards, em
+          miniatura.
+
+          44px, e não os 37px do CSS do protótipo: ele pediu as linhas "um
+          pouco maiores" em 14/08, e é O QUADRADO que manda na altura da linha
+          (o texto cabe folgado em qualquer um dos dois). 37 + padding dava
+          51px por linha; 44 + padding dá ~64px, que é a altura da referência
+          que ele mandou.
+
+          BORDA em `--surface-2`, e não `border-border-default`: essa era a
+          "mancha clara" que ele viu em 14/08. `--border` é opaco (.55 no
+          claro / .17 no escuro) e o `<Link>` ao redor não tem NENHUMA borda —
+          um quadrado de 44px com moldura sólida sozinho na linha lia como
+          remendo colado, não como parte do vidro. `--surface-2` é o mesmo
+          material translúcido do resto do vidro, só que mais discreto: ele
+          desenha o quadrado sem competir com o card que o contém. */}
+      <span
+        className="flex h-[44px] w-[44px] flex-col items-center justify-center gap-px rounded-[10px]"
+        style={{
+          background: "var(--surface-2)",
+          backdropFilter: "var(--blur-card)",
+        }}
+      >
+        <span
+          className="text-text block text-[14px] tabular-nums"
+          style={{ fontWeight: 300, lineHeight: 1.05 }}
+        >
+          {dia}
+        </span>
+        <span className="text-text-muted block text-[8px] font-semibold tracking-[0.05em] uppercase">
+          {mes}
+        </span>
+      </span>
+
+      <span className="min-w-0">
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="text-text truncate text-[13.5px] leading-[1.25] font-semibold">
+            {aula.titulo ?? "Aula sem registro"}
+          </span>
+
+          {/* Selo de ação pendente, não decoração: a aula sem registro é a
+              única que pede algo do professor. */}
+          {semRegistro && (
+            <span
+              className="flex-none rounded-full px-[7px] py-[2px] text-[9.5px]"
+              style={{
+                background: "var(--warn-bg)",
+                color: "var(--warn-fg)",
+                fontWeight: 650,
+                letterSpacing: "0.02em",
+              }}
+            >
+              registrar
+            </span>
+          )}
+        </span>
+
+        <span
+          className="text-text-muted mt-[3px] block truncate text-[12.5px] leading-[1.35]"
+          style={{ fontWeight: 300 }}
+        >
+          {aula.conteudo_resumo ??
+            aula.resumo ??
+            "Nada foi anotado nesta aula"}
+        </span>
+      </span>
+    </Link>
   );
 }

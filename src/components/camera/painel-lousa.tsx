@@ -145,7 +145,7 @@ export function PainelLousa({ sessaoId, desabilitado = false }: PainelLousaProps
   return (
     <div className="border-border-default bg-surface shadow-card flex flex-col gap-3 rounded-2xl border p-5">
       <div className="flex items-baseline justify-between gap-3">
-        <span className="text-text-muted text-xs font-bold tracking-wide uppercase">
+        <span className="text-text-muted text-xs font-semibold tracking-wide uppercase">
           Quadro da aula
         </span>
         <DicaAjuda
@@ -180,7 +180,7 @@ export function PainelLousa({ sessaoId, desabilitado = false }: PainelLousaProps
             <span aria-hidden>
               {jaCapturou ? <IconRecomecar size={18} /> : <IconLousa size={18} />}
             </span>
-            <span className="text-sm font-extrabold">
+            <span className="text-sm font-semibold">
               {capturando
                 ? "Capturando…"
                 : jaCapturou
@@ -213,7 +213,7 @@ export function PainelLousa({ sessaoId, desabilitado = false }: PainelLousaProps
                   className="border-border-default flex flex-col gap-2 rounded-xl border p-3"
                 >
                   <div className="flex items-baseline justify-between gap-2">
-                    <span className="text-text text-xs font-extrabold">
+                    <span className="text-text text-xs font-semibold">
                       Captura {indice + 1}
                     </span>
                     <span className="text-text-muted text-[11px]">

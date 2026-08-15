@@ -301,8 +301,8 @@ export function VistaCamera({ turmas }: VistaCameraProps) {
     <div className="flex flex-col gap-7">
       <div>
         <h1
-          className="text-text text-2xl font-extrabold sm:text-3xl"
-          style={{ fontFamily: "var(--font-geologica)" }}
+          className="text-text text-2xl font-semibold sm:text-3xl"
+          style={{ fontFamily: "var(--font-display)" }}
         >
           Câmera
         </h1>
@@ -406,7 +406,7 @@ function VistaParada({
       {iniciando ? (
         <>
           <div>
-            <h2 className="text-text text-lg font-extrabold">Iniciando…</h2>
+            <h2 className="text-text text-lg font-semibold">Iniciando…</h2>
             <p className="text-text-muted mt-1 text-sm leading-relaxed">
               Carregando os modelos de reconhecimento. Isso leva alguns segundos.
             </p>
@@ -428,7 +428,7 @@ function VistaParada({
       ) : (
         <>
           <div>
-            <h2 className="text-text text-lg font-extrabold">Câmera parada</h2>
+            <h2 className="text-text text-lg font-semibold">Câmera parada</h2>
             <p className="text-text-muted mt-1 text-sm leading-relaxed">
               Nenhuma captura em andamento nesta sala.
             </p>
@@ -438,7 +438,7 @@ function VistaParada({
               horario). Escolher uma turma da lista forca aquela aula — util pra
               apresentar sem depender do horario real. So' aparece se ha turmas. */}
           <label className="flex w-full flex-col gap-1.5 text-left">
-            <span className="text-text-muted text-xs font-bold tracking-wide uppercase">
+            <span className="text-text-muted text-xs font-semibold tracking-wide uppercase">
               Turma a iniciar
             </span>
             <select
@@ -460,7 +460,7 @@ function VistaParada({
               nao numa preferencia guardada — decisao do usuario em 28/07/2026.
               Toda captura comeca em Aula a menos que ele mude isto agora. */}
           <div className="flex w-full flex-col gap-1.5 text-left">
-            <span className="text-text-muted text-xs font-bold tracking-wide uppercase">
+            <span className="text-text-muted text-xs font-semibold tracking-wide uppercase">
               Modo inicial
             </span>
             <SeletorModo
@@ -487,7 +487,7 @@ function VistaParada({
             type="button"
             onClick={aoLigar}
             disabled={ligando}
-            className="w-full rounded-xl px-8 py-3 text-sm font-extrabold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full rounded-xl px-8 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
             style={{ background: "var(--primary)" }}
           >
             Ligar
@@ -572,7 +572,7 @@ function VistaRodando({
             />
           </span>
           <div>
-            <p className="text-text text-sm font-extrabold tracking-wide uppercase">
+            <p className="text-text text-sm font-semibold tracking-wide uppercase">
               Ao vivo{nomeTurma ? ` · ${nomeTurma}` : ""}
             </p>
             <p className="text-text-muted text-xs">
@@ -587,7 +587,7 @@ function VistaRodando({
           type="button"
           onClick={aoDesligar}
           disabled={desligando}
-          className="border-border-default text-text rounded-xl border px-6 py-2.5 text-sm font-extrabold transition-colors hover:bg-[var(--surface-2)] disabled:cursor-not-allowed disabled:opacity-60"
+          className="border-border-default text-text rounded-xl border px-6 py-2.5 text-sm font-semibold transition-colors hover:bg-[var(--surface-2)] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {desligando ? "Desligando…" : "Desligar"}
         </button>
@@ -597,7 +597,7 @@ function VistaRodando({
           captura, nao metrica — por isso nao entra na grade de StatCards. */}
       <div className="border-border-default bg-surface shadow-card flex flex-col gap-3 rounded-2xl border p-5">
         <div className="flex items-baseline justify-between gap-3">
-          <span className="text-text-muted text-xs font-bold tracking-wide uppercase">
+          <span className="text-text-muted text-xs font-semibold tracking-wide uppercase">
             Modo da aula
           </span>
           {!medeAtencao && (
@@ -645,7 +645,7 @@ function VistaRodando({
       {/* Faixa de alerta — precisa saltar aos olhos, cor de perigo cheia. */}
       {estado.alerta_atencao && (
         <div
-          className="flex items-center gap-3 rounded-2xl px-5 py-4 text-sm font-extrabold"
+          className="flex items-center gap-3 rounded-2xl px-5 py-4 text-sm font-semibold"
           style={{ background: "var(--danger)", color: "#fff" }}
           role="alert"
         >

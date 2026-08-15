@@ -51,7 +51,7 @@ export function VistaConfiguracoes({
         >
           <span aria-hidden>🔒</span>
           Conta
-          <span className="rounded-full bg-surface-2 px-1.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider">
+          <span className="rounded-full bg-surface-2 px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wider">
             em breve
           </span>
         </span>

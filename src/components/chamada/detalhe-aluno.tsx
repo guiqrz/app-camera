@@ -42,7 +42,7 @@ export function DetalheAluno({
       <button
         type="button"
         onClick={aoVoltar}
-        className="flex items-center gap-2 self-start text-sm font-bold"
+        className="flex items-center gap-2 self-start text-sm font-semibold"
         style={{ color: "var(--text-brand)" }}
       >
         <span className="rotate-90" aria-hidden>
@@ -66,8 +66,8 @@ export function DetalheAluno({
         <AvatarAluno nome={aluno.nome} ra={aluno.ra} tamanho={64} />
         <div className="min-w-[200px] flex-1">
           <h1
-            className="text-text text-2xl font-extrabold"
-            style={{ fontFamily: "var(--font-geologica)" }}
+            className="text-text text-2xl font-semibold"
+            style={{ fontFamily: "var(--font-display)" }}
           >
             {aluno.nome}
           </h1>
@@ -161,7 +161,7 @@ function BotaoStatusGrande({
       type="button"
       onClick={aoClicar}
       aria-pressed={ativo}
-      className="rounded-xl px-4 py-2.5 text-[13px] font-bold transition-colors"
+      className="rounded-xl px-4 py-2.5 text-[13px] font-semibold transition-colors"
       style={{
         background: ativo ? cor : "transparent",
         border: ativo ? "none" : `1.5px solid ${cor}`,

@@ -62,7 +62,7 @@ export function ControleMicrofone({
   return (
     <div className="border-border-default bg-surface shadow-card flex flex-col gap-3 rounded-2xl border p-5">
       <div className="flex items-baseline justify-between gap-3">
-        <span className="text-text-muted text-xs font-bold tracking-wide uppercase">
+        <span className="text-text-muted text-xs font-semibold tracking-wide uppercase">
           Microfone da aula
         </span>
         <DicaAjuda
@@ -89,7 +89,7 @@ export function ControleMicrofone({
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
             <span className="relative inline-flex h-3 w-3 rounded-full bg-white" />
           </span>
-          <span className="text-sm leading-snug font-extrabold">
+          <span className="text-sm leading-snug font-semibold">
             Gravando áudio da aula
             <span className="mt-0.5 block text-xs font-semibold opacity-90">
               O áudio é apagado assim que a transcrição fica pronta.
@@ -112,7 +112,7 @@ export function ControleMicrofone({
           <span aria-hidden>
             <IconMicrofone size={18} />
           </span>
-          <span className="text-sm leading-snug font-extrabold">
+          <span className="text-sm leading-snug font-semibold">
             Microfone ativado
             <span className="mt-0.5 block text-xs font-semibold opacity-90">
               Quando a câmera iniciar, o áudio da aula passa a ser gravado. O
@@ -152,7 +152,7 @@ export function ControleMicrofone({
             {gravando ? <IconMicrofone size={20} /> : <IconMicrofoneCortado size={20} />}
           </span>
           <span
-            className="text-sm font-extrabold"
+            className="text-sm font-semibold"
             style={{
               color: gravando
                 ? aindaNaoIniciou

@@ -64,7 +64,7 @@ export function PainelAlunos({
         style={{ borderBottom: "1px solid var(--border)" }}
       >
         <div>
-          <h2 className="text-text text-base font-extrabold">
+          <h2 className="text-text text-base font-semibold">
             {turma ? turma.nome : "Alunos"}
           </h2>
           <p className="text-text-muted text-xs">
@@ -93,7 +93,7 @@ export function PainelAlunos({
             type="button"
             onClick={aoNovoAluno}
             disabled={!turma}
-            className="flex flex-none items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-extrabold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex flex-none items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
             style={{ background: "var(--primary)" }}
           >
             <IconMais size={14} />
@@ -108,7 +108,7 @@ export function PainelAlunos({
           <span className="text-text-muted" aria-hidden>
             <IconPessoas size={28} />
           </span>
-          <p className="text-text text-sm font-bold">Nenhuma turma cadastrada ainda.</p>
+          <p className="text-text text-sm font-semibold">Nenhuma turma cadastrada ainda.</p>
           <p className="text-text-muted text-xs">
             Crie uma turma para começar a cadastrar alunos.
           </p>
@@ -123,12 +123,12 @@ export function PainelAlunos({
           <table className="hidden w-full sm:table">
             <thead>
               <tr
-                className="bg-surface-2 text-left text-[11px] font-extrabold tracking-wide uppercase"
+                className="bg-surface-2 text-left text-[11px] font-semibold tracking-wide uppercase"
                 style={{ color: "var(--text-muted)" }}
               >
-                <th className="px-6 py-3.5 font-extrabold">Aluno</th>
-                <th className="px-3 py-3.5 font-extrabold">RA</th>
-                <th className="px-6 py-3.5 text-right font-extrabold">Ações</th>
+                <th className="px-6 py-3.5 font-semibold">Aluno</th>
+                <th className="px-3 py-3.5 font-semibold">RA</th>
+                <th className="px-6 py-3.5 text-right font-semibold">Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -137,7 +137,7 @@ export function PainelAlunos({
                   <td className="px-6 py-3.5">
                     <div className="flex items-center gap-3">
                       <FotoOuAvatar aluno={aluno} tamanho={36} versaoFotos={versaoFotos} />
-                      <span className="text-text text-sm font-bold">{aluno.nome}</span>
+                      <span className="text-text text-sm font-semibold">{aluno.nome}</span>
                       <BadgeSemReconhecimento aluno={aluno} />
                     </div>
                   </td>
@@ -168,7 +168,7 @@ export function PainelAlunos({
                 <FotoOuAvatar aluno={aluno} tamanho={40} versaoFotos={versaoFotos} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <p className="text-text truncate text-sm font-bold">{aluno.nome}</p>
+                    <p className="text-text truncate text-sm font-semibold">{aluno.nome}</p>
                     <BadgeSemReconhecimento aluno={aluno} />
                   </div>
                   <p className="text-text-muted text-xs">Matrícula {aluno.ra}</p>
@@ -232,7 +232,7 @@ function BadgeSemReconhecimento({ aluno }: { aluno: AlunoAdmin }) {
   if (aluno.tem_reconhecimento) return null;
   return (
     <span
-      className="flex-none rounded-full px-2 py-0.5 text-[10px] font-bold"
+      className="flex-none rounded-full px-2 py-0.5 text-[10px] font-semibold"
       style={{ background: "var(--warn-bg)", color: "var(--warn-fg)" }}
       title="Este aluno não tem foto — a câmera não o reconhece automaticamente."
     >

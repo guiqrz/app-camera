@@ -128,7 +128,7 @@ export function GradeSemanal({
         className="flex flex-col gap-1 px-5 py-4"
         style={{ borderBottom: "1px solid var(--border)" }}
       >
-        <h2 className="text-text text-base font-extrabold">Grade semanal</h2>
+        <h2 className="text-text text-base font-semibold">Grade semanal</h2>
         <p className="text-text-muted text-xs">
           Clique no <strong>+</strong> do dia para adicionar uma aula.
         </p>
@@ -153,7 +153,7 @@ export function GradeSemanal({
       {totalOcultas > 0 && (
         <div className="mx-5 mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl px-4 py-2.5">
           <p className="text-text-muted text-xs">
-            <strong className="text-text font-bold">
+            <strong className="text-text font-semibold">
               {totalOcultas} {totalOcultas === 1 ? "aula" : "aulas"}
             </strong>{" "}
             fora do turno da {turno.nome.toLowerCase()}{" "}
@@ -162,7 +162,7 @@ export function GradeSemanal({
           <button
             type="button"
             onClick={() => setMostrarTodas(true)}
-            className="text-xs font-extrabold"
+            className="text-xs font-semibold"
             style={{ color: "var(--text-brand)" }}
           >
             Mostrar todas
@@ -176,7 +176,7 @@ export function GradeSemanal({
           <button
             type="button"
             onClick={() => setMostrarTodas(false)}
-            className="text-xs font-extrabold"
+            className="text-xs font-semibold"
             style={{ color: "var(--text-brand)" }}
           >
             Ver só o turno da {turno.nome.toLowerCase()}
@@ -207,7 +207,7 @@ export function GradeSemanal({
                   className="flex flex-col gap-2 rounded-xl p-2.5"
                   style={{ background: "var(--surface-2)" }}
                 >
-                  <h3 className="text-text-muted px-1 text-[11px] font-extrabold tracking-wide uppercase">
+                  <h3 className="text-text-muted px-1 text-[11px] font-semibold tracking-wide uppercase">
                     <abbr title={nomes.longo} className="no-underline">
                       {nomes.curto}
                     </abbr>
@@ -252,7 +252,7 @@ export function GradeSemanal({
                       >
                         <div className="flex items-start justify-between gap-1.5">
                           <div className="min-w-0">
-                            <p className="text-text text-xs font-extrabold">
+                            <p className="text-text text-xs font-semibold">
                               {aula.hora_inicio}–{aula.hora_fim}
                             </p>
                             <p className="mt-0.5 text-[11px]">
@@ -314,7 +314,7 @@ export function GradeSemanal({
                               setAulaParaExcluirId(null);
                               setFormulario({ tipo: "editar", dia, aula });
                             }}
-                            className="rounded-lg py-1 text-[11px] font-bold"
+                            className="rounded-lg py-1 text-[11px] font-semibold"
                             style={{ color: "var(--text-brand)" }}
                           >
                             Editar
@@ -345,7 +345,7 @@ export function GradeSemanal({
                         setFormulario({ tipo: "criar", dia });
                       }}
                       aria-label={`Adicionar aula na ${nomes.longo}`}
-                      className="flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-[11px] font-extrabold transition-colors"
+                      className="flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-[11px] font-semibold transition-colors"
                       style={{
                         color: "var(--text-brand)",
                         border: "1.5px dashed var(--border)",

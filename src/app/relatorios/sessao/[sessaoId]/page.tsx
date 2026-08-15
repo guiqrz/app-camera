@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { VistaRelatorio } from "@/components/relatorio/vista-relatorio";
 import { AppShell } from "@/components/layout/app-shell";
 import { Breadcrumb, type EloBreadcrumb } from "@/components/layout/breadcrumb";
-import { ApiError, buscarRelatorio } from "@/lib/api";
+import { ApiError, buscarChamada, buscarRelatorio } from "@/lib/api";
 import { dataDoTimestamp, formatarDataCurta } from "@/lib/format";
 
 type Props = {
@@ -38,11 +38,19 @@ export default async function RelatorioPage({ params, searchParams }: Props) {
 
   if (!Number.isInteger(id) || id <= 0) notFound();
 
-  const relatorio = await buscarRelatorio(id).catch((causa) => {
-    // Sessao inexistente e' 404, nao erro de servidor.
-    if (causa instanceof ApiError && causa.isNotFound) notFound();
-    throw causa;
-  });
+  // As duas em paralelo: o relatorio traz as CONTAGENS de presenca, mas a
+  // lista de alunos (com nome e frequencia historica) so' vive na rota de
+  // chamada — e o bloco "Chamada automatica" mostra os dois.
+  const [relatorio, chamada] = await Promise.all([
+    buscarRelatorio(id).catch((causa) => {
+      // Sessao inexistente e' 404, nao erro de servidor.
+      if (causa instanceof ApiError && causa.isNotFound) notFound();
+      throw causa;
+    }),
+    // Engole a falha: sem a lista o bloco mostra so' o numero, e o resto do
+    // relatorio (grafico, conteudo, transcricao) continua de pe.
+    buscarChamada(id).catch(() => null),
+  ]);
 
   /* De qual turma o professor veio.
      O relatorio da API traz o NOME da turma (`sessao.turma`), nunca o id — por
@@ -60,7 +68,7 @@ export default async function RelatorioPage({ params, searchParams }: Props) {
 
   return (
     <AppShell titulo="Relatório" breadcrumb={<Breadcrumb elos={elos} />}>
-      <VistaRelatorio relatorio={relatorio} />
+      <VistaRelatorio relatorio={relatorio} chamada={chamada} />
     </AppShell>
   );
 }

@@ -45,7 +45,7 @@ export function LinhaAluno({ aluno, aoMarcar, aoAbrirDetalhe }: LinhaAlunoProps)
       <div className="flex min-w-0 items-center gap-3">
         <AvatarAluno nome={aluno.nome} ra={aluno.ra} />
         <div className="min-w-0">
-          <p className="text-text truncate text-sm font-bold">{aluno.nome}</p>
+          <p className="text-text truncate text-sm font-semibold">{aluno.nome}</p>
           <p className="text-text-muted text-xs">
             Matrícula {aluno.ra}
             {aluno.detectado_automaticamente === 1 && (
@@ -58,7 +58,7 @@ export function LinhaAluno({ aluno, aoMarcar, aoAbrirDetalhe }: LinhaAlunoProps)
             )}
             {corrigido && (
               <span
-                className="ml-2 rounded-full px-2 py-0.5 text-[10px] font-extrabold tracking-wide uppercase"
+                className="ml-2 rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase"
                 style={{ background: "var(--warn-bg)", color: "var(--warn-fg)" }}
                 title="O professor confirmou um estado diferente do que a câmera detectou"
               >
@@ -95,7 +95,7 @@ export function LinhaAluno({ aluno, aoMarcar, aoAbrirDetalhe }: LinhaAlunoProps)
           style={{ background: corFrequencia(aluno.frequencia_pct) }}
           aria-hidden
         />
-        <span className="text-text text-sm font-bold">
+        <span className="text-text text-sm font-semibold">
           {formatarPct(aluno.frequencia_pct) ?? "Sem histórico"}
         </span>
         <span className="text-text-muted text-xs sm:hidden">de frequência</span>
@@ -104,7 +104,7 @@ export function LinhaAluno({ aluno, aoMarcar, aoAbrirDetalhe }: LinhaAlunoProps)
       <button
         type="button"
         onClick={aoAbrirDetalhe}
-        className="bg-surface-2 justify-self-end rounded-lg px-3.5 py-2 text-xs font-bold whitespace-nowrap"
+        className="bg-surface-2 justify-self-end rounded-lg px-3.5 py-2 text-xs font-semibold whitespace-nowrap"
         style={{ color: "var(--text-brand)" }}
       >
         Ver detalhes

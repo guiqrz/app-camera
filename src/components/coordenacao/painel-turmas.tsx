@@ -40,11 +40,11 @@ export function PainelTurmas({
       }}
     >
       <div className="flex items-center justify-between gap-2 px-5 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
-        <h2 className="text-text text-base font-extrabold">Turmas</h2>
+        <h2 className="text-text text-base font-semibold">Turmas</h2>
         <button
           type="button"
           onClick={aoNovaTurma}
-          className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-extrabold text-white"
+          className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold text-white"
           style={{ background: "var(--primary)" }}
         >
           <IconMais size={14} />
@@ -57,7 +57,7 @@ export function PainelTurmas({
           <span className="text-text-muted" aria-hidden>
             <IconTurma size={28} />
           </span>
-          <p className="text-text text-sm font-bold">Nenhuma turma cadastrada ainda.</p>
+          <p className="text-text text-sm font-semibold">Nenhuma turma cadastrada ainda.</p>
           <p className="text-text-muted text-xs">
             Crie uma turma para começar a cadastrar alunos.
           </p>
@@ -85,7 +85,7 @@ export function PainelTurmas({
                   className="flex min-w-0 flex-1 flex-col gap-1 rounded-l-xl px-4 py-3 text-left"
                 >
                   <span
-                    className="truncate text-sm font-extrabold"
+                    className="truncate text-sm font-semibold"
                     style={{ color: selecionada ? "var(--text-brand)" : "var(--text)" }}
                   >
                     {turma.nome}

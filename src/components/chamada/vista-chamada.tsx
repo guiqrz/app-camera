@@ -250,8 +250,8 @@ export function VistaChamada({ inicial, sessaoId }: VistaChamadaProps) {
     <div className="flex flex-col gap-7">
       <div>
         <h1
-          className="text-text text-2xl font-extrabold sm:text-3xl"
-          style={{ fontFamily: "var(--font-geologica)" }}
+          className="text-text text-2xl font-semibold sm:text-3xl"
+          style={{ fontFamily: "var(--font-display)" }}
         >
           Fazer Chamada
         </h1>
@@ -259,7 +259,7 @@ export function VistaChamada({ inicial, sessaoId }: VistaChamadaProps) {
           {identificacao}. Cada marcação é salva na hora.
           {emAndamento && (
             <span
-              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-extrabold tracking-wide uppercase"
+              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold tracking-wide uppercase"
               style={{ background: "var(--ok-bg)", color: "var(--ok-fg)" }}
             >
               <span
@@ -289,7 +289,7 @@ export function VistaChamada({ inicial, sessaoId }: VistaChamadaProps) {
           <button
             type="button"
             onClick={desfazerMarcarTodos}
-            className="rounded-lg px-3 py-1.5 text-sm font-extrabold underline underline-offset-2"
+            className="rounded-lg px-3 py-1.5 text-sm font-semibold underline underline-offset-2"
           >
             Desfazer
           </button>
@@ -313,7 +313,7 @@ export function VistaChamada({ inicial, sessaoId }: VistaChamadaProps) {
           valor={
             <>
               {presentes}
-              <span className="text-text-muted text-lg font-bold">/{total}</span>
+              <span className="text-text-muted text-lg font-semibold">/{total}</span>
             </>
           }
           apoio="Confirmados nesta aula"
@@ -339,7 +339,7 @@ export function VistaChamada({ inicial, sessaoId }: VistaChamadaProps) {
           valor={
             <>
               {detectados}
-              <span className="text-lg font-bold opacity-85">/{total}</span>
+              <span className="text-lg font-semibold opacity-85">/{total}</span>
             </>
           }
           apoio="Alunos detectados automaticamente"
@@ -361,7 +361,7 @@ export function VistaChamada({ inicial, sessaoId }: VistaChamadaProps) {
         }}
       >
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-text flex items-center gap-2 text-base font-extrabold">
+          <h2 className="text-text flex items-center gap-2 text-base font-semibold">
             <span style={{ color: "var(--primary)" }}>
               <IconTendencia size={16} />
             </span>
@@ -409,7 +409,7 @@ export function VistaChamada({ inicial, sessaoId }: VistaChamadaProps) {
                 type="button"
                 onClick={() => setFiltro(chave)}
                 aria-pressed={ativo}
-                className="rounded-xl px-4 py-2.5 text-[13px] font-bold whitespace-nowrap transition-colors"
+                className="rounded-xl px-4 py-2.5 text-[13px] font-semibold whitespace-nowrap transition-colors"
                 style={{
                   background: ativo ? "var(--primary)" : "var(--surface)",
                   color: ativo ? "#fff" : "var(--text-body)",
@@ -426,7 +426,7 @@ export function VistaChamada({ inicial, sessaoId }: VistaChamadaProps) {
           type="button"
           onClick={marcarTodosPresentes}
           disabled={ausentes === 0}
-          className="rounded-xl border-2 px-4 py-2 text-sm font-bold whitespace-nowrap transition-opacity disabled:cursor-not-allowed disabled:opacity-40 sm:ml-auto"
+          className="rounded-xl border-2 px-4 py-2 text-sm font-semibold whitespace-nowrap transition-opacity disabled:cursor-not-allowed disabled:opacity-40 sm:ml-auto"
           style={{ borderColor: "var(--primary)", color: "var(--primary)" }}
         >
           Marcar todos presentes
@@ -443,7 +443,7 @@ export function VistaChamada({ inicial, sessaoId }: VistaChamadaProps) {
         }}
       >
         <div
-          className="bg-surface-2 hidden grid-cols-[1fr_150px_130px_110px] gap-3 px-6 py-3.5 text-[11px] font-extrabold tracking-wide uppercase sm:grid"
+          className="bg-surface-2 hidden grid-cols-[1fr_150px_130px_110px] gap-3 px-6 py-3.5 text-[11px] font-semibold tracking-wide uppercase sm:grid"
           style={{ color: "var(--text-muted)" }}
           aria-hidden
         >
@@ -473,7 +473,7 @@ export function VistaChamada({ inicial, sessaoId }: VistaChamadaProps) {
 
       <Link
         href={`/relatorios/sessao/${sessaoId}`}
-        className="self-end rounded-xl px-7 py-3.5 text-[15px] font-extrabold text-white"
+        className="self-end rounded-xl px-7 py-3.5 text-[15px] font-semibold text-white"
         style={{ background: "var(--primary)", boxShadow: "var(--shadow-raise)" }}
       >
         Concluir e ver relatório
@@ -514,7 +514,7 @@ function BarraComparativo({
         style={{ color: "var(--text-muted)" }}
       >
         <span>{rotulo}</span>
-        <span className="font-bold">{formatarPct(pct) ?? "Sem dados"}</span>
+        <span className="font-semibold">{formatarPct(pct) ?? "Sem dados"}</span>
       </div>
       <div className="bg-surface-2 h-2 overflow-hidden rounded-full">
         <div
@@ -539,7 +539,7 @@ function EtiquetaComparativo({
   const diferenca = Math.round(hoje - media);
   return (
     <span
-      className="rounded-full px-2.5 py-1 text-xs font-extrabold whitespace-nowrap"
+      className="rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap"
       style={{ background: "var(--violet-100)", color: "var(--text-brand)" }}
     >
       {diferenca >= 0 ? "+" : ""}

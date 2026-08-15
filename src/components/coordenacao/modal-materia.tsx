@@ -161,8 +161,8 @@ export function ModalMateria({
         <div className="flex items-center justify-between gap-2">
           <h2
             id={idTitulo}
-            className="text-text text-lg font-extrabold"
-            style={{ fontFamily: "var(--font-geologica)" }}
+            className="text-text text-lg font-semibold"
+            style={{ fontFamily: "var(--font-display)" }}
           >
             {editando ? "Renomear matéria" : "Nova matéria"}
           </h2>
@@ -191,7 +191,7 @@ export function ModalMateria({
               O nome de cada cor fica no aria-label pra quem usa leitor de tela
               e pra quem nao distingue as cores. */}
           <fieldset className="flex flex-col gap-2" disabled={enviando}>
-            <legend className="text-text-muted text-xs font-bold">
+            <legend className="text-text-muted text-xs font-semibold">
               Cor (opcional)
             </legend>
             <div className="flex flex-wrap items-center gap-2">
@@ -250,14 +250,14 @@ export function ModalMateria({
               type="button"
               onClick={aoFechar}
               disabled={enviando}
-              className="text-text-body rounded-lg px-4 py-2.5 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-40"
+              className="text-text-body rounded-lg px-4 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={enviando}
-              className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-extrabold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
+              className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
               style={{ background: "var(--primary)" }}
             >
               {enviando && (

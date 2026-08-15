@@ -147,7 +147,7 @@ function SwitchSempreGravar() {
           proxima vez), entao precisa deixar essa diferenca clara em vez de
           copiar o texto de um controle que fala de agora. */}
       <span
-        className="text-sm font-extrabold"
+        className="text-sm font-semibold"
         style={{ color: ativo ? "var(--danger-fg)" : "var(--text)" }}
       >
         {ativo ? "Sempre gravar" : "Não gravar"}

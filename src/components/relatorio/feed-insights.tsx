@@ -21,7 +21,7 @@ function corDoInsight(item: ItemFeedInsight): string {
 export function FeedInsights({ itens }: FeedInsightsProps) {
   return (
     <div className="border-border-default bg-surface shadow-card rounded-2xl border p-5">
-      <h3 className="text-text mb-4 text-base font-extrabold">Feed de insights</h3>
+      <h3 className="text-text mb-4 text-base font-semibold">Feed de insights</h3>
 
       {itens.length === 0 ? (
         <p className="text-text-muted text-sm leading-relaxed">
@@ -38,7 +38,7 @@ export function FeedInsights({ itens }: FeedInsightsProps) {
                 aria-hidden
               />
               <div>
-                <p className="text-text text-sm font-bold">{item.titulo}</p>
+                <p className="text-text text-sm font-semibold">{item.titulo}</p>
                 <p className="text-text-muted mt-0.5 text-[13px] leading-relaxed">
                   {item.descricao}
                 </p>

@@ -2,13 +2,27 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { IconLixeira, IconRecomecar, IconTranscricao } from "@/components/ui/icons";
+import {
+  IconInfo,
+  IconLixeira,
+  IconRecomecar,
+} from "@/components/ui/icons";
 import { dataDoTimestamp, formatarDataExtensa } from "@/lib/format";
 import type { Transcricao } from "@/lib/types";
 
 /** Polling so' enquanto transcreve. 10s porque nada muda a cada segundo aqui —
  *  diferente da camera ao vivo, que usa 3s. */
 const INTERVALO_MS = 10000;
+
+/**
+ * 73 -> "1:13". O minuto NAO leva zero a esquerda e o segundo SIM, que e' como
+ * se le' tempo de midia ("0:08", "12:04").
+ */
+function formatarSegundos(total: number) {
+  const minutos = Math.floor(total / 60);
+  const segundos = total % 60;
+  return `${minutos}:${String(segundos).padStart(2, "0")}`;
+}
 
 type SecaoTranscricaoProps = {
   sessaoId: number;
@@ -173,14 +187,19 @@ export function SecaoTranscricao({ sessaoId }: SecaoTranscricaoProps) {
 
   if (carregando) return null;
 
+  // SEM card nem título próprios: quem desenha os dois é o `BlocoColapsavel`
+  // em volta.
   return (
-    <div className="border-border-default bg-surface shadow-card flex flex-col gap-4 rounded-2xl border p-5">
-      <div className="flex items-center gap-2.5">
-        <span aria-hidden style={{ color: "var(--primary)" }}>
-          <IconTranscricao size={20} />
+    <div className="flex flex-col gap-4">
+      {/* O aviso de procedência vem ANTES do texto: o professor precisa saber
+          que é reconhecimento automático antes de ler, não depois. */}
+      <p className="text-text-muted m-0 flex items-start gap-[7px] text-[11.5px] leading-[1.45]">
+        <span className="mt-px flex-none opacity-70" aria-hidden>
+          <IconInfo size={13} />
         </span>
-        <h2 className="text-text text-lg font-extrabold">Transcrição da aula</h2>
-      </div>
+        Transcrição automática da fala em sala. Erros de reconhecimento são
+        esperados — use como apoio, não como registro literal.
+      </p>
 
       {aviso && (
         <p className="text-xs font-semibold" style={{ color: "var(--warn-fg)" }} role="status">
@@ -206,7 +225,7 @@ export function SecaoTranscricao({ sessaoId }: SecaoTranscricaoProps) {
             />
           </span>
           <div>
-            <p className="text-text text-sm font-extrabold">Transcrevendo o áudio…</p>
+            <p className="text-text text-sm font-semibold">Transcrevendo o áudio…</p>
             <p className="text-text-muted text-xs">
               Leva alguns minutos. Esta tela atualiza sozinha.
             </p>
@@ -215,7 +234,7 @@ export function SecaoTranscricao({ sessaoId }: SecaoTranscricaoProps) {
       ) : transcricao.estado === "falhou" ? (
         <div className="flex flex-col gap-3">
           <div>
-            <p className="text-sm font-extrabold" style={{ color: "var(--danger-fg)" }}>
+            <p className="text-sm font-semibold" style={{ color: "var(--danger-fg)" }}>
               Não foi possível transcrever esta aula
             </p>
             {transcricao.erro && (
@@ -228,7 +247,7 @@ export function SecaoTranscricao({ sessaoId }: SecaoTranscricaoProps) {
             type="button"
             onClick={reprocessar}
             disabled={reprocessando}
-            className="border-border-default text-text flex w-fit items-center gap-2 rounded-xl border px-4 py-2 text-sm font-extrabold transition-colors hover:bg-[var(--surface-2)] disabled:cursor-not-allowed disabled:opacity-60"
+            className="border-border-default text-text flex w-fit items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition-colors hover:bg-[var(--surface-2)] disabled:cursor-not-allowed disabled:opacity-60"
           >
             <IconRecomecar size={16} />
             {reprocessando ? "Tentando…" : "Tentar de novo"}
@@ -261,12 +280,37 @@ export function SecaoTranscricao({ sessaoId }: SecaoTranscricaoProps) {
             </span>
           </div>
 
-          <div
-            className="text-text-body overflow-y-auto text-sm leading-relaxed"
-            style={{ maxHeight: expandido ? "none" : "16rem" }}
-          >
-            {transcricao.texto}
-          </div>
+          {/* TRECHOS com o horário, não texto corrido: o professor procura um
+              momento da aula ("o que eu falei aos 12 min?"), e um parágrafo
+              único de 20 minutos não deixa achar nada. O texto corrido
+              continua no `transcricao.texto` para quem copia. */}
+          {transcricao.trechos.length > 0 ? (
+            <ul
+              className="m-0 list-none overflow-y-auto p-0"
+              style={{ maxHeight: expandido ? "none" : "270px" }}
+            >
+              {transcricao.trechos.map((trecho) => (
+                <li
+                  key={trecho.segundo_inicio}
+                  className="border-border-default grid grid-cols-[48px_1fr] gap-[11px] border-b py-[7px] last:border-b-0"
+                >
+                  <span className="text-text-muted pt-px text-[11.5px] tabular-nums">
+                    {formatarSegundos(trecho.segundo_inicio)}
+                  </span>
+                  <span className="text-text-body max-w-[92ch] text-[12.5px] leading-[1.5]">
+                    {trecho.texto}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div
+              className="text-text-body overflow-y-auto text-sm leading-relaxed"
+              style={{ maxHeight: expandido ? "none" : "16rem" }}
+            >
+              {transcricao.texto}
+            </div>
+          )}
 
           {/* Audio da aula, ABAIXO do texto: a transcricao e' o conteudo
               principal, e o player e' o apoio pra conferir um trecho duvidoso —
@@ -287,7 +331,7 @@ export function SecaoTranscricao({ sessaoId }: SecaoTranscricaoProps) {
           {audioDisponivel && (
             <div className="border-border-default flex flex-col gap-2.5 rounded-xl border p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-text-muted text-xs font-bold tracking-wide uppercase">
+                <span className="text-text-muted text-xs font-semibold tracking-wide uppercase">
                   Áudio da aula
                 </span>
                 {/* Confirmacao INLINE, nao window.confirm: o dialogo nativo
@@ -295,14 +339,14 @@ export function SecaoTranscricao({ sessaoId }: SecaoTranscricaoProps) {
                     Dois passos porque a exclusao e' irreversivel. */}
                 {confirmandoExclusao ? (
                   <span className="flex flex-wrap items-center gap-2">
-                    <span className="text-text text-xs font-bold">
+                    <span className="text-text text-xs font-semibold">
                       Excluir o áudio?
                     </span>
                     <button
                       type="button"
                       onClick={excluirAudio}
                       disabled={excluindo}
-                      className="rounded-lg px-3 py-1.5 text-xs font-extrabold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
+                      className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
                       style={{ background: "var(--danger)" }}
                     >
                       {excluindo ? "Excluindo…" : "Sim, excluir"}
@@ -311,7 +355,7 @@ export function SecaoTranscricao({ sessaoId }: SecaoTranscricaoProps) {
                       type="button"
                       onClick={() => setConfirmandoExclusao(false)}
                       disabled={excluindo}
-                      className="border-border-default text-text hover:bg-surface-2 rounded-lg border px-3 py-1.5 text-xs font-extrabold transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+                      className="border-border-default text-text hover:bg-surface-2 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       Cancelar
                     </button>
@@ -320,7 +364,7 @@ export function SecaoTranscricao({ sessaoId }: SecaoTranscricaoProps) {
                   <button
                     type="button"
                     onClick={() => setConfirmandoExclusao(true)}
-                    className="border-border-default hover:bg-surface-2 flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-extrabold transition-colors"
+                    className="border-border-default hover:bg-surface-2 flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors"
                     style={{ color: "var(--danger-fg)" }}
                   >
                     <IconLixeira size={13} />
@@ -356,14 +400,14 @@ export function SecaoTranscricao({ sessaoId }: SecaoTranscricaoProps) {
             <button
               type="button"
               onClick={() => setExpandido((v) => !v)}
-              className="border-border-default text-text rounded-xl border px-4 py-2 text-xs font-extrabold transition-colors hover:bg-[var(--surface-2)]"
+              className="border-border-default text-text rounded-xl border px-4 py-2 text-xs font-semibold transition-colors hover:bg-[var(--surface-2)]"
             >
               {expandido ? "Recolher" : "Expandir"}
             </button>
             <button
               type="button"
               onClick={copiar}
-              className="border-border-default text-text rounded-xl border px-4 py-2 text-xs font-extrabold transition-colors hover:bg-[var(--surface-2)]"
+              className="border-border-default text-text rounded-xl border px-4 py-2 text-xs font-semibold transition-colors hover:bg-[var(--surface-2)]"
             >
               {copiado ? "Copiado!" : "Copiar texto"}
             </button>

@@ -142,7 +142,7 @@ export function FormularioAula({
       />
 
       <label className="flex flex-col gap-1.5">
-        <span className="text-text-muted text-xs font-bold">Matéria (opcional)</span>
+        <span className="text-text-muted text-xs font-semibold">Matéria (opcional)</span>
         <select
           value={materiaId}
           onChange={(evento) => setMateriaId(evento.target.value)}
@@ -181,7 +181,7 @@ export function FormularioAula({
         <button
           type="submit"
           disabled={enviando}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-extrabold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
           style={{ background: "var(--primary)" }}
         >
           {enviando && (
@@ -196,7 +196,7 @@ export function FormularioAula({
           type="button"
           onClick={aoCancelar}
           disabled={enviando}
-          className="text-text-body rounded-lg px-3 py-2 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-40"
+          className="text-text-body rounded-lg px-3 py-2 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-40"
         >
           Cancelar
         </button>

@@ -28,9 +28,12 @@ import type {
   ContinuidadeDaTurma,
   ConteudoDaAula,
   Conversa,
+  DiaDaSemana,
   DiarioDaAula,
   EstadoCamera,
   EstatisticasDaTurma,
+  Lembrete,
+  LembreteEditado,
   Lousa,
   Materia,
   ModoCamera,
@@ -43,6 +46,7 @@ import type {
   Transcricao,
   Turma,
   VisaoAdmin,
+  VisaoGeral,
 } from "./types";
 
 /** Erro de comunicacao com a API, com o status HTTP preservado. */
@@ -92,7 +96,7 @@ export function lerConfiguracao(): { baseUrl: string; apiKey: string } {
 type OpcoesRequisicao = {
   /** Segundos ate revalidar o cache. 0 desliga o cache (dado ao vivo). */
   revalidate?: number;
-  method?: "GET" | "POST" | "PUT" | "DELETE";
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   /** FormData vai crua (multipart); qualquer outra coisa vira JSON. */
   body?: unknown;
 };
@@ -104,8 +108,14 @@ async function requisitar<T>(
   const { baseUrl, apiKey } = lerConfiguracao();
 
   const eFormData = body instanceof FormData;
-  // Escrita (POST/PUT/DELETE) nunca e' cacheada; leitura revalida no intervalo pedido.
-  const eEscrita = method === "POST" || method === "PUT" || method === "DELETE";
+  // Escrita nunca e' cacheada; leitura revalida no intervalo pedido. PATCH
+  // precisa estar nesta lista: fora dela ele cairia no ramo de leitura e o
+  // Next tentaria cachear uma escrita.
+  const eEscrita =
+    method === "POST" ||
+    method === "PUT" ||
+    method === "PATCH" ||
+    method === "DELETE";
 
   let resposta: Response;
   try {
@@ -160,6 +170,98 @@ async function requisitar<T>(
 export function listarTurmas(): Promise<Turma[]> {
   // Turmas mudam raramente; cache mais longo evita ida a rede a cada tela.
   return requisitar<Turma[]>("/turmas", { revalidate: 300 });
+}
+
+/**
+ * Tela "Minhas Aulas", estado "Todas as turmas" — rota gorda.
+ *
+ * Devolve numeros + agenda da semana + lembretes numa requisicao so'.
+ *
+ * Sem cache: o professor marca um lembrete como feito e precisa ver o proprio
+ * clique refletido ao voltar pra tela. Cachear aqui traria de volta o lembrete
+ * que ele acabou de riscar.
+ */
+export function buscarVisaoGeral(): Promise<VisaoGeral> {
+  return requisitar<VisaoGeral>("/visao-geral", { revalidate: 0 });
+}
+
+/**
+ * Agenda semanal de UMA turma — o mesmo bloco "Sua semana" no estado turma.
+ *
+ * Turma sem grade devolve os 7 dias vazios, nunca 404: a turma pode existir
+ * antes de a grade ser montada.
+ */
+export function buscarSemanaDaTurma(turmaId: number): Promise<DiaDaSemana[]> {
+  return requisitar<DiaDaSemana[]>(`/turmas/${turmaId}/semana`, {
+    revalidate: 0,
+  });
+}
+
+/* --- Lembretes ---------------------------------------------------------- */
+
+export function listarLembretes(): Promise<Lembrete[]> {
+  return requisitar<Lembrete[]>("/lembretes", { revalidate: 0 });
+}
+
+export function criarLembrete(corpo: {
+  texto: string;
+  data: string | null;
+}): Promise<{ id: number }> {
+  return requisitar<{ id: number }>("/lembretes", {
+    method: "POST",
+    body: corpo,
+  });
+}
+
+/**
+ * Altera SO' os campos presentes em `corpo` (semantica de PATCH).
+ *
+ * O `body` e' repassado como veio: omitir `data` mantem o prazo, mandar
+ * `data: null` o APAGA. Nao normalize o objeto aqui (nada de `data: corpo.data
+ * ?? null`) — isso apagaria o prazo de todo lembrete marcado como feito.
+ */
+export function editarLembrete(
+  id: number,
+  corpo: LembreteEditado,
+): Promise<{ id: number }> {
+  return requisitar<{ id: number }>(`/lembretes/${id}`, {
+    method: "PATCH",
+    body: corpo,
+  });
+}
+
+export function removerLembrete(id: number): Promise<{ id: number }> {
+  return requisitar<{ id: number }>(`/lembretes/${id}`, { method: "DELETE" });
+}
+
+/* --- Plano e anexo da aula ---------------------------------------------- */
+
+/** Grava o plano da aula. Texto vazio LIMPA o plano (nao ha DELETE de plano). */
+export function definirPlanoDaAula(
+  aulaId: number,
+  texto: string,
+): Promise<{ id: number }> {
+  return requisitar<{ id: number }>(`/admin/aulas/${aulaId}/plano`, {
+    method: "PUT",
+    body: { texto },
+  });
+}
+
+/** Guarda (ou SUBSTITUI) o anexo da aula — um anexo por aula. */
+export function salvarAnexoDaAula(
+  aulaId: number,
+  arquivo: FormData,
+): Promise<{ id: number; nome: string; tamanho: number }> {
+  return requisitar(`/admin/aulas/${aulaId}/anexo`, {
+    method: "PUT",
+    body: arquivo,
+  });
+}
+
+export function removerAnexoDaAula(aulaId: number): Promise<{ id: number }> {
+  return requisitar<{ id: number }>(`/admin/aulas/${aulaId}/anexo`, {
+    method: "DELETE",
+  });
 }
 
 /**

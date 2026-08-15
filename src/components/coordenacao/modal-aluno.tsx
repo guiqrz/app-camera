@@ -266,8 +266,8 @@ export function ModalAluno({
         <div className="flex items-center justify-between gap-2">
           <h2
             id={idTitulo}
-            className="text-text text-lg font-extrabold"
-            style={{ fontFamily: "var(--font-geologica)" }}
+            className="text-text text-lg font-semibold"
+            style={{ fontFamily: "var(--font-display)" }}
           >
             {editando ? "Editar aluno" : "Adicionar aluno"}
           </h2>
@@ -304,7 +304,7 @@ export function ModalAluno({
                 )}
               </span>
               <span
-                className="text-text-body rounded-lg px-3 py-1.5 text-xs font-bold"
+                className="text-text-body rounded-lg px-3 py-1.5 text-xs font-semibold"
                 style={{ border: "1px solid var(--border)" }}
               >
                 {rotuloBotaoFoto}
@@ -325,7 +325,7 @@ export function ModalAluno({
                 type="button"
                 onClick={aoRemoverFoto}
                 disabled={enviando}
-                className="text-xs font-bold underline disabled:cursor-not-allowed disabled:opacity-40"
+                className="text-xs font-semibold underline disabled:cursor-not-allowed disabled:opacity-40"
                 style={{ color: "var(--danger)" }}
               >
                 Remover foto
@@ -405,14 +405,14 @@ export function ModalAluno({
               type="button"
               onClick={aoFechar}
               disabled={enviando}
-              className="text-text-body rounded-lg px-4 py-2.5 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-40"
+              className="text-text-body rounded-lg px-4 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={enviando}
-              className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-extrabold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
+              className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
               style={{ background: "var(--primary)" }}
             >
               {enviando && (
@@ -433,7 +433,7 @@ export function ModalAluno({
 function Campo({ rotulo, children }: { rotulo: string; children: React.ReactNode }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="text-text-muted text-xs font-bold">{rotulo}</span>
+      <span className="text-text-muted text-xs font-semibold">{rotulo}</span>
       {children}
     </label>
   );

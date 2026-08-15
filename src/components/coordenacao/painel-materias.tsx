@@ -55,7 +55,7 @@ export function PainelMaterias({
     <section className="flex flex-col gap-3 pt-1" style={{ borderTop: "1px solid var(--border)" }}>
       <div className="flex flex-wrap items-center justify-between gap-2 pt-3">
         <div className="flex items-baseline gap-2">
-          <h2 className="text-text-muted text-xs font-extrabold tracking-wide uppercase">
+          <h2 className="text-text-muted text-xs font-semibold tracking-wide uppercase">
             Matérias
           </h2>
           <span className="text-text-muted text-xs">
@@ -66,7 +66,7 @@ export function PainelMaterias({
         <button
           type="button"
           onClick={aoNovaMateria}
-          className="flex flex-none items-center gap-1 rounded-lg px-2 py-1 text-xs font-extrabold transition-colors"
+          className="flex flex-none items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold transition-colors"
           style={{ color: "var(--text-brand)" }}
         >
           <IconMais size={13} />
@@ -124,7 +124,7 @@ export function PainelMaterias({
                 {armada ? (
                   <>
                     <span
-                      className="ml-1 text-[11px] font-bold"
+                      className="ml-1 text-[11px] font-semibold"
                       style={{ color: "var(--danger)" }}
                     >
                       Excluir?

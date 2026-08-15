@@ -139,7 +139,7 @@ export function SeletorModo({
             <span className="pointer-events-none relative z-10 flex flex-wrap items-baseline gap-x-1.5">
               <span
                 aria-hidden
-                className="text-sm font-extrabold"
+                className="text-sm font-semibold"
                 style={{ color: aparencia?.texto ?? "var(--text)" }}
               >
                 {modo.rotulo}
@@ -167,7 +167,7 @@ export function SeletorModo({
             {selecionado && (
               <span
                 aria-hidden
-                className="pointer-events-none relative z-10 text-[11px] font-extrabold tracking-wide uppercase"
+                className="pointer-events-none relative z-10 text-[11px] font-semibold tracking-wide uppercase"
                 style={{ color: aparencia?.texto ?? "var(--primary)" }}
               >
                 Ativo
@@ -175,7 +175,7 @@ export function SeletorModo({
             )}
             {aguardando && (
               <span
-                className="pointer-events-none relative z-10 text-[11px] font-extrabold tracking-wide uppercase"
+                className="pointer-events-none relative z-10 text-[11px] font-semibold tracking-wide uppercase"
                 style={{ color: "var(--warn-fg)" }}
               >
                 Aplicando…

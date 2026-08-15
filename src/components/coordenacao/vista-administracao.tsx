@@ -483,8 +483,8 @@ export function VistaAdministracao({ visaoInicial }: VistaAdministracaoProps) {
     <div className="flex flex-col gap-7">
       <div>
         <h1
-          className="text-text text-2xl font-extrabold sm:text-3xl"
-          style={{ fontFamily: "var(--font-geologica)" }}
+          className="text-text text-2xl font-semibold sm:text-3xl"
+          style={{ fontFamily: "var(--font-display)" }}
         >
           Coordenação
         </h1>

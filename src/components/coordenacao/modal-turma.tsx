@@ -142,8 +142,8 @@ export function ModalTurma({ aberto, aoFechar, aoSalvar }: ModalTurmaProps) {
         <div className="flex items-center justify-between gap-2">
           <h2
             id={idTitulo}
-            className="text-text text-lg font-extrabold"
-            style={{ fontFamily: "var(--font-geologica)" }}
+            className="text-text text-lg font-semibold"
+            style={{ fontFamily: "var(--font-display)" }}
           >
             Nova turma
           </h2>
@@ -197,14 +197,14 @@ export function ModalTurma({ aberto, aoFechar, aoSalvar }: ModalTurmaProps) {
               type="button"
               onClick={aoFechar}
               disabled={enviando}
-              className="text-text-body rounded-lg px-4 py-2.5 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-40"
+              className="text-text-body rounded-lg px-4 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={enviando}
-              className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-extrabold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
+              className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
               style={{ background: "var(--primary)" }}
             >
               {enviando && (

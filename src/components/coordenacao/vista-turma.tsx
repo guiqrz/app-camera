@@ -240,8 +240,8 @@ export function VistaTurma({ turmaInicial }: VistaTurmaProps) {
         {/* O caminho de volta agora e' a trilha do cabecalho (ver AppShell). */}
         <div>
           <h1
-            className="text-text text-2xl font-extrabold sm:text-3xl"
-            style={{ fontFamily: "var(--font-geologica)" }}
+            className="text-text text-2xl font-semibold sm:text-3xl"
+            style={{ fontFamily: "var(--font-display)" }}
           >
             {turma.nome}
           </h1>
@@ -265,7 +265,7 @@ export function VistaTurma({ turmaInicial }: VistaTurmaProps) {
             <Link
               key={href}
               href={href}
-              className="text-text-brand border-border-default hover:bg-surface-2 inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-bold transition-colors"
+              className="text-text-brand border-border-default hover:bg-surface-2 inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors"
             >
               {rotulo}
               <IconSetaDireita size={12} />
@@ -285,7 +285,7 @@ export function VistaTurma({ turmaInicial }: VistaTurmaProps) {
           boxShadow: "var(--shadow-card)",
         }}
       >
-        <h2 className="text-text text-base font-extrabold">Dados da turma</h2>
+        <h2 className="text-text text-base font-semibold">Dados da turma</h2>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <CampoComExemplo
@@ -324,7 +324,7 @@ export function VistaTurma({ turmaInicial }: VistaTurmaProps) {
           {turmaSalva && (
             <span
               role="status"
-              className="text-xs font-bold"
+              className="text-xs font-semibold"
               style={{ color: "var(--ok-fg)" }}
             >
               Alterações salvas.
@@ -333,7 +333,7 @@ export function VistaTurma({ turmaInicial }: VistaTurmaProps) {
           <button
             type="submit"
             disabled={salvandoTurma}
-            className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-extrabold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
             style={{ background: "var(--primary)" }}
           >
             {salvandoTurma && (
@@ -358,7 +358,7 @@ export function VistaTurma({ turmaInicial }: VistaTurmaProps) {
             <IconRelogio size={17} />
           </span>
           <div>
-            <p className="text-text text-sm font-bold">
+            <p className="text-text text-sm font-semibold">
               Turno da {turno.nome.toLowerCase()}: as aulas vão de {turno.inicio} às{" "}
               {turno.fim}.
             </p>
@@ -380,7 +380,7 @@ export function VistaTurma({ turmaInicial }: VistaTurmaProps) {
                 type="button"
                 onClick={() => setTurnoEscolhido(opcao.id)}
                 aria-pressed={ativo}
-                className="rounded-lg px-3 py-1.5 text-xs font-extrabold transition-colors"
+                className="rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors"
                 style={{
                   background: ativo ? "var(--primary)" : "transparent",
                   color: ativo ? "#fff" : "var(--text-muted)",

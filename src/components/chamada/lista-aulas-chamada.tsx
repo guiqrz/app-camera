@@ -37,7 +37,7 @@ export function ListaAulasChamada({ aulas, turmaId }: ListaAulasChamadaProps) {
   if (aulas.length === 0) {
     return (
       <div className="border-border-default mx-auto max-w-lg rounded-2xl border border-dashed p-10 text-center">
-        <h2 className="text-text text-lg font-extrabold">
+        <h2 className="text-text text-lg font-semibold">
           Nenhuma aula registrada
         </h2>
         <p className="text-text-body mt-3 text-sm leading-relaxed">
@@ -71,12 +71,12 @@ export function ListaAulasChamada({ aulas, turmaId }: ListaAulasChamadaProps) {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <p
-              className="text-[11px] font-extrabold tracking-wide uppercase"
+              className="text-[11px] font-semibold tracking-wide uppercase"
               style={{ color: "var(--text-brand)" }}
             >
               {destaque.em_andamento ? "Aula em andamento" : "Última aula"}
             </p>
-            <p className="text-text mt-1.5 text-lg font-extrabold sm:text-xl">
+            <p className="text-text mt-1.5 text-lg font-semibold sm:text-xl">
               {formatarDiaSemana(destaque.dia_semana)},{" "}
               {formatarDataExtensa(destaque.data)}
             </p>
@@ -87,7 +87,7 @@ export function ListaAulasChamada({ aulas, turmaId }: ListaAulasChamadaProps) {
                 {apoioDestaque}
                 {destaque.em_andamento && (
                   <span
-                    className={`rounded-full px-2.5 py-0.5 text-[11px] font-extrabold tracking-wide uppercase ${
+                    className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold tracking-wide uppercase ${
                       apoioDestaque ? "ml-2" : ""
                     }`}
                     style={{ background: "var(--ok-bg)", color: "var(--ok-fg)" }}
@@ -101,7 +101,7 @@ export function ListaAulasChamada({ aulas, turmaId }: ListaAulasChamadaProps) {
 
           <Link
             href={`/chamada/${destaque.sessao_id}?turma=${turmaId}`}
-            className="rounded-xl px-6 py-3 text-sm font-extrabold text-white"
+            className="rounded-xl px-6 py-3 text-sm font-semibold text-white"
             style={{
               background: "var(--primary)",
               boxShadow: "var(--shadow-raise)",
@@ -128,7 +128,7 @@ export function ListaAulasChamada({ aulas, turmaId }: ListaAulasChamadaProps) {
             aria-expanded={anterioresAbertas}
             className="flex w-full items-center justify-between gap-3 px-6 py-5 text-left"
           >
-            <span className="text-text text-base font-extrabold">
+            <span className="text-text text-base font-semibold">
               Aulas anteriores
               <span className="text-text-muted ml-2 text-sm font-semibold">
                 ({anteriores.length})
@@ -171,7 +171,7 @@ export function ListaAulasChamada({ aulas, turmaId }: ListaAulasChamadaProps) {
                     className="hover:bg-surface-2 flex min-w-0 flex-1 items-center gap-4 px-6 py-4 transition-colors"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="text-text text-sm font-bold">{rotuloAula}</p>
+                      <p className="text-text text-sm font-semibold">{rotuloAula}</p>
                       {apoio && (
                         <p className="text-text-muted mt-0.5 text-[13px]">{apoio}</p>
                       )}
@@ -187,7 +187,7 @@ export function ListaAulasChamada({ aulas, turmaId }: ListaAulasChamadaProps) {
 
                   <Link
                     href={`/relatorios/sessao/${aula.sessao_id}?turma=${turmaId}`}
-                    className="text-text-brand hover:bg-surface-2 flex-none rounded-lg px-3 py-2 text-xs font-bold transition-colors"
+                    className="text-text-brand hover:bg-surface-2 flex-none rounded-lg px-3 py-2 text-xs font-semibold transition-colors"
                   >
                     Ver análise
                     <span className="sr-only"> da aula de {rotuloAula}</span>
