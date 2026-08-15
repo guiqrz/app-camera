@@ -1,22 +1,23 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   BarraAnexos,
   FORMATOS_ACEITOS,
   validarArquivo,
 } from "@/components/ia/barra-anexos";
+import { CartoesSugestao } from "@/components/ia/cartoes-sugestao";
 import { CompositorPergunta } from "@/components/ia/compositor-pergunta";
-import { ListaConversas } from "@/components/ia/lista-conversas";
 import { MascoteCup } from "@/components/ia/mascote-cup";
+import {
+  AbaHistorico,
+  PainelHistorico,
+} from "@/components/ia/painel-historico";
 import { SeletorAula } from "@/components/ia/seletor-aula";
 import { guardarAnexosPendentes } from "@/lib/anexos-pendentes";
 import type { Anexo, Conversa } from "@/lib/types";
-
-/** Quantas conversas aparecem antes de o professor pedir o resto. */
-const CONVERSAS_VISIVEIS = 3;
 
 /**
  * Saudacao pela hora do relogio do professor.
@@ -62,13 +63,38 @@ export function PainelConversas({
   const [pergunta, setPergunta] = useState("");
   const [criando, setCriando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
-  const [mostrarTodas, setMostrarTodas] = useState(false);
+  // O historico nasce ABERTO: e' a coluna que o prototipo mostra na abertura, e
+  // esconde-lo por padrao faria a tela parecer a versao antiga.
+  const [historicoAberto, setHistoricoAberto] = useState(true);
 
   // Anexos escolhidos ANTES de a conversa existir. Quem de fato os envia e' a
   // tela da conversa: a aula viaja como `sessao` no endereco, e os arquivos
   // pelo modulo de pendentes — `File` nao cabe numa URL.
   const [anexos, setAnexos] = useState<Anexo[]>([]);
   const [seletorAberto, setSeletorAberto] = useState(false);
+
+  // Os cartoes de sugestao preenchem o campo e param o cursor onde o professor
+  // tem que completar a frase (a data da aula), entao precisam alcanca-lo.
+  const campoPergunta = useRef<HTMLTextAreaElement>(null);
+  // Ref, e nao state: guardar isto em state renderizaria de novo so' pra mover
+  // um cursor, e zera-lo dentro do efeito seria `setState` em efeito (cascata
+  // de renders que o lint do projeto proibe, com razao).
+  const cursorPendente = useRef<number | null>(null);
+
+  // Posiciona o cursor DEPOIS de o React ter pintado o texto do cartao. Feito
+  // em efeito, e nao no clique: enquanto o valor novo nao esta no DOM, qualquer
+  // `setSelectionRange` e' descartado pelo redesenho seguinte e o cursor cai no
+  // fim do texto — que e' justamente onde ele nao serve, porque o que falta
+  // digitar (a data da aula) fica no MEIO da frase.
+  useEffect(() => {
+    const cursor = cursorPendente.current;
+    if (cursor === null) return;
+    cursorPendente.current = null;
+    const campo = campoPergunta.current;
+    if (!campo) return;
+    campo.focus();
+    campo.setSelectionRange(cursor, cursor);
+  }, [pergunta]);
 
   // `useState` com funcao: a saudacao e' lida uma vez, na montagem. Recalcular
   // a cada desenho trocaria "Boa tarde" por "Boa noite" no meio do uso.
@@ -156,13 +182,18 @@ export function PainelConversas({
     setErro(recusados.length > 0 ? recusados.join(" ") : null);
   };
 
-  const visiveis = mostrarTodas
-    ? conversas
-    : conversas.slice(0, CONVERSAS_VISIVEIS);
-  const escondidas = conversas.length - CONVERSAS_VISIVEIS;
+  const miolo = (
+    <div className="mx-auto flex h-full w-full max-w-2xl flex-col">
+      {/* O bloco de boas-vindas ocupa o espaco livre e se centraliza DENTRO
+          dele; o compositor fica ancorado embaixo. E' o que da' a distancia
+          grande entre os cartoes e o campo, sem que ela vire um numero fixo
+          que quebraria em tela baixa: o vao e' o que sobrar.
 
-  return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col items-center">
+          `flex-shrink-0` e' o que impede o bloco de encolher ABAIXO do proprio
+          conteudo quando a tela e' baixa: com `min-h-0` ele comprimia e o
+          compositor subia POR CIMA dos cartoes (medido: vao de -140px em
+          1000x700). Sem encolher, quem cede e' a rolagem da coluna. */}
+      <div className="flex flex-1 flex-shrink-0 flex-col items-center justify-center">
       {/* Aviso ANTES do campo, nao depois de perguntar: sem chave o backend
           responde 503, e descobrir isso so' depois de escrever um paragrafo
           inteiro seria perder o texto por nada. */}
@@ -177,35 +208,68 @@ export function PainelConversas({
         </p>
       )}
 
-      {/* As margens negativas cortam o vao vazio do viewBox: o desenho ocupa
-          so' a faixa central, e sem o corte o mascote flutuaria longe do
-          titulo, com um bloco de nada no meio. */}
-      <span className="-mt-4 -mb-[26px]">
-        <MascoteCup size={126} animado titulo="Cup, o assistente" />
+      {/* `.cup-abertura` corta o vao vazio do viewBox com margens negativas (o
+          desenho ocupa so' a faixa central da caixa) e ancora o halo que
+          respira atras do mascote. As margens sao proporcionais ao tamanho da
+          caixa — a regra em globals.css tem um caso proprio pra 185px. */}
+      <span className="cup-abertura">
+        <MascoteCup size={185} animado titulo="Cup, o assistente" />
       </span>
 
-      <h1 className="text-text text-center text-[27px] leading-tight font-semibold tracking-tight sm:text-[33px]" style={{ fontFamily: "var(--font-geologica)" }}>
+      <h1
+        className="text-text mt-1 text-center text-[27px] leading-tight font-semibold tracking-tight sm:text-[33px]"
+        style={{ fontFamily: "var(--font-display)" }}
+      >
         {saudacao}, professor.
         <br />
         {/* O gradiente da marca vive so' aqui: e' o maior texto da tela e o
-            unico lugar onde a cor carrega identidade em vez de hierarquia. */}
+            unico lugar onde a cor carrega identidade em vez de hierarquia.
+
+            A luz que atravessa: o gradiente e' desenhado em 300% da largura e
+            dividido em tres tercos — os das pontas sao a marca pura e
+            IDENTICOS entre si, e o do meio carrega a faixa clara. Animar
+            `background-position` desliza a faixa pelo texto, e como as duas
+            pontas pintam igual, o salto de 100% pra 0% no fim do ciclo e'
+            invisivel. O clip continua sendo o TEXTO, entao a luz so' existe
+            dentro das letras.
+            A luz usa o roxo e o azul LAVADOS, e nao branco puro — branco
+            quebraria a identidade da marca. */}
         <span
           className="bg-clip-text text-transparent"
           style={{
             backgroundImage:
-              "linear-gradient(92deg, var(--brand-aro-1), var(--brand-aro-2))",
+              "linear-gradient(100deg, #7b2cbf 0%, #4a9fd8 33.33%, #7b2cbf 40%, #c9a6f0 48%, #a9d4f5 50%, #4a9fd8 58%, #7b2cbf 66.66%, #4a9fd8 100%)",
+            backgroundSize: "300% 100%",
+            /* 0% = so' a faixa da marca visivel. E' o estado de REPOUSO. */
+            backgroundPosition: "0% 0",
+            animation: "luz-passando 7s ease-in-out infinite",
           }}
         >
           O que vamos ver hoje?
         </span>
       </h1>
 
+      {/* Curto de proposito: o texto anterior listava "anexe uma prova, peca um
+          resumo", que e' exatamente o que os tres cartoes abaixo ja' dizem —
+          repetir empurrava a leitura pra baixo sem informar. */}
       <p className="text-text-muted mt-2 text-center text-sm">
-        Pergunte sobre suas aulas, anexe uma prova ou peça um resumo.
+        Seu assistente para as aulas da semana.
       </p>
 
+      <CartoesSugestao
+        aoEscolher={(texto, cursor) => {
+          // O cursor e' aplicado no efeito la' em cima, e nao aqui: num
+          // `<textarea>` controlado, mexer na selecao antes de o React pintar o
+          // valor novo e' desfeito pelo proprio redesenho — o cursor acabava no
+          // fim do texto (medido no navegador, com clique de verdade).
+          cursorPendente.current = cursor;
+          setPergunta(texto);
+        }}
+      />
+      </div>
+
       {seletorAberto && (
-        <div className="mt-5 w-full">
+        <div className="mt-5 w-full flex-none">
           <SeletorAula
             aoEscolher={(anexo) => {
               // Mesma aula duas vezes mandaria a transcricao repetida pro
@@ -224,7 +288,10 @@ export function PainelConversas({
         </div>
       )}
 
-      <div className="mt-7 w-full">
+      {/* Ancorado no rodape: o vao ate' os cartoes vem do `flex-1` do bloco de
+          boas-vindas acima, e nao de uma margem fixa. `mt-4` e' so' o respiro
+          minimo pra quando a tela for baixa e o vao livre virar zero. */}
+      <div className="mt-4 w-full flex-none">
         <CompositorPergunta
           valor={pergunta}
           aoMudar={setPergunta}
@@ -232,6 +299,7 @@ export function PainelConversas({
           ocupado={criando}
           rotuloOcupado="Começando…"
           aria="Sua primeira pergunta"
+          campoRef={campoPergunta}
           anexos={
             <BarraAnexos
               anexos={anexos}
@@ -252,35 +320,43 @@ export function PainelConversas({
 
       {erro && (
         <p
-          className="mt-3 w-full text-xs font-semibold"
+          className="mt-3 w-full flex-none text-xs font-semibold"
           style={{ color: "var(--danger-fg)" }}
           role="alert"
         >
           {erro}
         </p>
       )}
+    </div>
+  );
 
-      {conversas.length > 0 && (
-        <section className="mt-12 w-full">
-          <h2 className="text-text-muted mb-2 text-[10.5px] font-bold tracking-[0.1em] uppercase opacity-80">
-            Últimas conversas
-          </h2>
+  // Duas colunas: o miolo e o historico. A classe carrega o grid e o `gap` de
+  // 20px do prototipo; `data-historico` derruba a coluna quando ele fecha.
+  return (
+    <div className="conteudo-ia" data-historico={historicoAberto ? "sim" : "nao"}>
+      {/* Sem `justify-center` aqui: quem centraliza e' o bloco de boas-vindas
+          DENTRO do miolo, pra que o compositor possa ficar ancorado no rodape.
+          `overflow-y: auto` porque o grid tem altura fixa — em tela baixa o
+          miolo passa da altura e sem rolagem propria seria CORTADO pelo
+          `overflow: hidden` do pai. */}
+      <div className="flex min-w-0 flex-col overflow-y-auto">{miolo}</div>
 
-          <ListaConversas conversas={visiveis} aoApagar={apagar} />
-
-          {escondidas > 0 && (
-            <button
-              type="button"
-              onClick={() => setMostrarTodas((aberto) => !aberto)}
-              aria-expanded={mostrarTodas}
-              className="border-border-strong text-text-muted hover:bg-surface-2 hover:text-text-body mt-1.5 w-full rounded-xl border border-dashed py-2 text-[11px] font-bold transition-colors"
-            >
-              {mostrarTodas
-                ? "Ver menos"
-                : `Ver todas as conversas (${conversas.length})`}
-            </button>
-          )}
-        </section>
+      {historicoAberto ? (
+        <PainelHistorico
+          conversas={conversas}
+          aoApagar={apagar}
+          aoNova={() => {
+            // "Nova conversa" na abertura e' onde ele ja' esta: o util e'
+            // limpar o que estava escrito e devolver o foco ao campo.
+            setPergunta("");
+            setAnexos([]);
+            setErro(null);
+            campoPergunta.current?.focus();
+          }}
+          aoFechar={() => setHistoricoAberto(false)}
+        />
+      ) : (
+        <AbaHistorico aoAbrir={() => setHistoricoAberto(true)} />
       )}
     </div>
   );

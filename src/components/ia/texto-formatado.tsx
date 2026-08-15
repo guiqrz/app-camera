@@ -16,7 +16,7 @@ import type { ReactNode } from "react";
 
 /** Marcacoes de trecho, na ordem em que sao procuradas. */
 const INLINE = [
-  { abre: "**", classe: "font-bold" },
+  { abre: "**", classe: "font-semibold" },
   { abre: "`", classe: "rounded bg-surface-2 px-1 py-0.5 font-mono text-[0.9em]" },
   { abre: "*", classe: "italic" },
 ] as const;
@@ -77,7 +77,7 @@ function formatarLinha(linha: string, chave: string): ReactNode {
   const titulo = /^(#{1,6})\s+(.*)$/.exec(linha);
   if (titulo) {
     return (
-      <p key={chave} className="text-text mt-1 font-bold">
+      <p key={chave} className="text-text mt-1 font-semibold">
         {formatarTrechos(titulo[2], chave)}
       </p>
     );

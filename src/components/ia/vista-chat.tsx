@@ -331,7 +331,7 @@ export function VistaChat({
               <MascoteCup size={38} animado />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-text-muted mb-1.5 text-xs font-extrabold">
+              <p className="text-text-muted mb-1.5 text-xs font-semibold">
                 Cup AI
               </p>
               <p className="text-text-muted text-sm">Pensando…</p>

@@ -62,7 +62,7 @@ function SeloArquivo({ arquivo, lado }: { arquivo: File; lado: number }) {
 
   return (
     <span
-      className="grid flex-none place-items-center rounded-lg text-[9px] font-black"
+      className="grid flex-none place-items-center rounded-lg text-[9px] font-semibold"
       style={{
         width: lado,
         height: lado,
@@ -100,7 +100,7 @@ export function ChipAnexo({ anexo, aoRemover }: ChipAnexoProps) {
     return (
       <span className="border-border-default bg-surface shadow-card flex max-w-full items-center gap-2 rounded-xl border py-1.5 pr-1.5 pl-2.5">
         <IconCalendario size={13} className="text-text-muted flex-none" />
-        <span className="text-text truncate text-xs font-bold">
+        <span className="text-text truncate text-xs font-semibold">
           {anexo.rotulo}
         </span>
         {aoRemover && <BotaoRemover rotulo={anexo.rotulo} aoRemover={aoRemover} />}
@@ -120,7 +120,7 @@ export function ChipAnexo({ anexo, aoRemover }: ChipAnexoProps) {
       )}
 
       <span className="min-w-0">
-        <span className="text-text block max-w-[130px] truncate text-xs font-bold">
+        <span className="text-text block max-w-[130px] truncate text-xs font-semibold">
           {arquivo.name}
         </span>
         <span className="text-text-muted text-[10.5px]">

@@ -163,7 +163,7 @@ export function SeletorAula({ aoEscolher, aoFechar }: SeletorAulaProps) {
   return (
     <div className="border-border-default bg-surface flex flex-col gap-3 rounded-xl border p-4">
       <div className="flex items-center justify-between gap-3">
-        <h3 className="text-text text-sm font-extrabold">Anexar uma aula</h3>
+        <h3 className="text-text text-sm font-semibold">Anexar uma aula</h3>
         <button
           type="button"
           onClick={aoFechar}
@@ -183,7 +183,7 @@ export function SeletorAula({ aoEscolher, aoFechar }: SeletorAulaProps) {
           <select
             value={turmaId ?? ""}
             onChange={(evento) => setTurmaId(Number(evento.target.value))}
-            className="text-text w-full cursor-pointer appearance-none bg-transparent text-sm font-bold outline-none"
+            className="text-text w-full cursor-pointer appearance-none bg-transparent text-sm font-semibold outline-none"
           >
             {turmas.map((turma) => (
               <option key={turma.id} value={turma.id}>
@@ -232,7 +232,7 @@ export function SeletorAula({ aoEscolher, aoFechar }: SeletorAulaProps) {
                     <IconCalendario size={15} />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="text-text block truncate text-sm font-bold">
+                    <span className="text-text block truncate text-sm font-semibold">
                       {rotularAula(aula)}
                     </span>
                     {horario && (
