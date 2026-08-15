@@ -1,23 +1,23 @@
 import type { Metadata } from "next";
-import { Geologica, Inter } from "next/font/google";
+import { Montserrat } from "next/font/google";
 
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { ThemeScript } from "@/components/theme/theme-script";
 
 import "./globals.css";
 
-/* Fontes do design system Strix/Cupcam. O next/font baixa e hospeda os
-   arquivos junto do app: nada e' pedido ao Google em producao (mais rapido
-   e sem vazar o IP de quem acessa para um terceiro). */
-const geologica = Geologica({
-  variable: "--font-geologica",
-  subsets: ["latin"],
-  display: "swap",
-});
+/* Fonte do redesign (13/08/2026): uma familia so', com o contraste vindo do
+   PESO — 300 no corpo, 600 nos titulos. Substituiu o par Geologica + Inter.
 
-const inter = Inter({
-  variable: "--font-inter",
+   Os 4 pesos sao os que a UI usa de fato; pedir a familia inteira (9 pesos)
+   dobraria o download sem nada aparecer na tela.
+
+   O next/font baixa e hospeda os arquivos junto do app: nada e' pedido ao
+   Google em producao (mais rapido e sem vazar o IP de quem acessa). */
+const montserrat = Montserrat({
+  variable: "--font-montserrat",
   subsets: ["latin"],
+  weight: ["300", "400", "500", "600"],
   display: "swap",
 });
 
@@ -39,12 +39,18 @@ export default function RootLayout({
       // React montar, entao o HTML do servidor e o do cliente divergem de
       // proposito neste atributo. O aviso do React aqui e' esperado.
       suppressHydrationWarning
-      className={`${geologica.variable} ${inter.variable} h-full antialiased`}
+      className={`${montserrat.variable} h-full antialiased`}
     >
       <head>
         <ThemeScript />
       </head>
       <body className="bg-bg text-text-body min-h-full">
+        {/* A atmosfera fica no body, fora do ThemeProvider e de qualquer
+            rota: ela e' fixed e vale pra todas as telas. Aqui em cima ela
+            aparece tambem nas paginas de erro e de carregamento, que nao
+            passam pelo AppShell — sem isso o fundo "piscaria" chapado
+            durante a navegacao. aria-hidden: e' decoracao pura. */}
+        <div className="atmosfera" aria-hidden="true" />
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>

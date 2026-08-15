@@ -32,8 +32,20 @@ export function Header({ aoAbrirMenu, titulo, children }: HeaderProps) {
     return () => clearTimeout(id);
   }, []);
 
+  // ESTATICO, sem fundo e sem blur — igual ao `.topo` do prototipo
+  // (`padding: 22px 45px 0`, gap 14px, sem borda).
+  //
+  // Era `sticky top-0 z-30` + a classe `bg-painel`. O `style` anulava so' a
+  // COR, mas a classe e' o gancho de `[class*="bg-painel"]` (globals.css), que
+  // aplica `--blur-painel` = blur(30px), o mais forte do sistema. O resultado
+  // era uma placa de vidro fixa no topo que acompanhava a rolagem e, com o
+  // `pb-4` do celular, cobria alto demais e cortava o alternador de tema.
+  //
+  // No prototipo o topo rola junto com a pagina: nao ha' o que embacar por
+  // baixo, entao nao ha' blur nem fundo. O `pb-0` do desktop vira o padrao nos
+  // dois tamanhos porque o `.miolo` logo abaixo ja' traz o proprio respiro.
   return (
-    <header className="bg-surface shadow-header sticky top-0 z-30 flex flex-wrap items-center gap-4 px-5 py-4 lg:px-10">
+    <header className="flex flex-wrap items-center gap-[14px] px-5 pt-4 lg:px-[45px] lg:pt-[22px]">
       {/* p-3 (nao p-1): e' o alvo mais tocado do celular e media 26px. */}
       <button
         type="button"
@@ -56,32 +68,28 @@ export function Header({ aoAbrirMenu, titulo, children }: HeaderProps) {
         </button>
       )}
 
-      <span
-        className="text-text flex-1 text-lg font-extrabold lg:hidden"
-        style={{ fontFamily: "var(--font-geologica)" }}
+      {/* No computador o titulo assume os valores do prototipo (25px/600,
+          -0.025em); no celular ele encolhe pra caber ao lado do menu.
+
+          `letterSpacing` em em, nao no `tracking-[]` do Tailwind: o valor
+          arbitrario resolve sobre outro tamanho base e sai errado. Em em ele
+          acompanha o tamanho da fonte nos dois breakpoints. */}
+      <h1
+        className="text-text flex-1 text-lg leading-[1.5] font-semibold lg:text-[25px]"
+        style={{ fontFamily: "var(--font-display)", letterSpacing: "-0.025em" }}
       >
         {titulo}
-      </span>
+      </h1>
 
-      <div className="hidden flex-1 items-center gap-3 lg:flex">{children}</div>
+      <div className="hidden flex-none items-center gap-2 lg:flex">
+        {children}
+      </div>
 
-      <div className="flex flex-none items-center gap-3">
+      {/* So' o alternador de tema. O cartao do professor saiu daqui e foi pro
+          pe da sidebar, onde o prototipo o coloca — o topo de cada tela fica
+          so' com o titulo e os controles dela. */}
+      <div className="flex flex-none items-center gap-2">
         <ThemeToggle />
-
-        {/* Sem cadastro de professor no banco: dado fixo por ora. */}
-        <div className="flex items-center gap-2.5">
-          <div
-            className="flex h-10 w-10 flex-none items-center justify-center rounded-full text-sm font-extrabold text-white"
-            style={{ background: "var(--violet-800)" }}
-            aria-hidden
-          >
-            PM
-          </div>
-          <div className="hidden sm:block">
-            <div className="text-text text-sm font-extrabold">Prof. Monteiro</div>
-            <div className="text-text-muted text-xs">Biologia Avançada</div>
-          </div>
-        </div>
       </div>
 
       {/* No celular os controles descem para uma segunda linha. */}

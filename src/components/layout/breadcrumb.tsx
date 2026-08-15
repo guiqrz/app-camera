@@ -49,7 +49,7 @@ export function Breadcrumb({ elos }: BreadcrumbProps) {
                 </Link>
               ) : (
                 <span
-                  className={ultimo ? "text-text font-extrabold" : undefined}
+                  className={ultimo ? "text-text font-semibold" : undefined}
                   // A pagina atual, anunciada como tal em vez de so' parecer
                   // diferente visualmente.
                   aria-current={ultimo ? "page" : undefined}

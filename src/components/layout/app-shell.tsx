@@ -37,8 +37,25 @@ export function AppShell({
 }: AppShellProps) {
   const [menuAberto, setMenuAberto] = useState(false);
 
+  // O PAINEL — a camada que faltava, e o motivo da faixa violeta aparecer
+  // como uma barra chapada na lateral.
+  //
+  // No prototipo o `.app` NAO e' so' um container de layout: ele e' vidro em
+  // tela cheia (`background: var(--painel)` + `blur(30px)`) por cima da
+  // atmosfera. E' esse vidro que FILTRA a faixa da esquerda — sem ele a faixa
+  // fica crua, com a cor inteira batendo direto no olho.
+  //
+  // A sidebar mora DENTRO do painel e tem o proprio `saturate(155%)`, que
+  // repuxa a cor ja' filtrada. Sao as duas camadas juntas que dao o efeito:
+  // sozinha, a sidebar transparente so' revela a faixa sem tratamento.
   return (
-    <div className="flex min-h-screen">
+    <div
+      className="relative z-[1] flex min-h-screen"
+      style={{
+        background: "var(--painel)",
+        backdropFilter: "var(--blur-painel)",
+      }}
+    >
       <Sidebar aberto={menuAberto} aoFechar={() => setMenuAberto(false)} />
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -46,7 +63,9 @@ export function AppShell({
           {controles}
         </Header>
 
-        <main className="flex-1 px-5 py-7 lg:px-10 lg:py-9">
+        {/* `.miolo` do prototipo: 18px 28px 30px. O respiro de cima e' menor
+            que o dos lados porque o cabecalho ja' abriu 22px acima dele. */}
+        <main className="flex-1 px-5 pt-4 pb-7 lg:px-[28px] lg:pt-[18px] lg:pb-[30px]">
           {breadcrumb && <div className="mb-5">{breadcrumb}</div>}
           {children}
         </main>

@@ -49,6 +49,13 @@
   --color-cyan-500: var(--cyan-500);
   --color-cyan-800: var(--cyan-800);
 
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-soft-hover: var(--primary-soft-hover);
+
+  /* Superficie de PAINEL (header, gaveta do menu): mais transparente e com
+     blur mais forte que a de card — ela cobre conteudo que rola por baixo. */
+  --color-painel: var(--painel);
+
   --radius-sm: var(--radius-sm);
   --radius-DEFAULT: var(--radius);
   --radius-lg: var(--radius-lg);
@@ -58,19 +65,147 @@
   --shadow-raise: var(--shadow-raise);
   --shadow-header: var(--shadow-header);
 
-  /* As variaveis --font-* sao definidas por next/font no layout. */
-  --font-display: var(--font-geologica), system-ui, sans-serif;
-  --font-sans: var(--font-inter), system-ui, sans-serif;
+  /* Uma familia so', contraste por PESO (300 corpo / 600 titulo) — a
+     "combinacao C" aprovada no prototipo. --font-display continua existindo
+     porque 18 arquivos fazem style={{fontFamily: "var(--font-display)"}};
+     ele agora aponta pra mesma familia, com o peso fazendo a diferenca. */
+  --font-display: var(--font-montserrat), system-ui, sans-serif;
+  --font-sans: var(--font-montserrat), system-ui, sans-serif;
 }
 
 body {
   background: var(--bg);
   color: var(--text-body);
-  font-family: var(--font-inter), system-ui, sans-serif;
+  font-family: var(--font-montserrat), system-ui, sans-serif;
+  /* Peso 300 no corpo: o contraste com o titulo (600) e' o que carrega a
+     hierarquia tipografica quando ha uma familia so'. */
+  font-weight: 300;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
   /* O tema escuro troca variaveis de cor; sem isso a mudanca "pisca". */
   transition:
     background-color 0.2s ease,
     color 0.2s ease;
+}
+
+/* Titulos no peso 600. Regra de elemento (nao classe) pra valer no app
+   inteiro sem tocar os 102 arquivos de componente. */
+h1,
+h2,
+h3,
+h4 {
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+/* --- A atmosfera ---------------------------------------------------------
+   Camada de gradientes no fundo da pagina, atras de tudo. Ela e' o que faz o
+   vidro (--surface translucido + --blur-card) parecer vidro: sem uma imagem
+   viva por tras, superficie translucida sobre fundo chapado vira cinza sujo.
+
+   `fixed` e nao `absolute`: a atmosfera nao rola com o conteudo — ela e' o
+   ambiente, nao parte da pagina. `-z-10` a poe atras do conteudo, e
+   pointer-events:none garante que ela nunca roube clique. */
+.atmosfera {
+  position: fixed;
+  inset: 0;
+  /* z-index 0, e nao -10: em -10 ela fica atras do `body`, que tem fundo
+     OPACO. A faixa da esquerda entao chega ao olho crua, sem o painel de
+     vidro por cima — era a barra violeta chapada que ele viu em 14/08.
+     Em 0 ela empilha junto com o resto: o `.app` (z-index 1, no AppShell)
+     passa POR CIMA dela e filtra a faixa, que e' o que o prototipo faz. */
+  z-index: 0;
+  pointer-events: none;
+  background:
+    var(--faixa-sidebar) left / calc(var(--sidebar-w, 240px) + 42px) 100%
+      no-repeat,
+    radial-gradient(70vw 46vw at 74% -6%, var(--mancha), transparent 66%),
+    radial-gradient(46vw 34vw at 96% 26%, var(--mancha-2), transparent 70%),
+    radial-gradient(13vw 13vw at 97% 30%, var(--ponto-azul), transparent 70%),
+    radial-gradient(52vw 46vw at 0% 0%, var(--atm-violeta), transparent 62%),
+    radial-gradient(50vw 44vw at 100% 6%, var(--atm-azul), transparent 62%),
+    radial-gradient(54vw 48vw at 94% 100%, var(--atm-rosa), transparent 60%),
+    radial-gradient(44vw 40vw at 16% 96%, var(--atm-branco), transparent 62%);
+}
+
+/* No celular a sidebar vira gaveta: a faixa lateral da atmosfera nao tem onde
+   ficar, e pintada sobre o conteudo escureceria a coluna da esquerda. */
+@media (max-width: 1023px) {
+  .atmosfera {
+    background:
+      radial-gradient(70vw 46vw at 74% -6%, var(--mancha), transparent 66%),
+      radial-gradient(46vw 34vw at 96% 26%, var(--mancha-2), transparent 70%),
+      radial-gradient(52vw 46vw at 0% 0%, var(--atm-violeta), transparent 62%),
+      radial-gradient(54vw 48vw at 94% 100%, var(--atm-rosa), transparent 60%);
+  }
+}
+
+/* --- O vidro -------------------------------------------------------------
+   --surface e --surface-2 sao TRANSLUCIDOS agora. Cor translucida sem blur
+   nao e' vidro: e' um veu, e sobre a atmosfera vira mancha cinza.
+
+   O gancho e' o ATRIBUTO de classe, nao a classe: `[class*="bg-surface"]`.
+   Escrever `.bg-surface` aqui NAO funciona — o Tailwind v4 varre o CSS-fonte
+   em busca de utilitarios e poda o seletor, e a regra nunca chega ao
+   navegador (verificado em 13/08 percorrendo document.styleSheets: zero
+   regras com "bg-surface" e `backdrop-filter: none` em todos os 93 cards).
+   O seletor de atributo passa ileso porque nao se parece com um utilitario.
+
+   Casa com bg-surface e bg-surface-2 SEM prefixo de estado — elementos que tem
+   a superficie o tempo todo, entao o vidro tambem tem que estar sempre ligado.
+
+   ⚠️ NAO inclui `hover:bg-surface-2`. Antes o seletor era so' `[class*="bg-surface"]`,
+   que casa com QUALQUER classe contendo a substring — inclusive
+   "hover:bg-surface-2", que so' devia ganhar FUNDO no hover, mas ganhava
+   `backdrop-filter` o tempo todo. `backdrop-filter` sem cor por tras ainda
+   BORRA o que passa atras: sobre a atmosfera isso lia como uma faixa clara
+   permanente atras do texto, mesmo com `background-color: transparent` — foi
+   a "linha com fundo mais claro" que ele viu em 14/08 na lista de aulas
+   (`lista-aulas.tsx`). O elemento tinha ZERO cor de fundo e ainda assim
+   parecia manchado, porque o blur estava ligado o tempo todo.
+   Elementos `hover:bg-surface-2` pegam o blur na regra de baixo, presa ao
+   `:hover` de verdade.
+
+   :where() mantem especificidade ZERO: qualquer utilitario na propria tag
+   continua vencendo, entao `backdrop-blur-none` pontual ainda funciona.
+
+   NAO escreva `-webkit-backdrop-filter` a mao aqui: o autoprefixer do build
+   deduplica o par e o que sobrou foi SO' a versao -webkit- (verificado no CSS
+   servido). O Chrome aplica o efeito, mas `getComputedStyle().backdropFilter`
+   devolve "none" e a propriedade padrao some — Firefox e Safari moderno, que
+   so' entendem a sem prefixo, ficariam sem vidro nenhum. A ferramenta adiciona
+   o prefixo sozinha quando a padrao vem sozinha. */
+:where(
+  [class*="bg-surface"]:not([class*="hover:bg-surface"]):not(
+      [class*="focus:bg-surface"]
+    )
+) {
+  backdrop-filter: var(--blur-card);
+}
+
+/* O par do seletor acima: elementos que SO' ganham a superficie no hover (ou
+   foco por teclado) so' precisam do blur nesse momento — antes disso nao ha
+   cor nenhuma pra revelar, entao o blur ligado o tempo todo so' borrava o
+   fundo a toa. */
+:where([class*="hover:bg-surface"]:hover, [class*="focus:bg-surface"]:focus) {
+  backdrop-filter: var(--blur-card);
+}
+
+/* O painel (header, gaveta) usa um blur mais forte: ele cobre conteudo que
+   ROLA por baixo, e o blur de card deixaria o texto legivel atraves dele. */
+:where([class*="bg-painel"]) {
+  backdrop-filter: var(--blur-painel);
+}
+
+/* Fallback: sem suporte a backdrop-filter (Firefox com a flag desligada,
+   webview antiga) o translucido fica ilegivel sobre a atmosfera — ai as
+   superficies viram solidas. Sem isto o app quebra de vez nesses ambientes,
+   em vez de so' perder o efeito. */
+@supports not (backdrop-filter: blur(1px)) {
+  [class*="bg-surface"],
+  [class*="bg-painel"] {
+    background: var(--painel-solido);
+  }
 }
 
 /* Acessibilidade: foco visivel em todo elemento interativo, na cor da marca.
@@ -125,7 +260,115 @@ body {
     transform: scaleY(1);
   }
   95% {
-    transform: scaleY(0.1);
+    transform: scaleY(0.12);
+  }
+}
+
+/* A abertura da tela do Cup AI: a caixa que segura a xicara grande.
+
+   As margens negativas cortam o vao vazio do viewBox. A caixa do SVG NAO e' o
+   desenho: numa caixa de 185px a xicara ocupa a faixa central e sobra viewBox
+   vazio embaixo, entao sem o corte o mascote flutua longe do titulo com um
+   buraco no meio. Os numeros sao proporcionais ao tamanho — por isso a regra
+   por tamanho de caixa logo abaixo, e nao um valor fixo.
+
+   `position: relative` + `isolation` ancoram o halo do `::before` e prendem o
+   `z-index: -1` dele aqui dentro (senao ele iria parar atras do fundo da
+   pagina e sumiria). */
+.cup-abertura {
+  margin: -9px 0 -34px;
+  position: relative;
+  isolation: isolate;
+}
+
+/* A caixa de 185px tem mais vao vazio em volta que a de 172, entao as margens
+   crescem na mesma proporcao (185/172 = 1,08). Medido: -34 * 1,08 = -37. */
+.cup-abertura:has(> svg[width="185"]) {
+  margin: -10px 0 -37px;
+}
+
+/* HALO QUE RESPIRA atras do mascote, como se ele estivesse aceso.
+
+   Vive num `::before` do container, e nao na propria xicara: o SVG ja carrega
+   `cup-balancar`, e por um segundo `animation` nele exigiria empilhar dois
+   transforms na mesma propriedade — o halo giraria junto com o balanco.
+   Separado, cada um anima o seu.
+
+   `filter: blur()` em vez de `box-shadow` porque o halo precisa ser um circulo
+   difuso ATRAS de um desenho transparente; sombra desenharia a silhueta da
+   caixa, nao a do mascote.
+
+   Ritmo casado com o balanco (4,5s): 9s e' exatamente 2 balancos por
+   respiracao, entao os dois movimentos nunca batem de frente. */
+.cup-abertura::before {
+  content: "";
+  position: absolute;
+  /* Circulo um pouco MENOR que a caixa: o viewBox tem vao vazio em volta, e um
+     halo do tamanho da caixa vazaria pros lados do desenho. Centrado no corpo
+     da xicara, nao na caixa. */
+  inset: 22% 18% 26%;
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(140, 90, 220, 0.45) 0%,
+    rgba(90, 150, 220, 0.28) 45%,
+    transparent 72%
+  );
+  filter: blur(26px);
+  animation: cup-respirar 9s ease-in-out infinite;
+}
+
+@keyframes cup-respirar {
+  0%,
+  100% {
+    transform: scale(0.92);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.95;
+  }
+}
+
+/* LUZ QUE PASSA PELA XICARA — o mesmo efeito do titulo (`luz-passando`).
+   Mesmo ciclo de 7s e mesma proporcao: 60% do tempo parada fora do desenho, e
+   a travessia nos ultimos 40%. Os dois elementos brilham JUNTOS, o que le como
+   uma luz so' passando pela tela — se as duracoes divergissem, viraria
+   pisca-pisca. */
+.cup-brilho {
+  animation: cup-luz 7s ease-in-out infinite;
+}
+
+/* Anima `transform` no elemento, mas a INCLINACAO mora no grupo pai (ver o
+   comentario no SVG). Aqui so' o deslocamento horizontal.
+   Numeros em unidades do VIEWBOX (0..100), nao pixels de tela: dentro do SVG o
+   `px` do CSS vale uma unidade do viewBox, e o desenho escala junto. */
+@keyframes cup-luz {
+  0%,
+  60% {
+    transform: translateX(-30px);
+  }
+  100% {
+    transform: translateX(110px);
+  }
+}
+
+/* A luz que atravessa o titulo da abertura. A varredura vai de 0% a 100% e
+   PARA la ate o fim do ciclo, em vez de voltar: o retorno seria a mesma luz
+   cruzando de novo pra tras, o dobro da frequencia e um vaivem que denuncia o
+   truque. Como as duas pontas do gradiente sao a mesma faixa da marca, 100% e
+   0% pintam igual — o salto no fim do ciclo e' invisivel.
+
+   A pausa longa e' de proposito: brilho em loop curto e' a "cara de IA" que o
+   redesign evita. */
+@keyframes luz-passando {
+  0%,
+  60% {
+    background-position: 0% 0;
+  }
+  100% {
+    background-position: 100% 0;
   }
 }
 
@@ -138,5 +381,565 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* Cards de aula (tela Relatorios): quadrados no computador, 4/3 no celular.
+
+   Abaixo de 620px a coluna fica estreita e o quadrado deixaria o card alto
+   demais pra rolagem — o prototipo achata a proporcao exatamente aqui. Vive
+   num token porque o valor e' consumido por `style` inline no componente, e
+   media query nao alcanca style inline de outro jeito. */
+:root {
+  --aspecto-card: 1 / 1;
+}
+
+@media (max-width: 620px) {
+  :root {
+    --aspecto-card: 4 / 3;
+  }
+}
+
+/* ================= CARTOES DE ACAO (abertura do Cup AI) =================
+   Tres cartoes que preenchem o campo de pergunta com um rascunho editavel, em
+   vez de disparar a pergunta direto: mandar sem o professor ler gastaria uma
+   chamada ao modelo por engano de clique. */
+.rec-grade {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 11px;
+  width: 100%;
+  max-width: 680px;
+  margin-top: 44px;
+}
+
+.rec {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 13px 14px 15px;
+  text-align: left;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  /* Declarado a mao: o vidro automatico vem da regra `[class*="bg-surface"]`
+     la em cima, e este cartao nao usa aquela classe. */
+  backdrop-filter: var(--blur-card);
+  box-shadow: var(--shadow-card);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  /* A SAIDA e' mais lenta que a entrada (260 vs 220): o hover que volta
+     depressa demais da um estalo quando o mouse passa raspando pelos tres
+     cartoes. `backdrop-filter` entra na lista porque o blur muda no hover —
+     fora dela, saltaria de uma vez. */
+  transition:
+    transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 260ms ease,
+    box-shadow 260ms ease,
+    backdrop-filter 260ms ease;
+}
+
+/* O hover e' um vidro que se APROXIMA. Nada de escurecer nem de subir:
+   translateY seria deslocamento, e o que le como "vem pra frente" e' a escala.
+     - `scale(1.025)`: 2,5% e' o teto antes do texto dentro do cartao borrar;
+     - a borda ACENDE: no vidro, a quina e' o que capta luz;
+     - o blur SOBE: vidro mais perto do olho desfoca mais o que esta atras. */
+.rec:hover {
+  transform: scale(1.025);
+  border-color: var(--border-strong);
+  backdrop-filter: blur(32px) saturate(150%);
+  transition-duration: 220ms;
+}
+
+/* Resposta imediata ao toque: sem isto o clique herdaria os 220ms do hover e
+   pareceria travado. */
+.rec:active {
+  transform: scale(0.995);
+  transition-duration: 90ms;
+}
+
+.rec-icone {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-sm);
+}
+
+/* Reusa a paleta de materias, que ja existe nos dois temas. */
+.rec-icone-roxo {
+  background: linear-gradient(135deg, var(--materia-roxo-bg), var(--materia-rosa-bg));
+  color: var(--materia-roxo-fg);
+}
+.rec-icone-azul {
+  background: linear-gradient(135deg, var(--materia-azul-bg), var(--materia-ciano-bg));
+  color: var(--materia-azul-fg);
+}
+.rec-icone-verde {
+  background: linear-gradient(135deg, var(--materia-verde-bg), var(--materia-ciano-bg));
+  color: var(--materia-verde-fg);
+}
+
+.rec-titulo {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: -0.01em;
+}
+
+.rec-texto {
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+/* Abaixo de 720px os tres nao cabem lado a lado sem espremer o texto. */
+@media (max-width: 720px) {
+  .rec-grade {
+    grid-template-columns: 1fr;
+    margin-top: 30px;
+  }
+}
+
+/* ================= CARD "SUGESTAO DA CUPCAM" =================
+   O unico bloco do relatorio com tratamento proprio: e' a leitura da IA sobre
+   a aula, e o prototipo o separa dos demais por VIDRO + BORDA ACESA.
+
+   O ciano entra a 5% no fundo de proposito (caiu de 11%: "o azul esta muito
+   forte") — quem marca o card como especial e' a BORDA, nao o fundo.
+
+   Escopado por `[data-bloco]`, nunca por substring de classe: um seletor tipo
+   `[class*="bg-surface"]` casaria tambem as variantes `hover:` e ligaria blur
+   sem cor de fundo. A regra do vidro padrao usa `:where()` (especificidade
+   zero), entao este seletor vence sem precisar de `!important`. */
+[data-bloco="sugestao"] {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(
+      120deg,
+      color-mix(in srgb, var(--primary) 7%, transparent) 0%,
+      color-mix(in srgb, var(--graf-linha) 5%, transparent) 48%,
+      transparent 82%
+    ),
+    var(--surface);
+  border-color: transparent;
+  backdrop-filter: blur(11px) saturate(1.2);
+}
+
+/* A BORDA COM GRADIENTE. Mesma tecnica da moldura do botao: gradiente cobrindo
+   a area toda e uma mascara que deixa visivel so a faixa de 1px da borda. E' o
+   que permite borda COLORIDA E DEGRADE — `border-color` sozinho so aceita cor
+   chapada. */
+[data-bloco="sugestao"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    120deg,
+    color-mix(in srgb, var(--graf-linha) 55%, transparent) 0%,
+    color-mix(in srgb, var(--primary) 45%, transparent) 42%,
+    var(--border) 78%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Brilho difuso na quina de cima. */
+[data-bloco="sugestao"]::after {
+  content: "";
+  position: absolute;
+  inset: -45% 55% 62% -12%;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--graf-linha) 13%, transparent),
+    transparent 72%
+  );
+  pointer-events: none;
+}
+
+/* O conteudo sobe acima das duas camadas decorativas. */
+[data-bloco="sugestao"] > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ================= HISTORICO DO CUP AI =================
+   A coluna da direita da abertura: painel de vidro que abre e fecha.
+
+   Antes o historico era uma secao "Ultimas conversas" empilhada ABAIXO do
+   compositor. Virou coluna porque o professor procura uma conversa antiga
+   enquanto escreve a proxima — no fim da rolagem, ele nao a ve.
+
+   Tokens: o prototipo usa `--card`/`--card-borda`/`--card-fundo`/`--tinta`,
+   que NAO existem aqui. Os equivalentes reais sao `--surface` / `--border` /
+   `--surface-2` / `--primary`. */
+.conteudo-ia {
+  min-width: 0;
+  display: grid;
+  /* O historico e' coluna FIXA: se encolhesse junto com o miolo, os titulos
+     das conversas quebrariam em 3 linhas e a lista viraria parede de texto. */
+  grid-template-columns: minmax(0, 1fr) 316px;
+  gap: 20px;
+  align-items: stretch;
+  /* Altura FIXA, e nao `min-height`: no prototipo o `.conteudo` e' `100vh` com
+     `overflow: hidden`, e e' isso que obriga a LISTA do historico a rolar por
+     dentro. So' com `min-height` o painel cresce sem limite (medido: 2848px
+     com 44 conversas), a lista nunca precisa rolar e quem rola vira a pagina
+     inteira — o "Nova conversa" do rodape sai da tela.
+     O desconto e' o cabecalho + o respiro do `<main>` do AppShell. */
+  height: calc(100dvh - 11rem);
+  overflow: hidden;
+}
+
+/* ESCONDIDO: a coluna deixa de existir e o miolo ocupa a largura toda. Anular
+   so' a largura deixaria o `gap` de 20px sobrando como faixa vazia na direita. */
+.conteudo-ia[data-historico="nao"] {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+}
+
+.historico {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  backdrop-filter: var(--blur-card);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.historico-topo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 15px 15px 11px;
+}
+
+.historico-topo h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 14.5px;
+  letter-spacing: -0.02em;
+}
+
+/* Empurra o botao de fechar pra ponta direita do cabecalho. */
+.historico-fechar {
+  margin-left: auto;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    color 140ms ease;
+}
+
+.historico-fechar:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.historico-fechar:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.busca {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 15px 4px;
+  padding: 7px 11px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+
+.busca svg {
+  flex: none;
+  opacity: 0.5;
+}
+
+.busca input {
+  width: 100%;
+  border: 0;
+  background: none;
+  outline: none;
+  font: inherit;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.busca input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.8;
+}
+
+.busca:focus-within {
+  border-color: var(--border-strong);
+}
+
+/* A LISTA e' quem rola — nao a coluna inteira. Assim o "Nova conversa" do
+   rodape fica sempre visivel.
+   `0 1 auto` e nao `1`: a lista toma a altura do conteudo e SO' encolhe
+   (virando rolavel) quando nao cabe. Com `flex: 1` ela esticaria e o vazio
+   nasceria dentro dela. */
+.historico-lista {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px 10px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+/* Barra de rolagem discreta: a padrao do Windows e' larga e cinza, e corta o
+   vidro do painel ao meio. */
+.historico-lista::-webkit-scrollbar {
+  width: 8px;
+}
+
+.historico-lista::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--primary) 16%, transparent);
+  border-radius: 99px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+/* A linha inteira: o link ocupa o espaco e a lixeira aparece no hover. */
+.conversa-linha {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-radius: var(--radius-sm);
+  transition: background 140ms ease;
+}
+
+.conversa-linha:hover {
+  background: var(--surface-2);
+}
+
+.conversa {
+  display: block;
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  padding: 9px 10px;
+  border-radius: var(--radius-sm);
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.conversa:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+
+/* A conversa aberta agora: veu + risco na quina esquerda. */
+.conversa[aria-current="true"] {
+  background: var(--surface-2);
+  box-shadow: inset 2px 0 0 var(--primary);
+}
+
+.conversa-titulo {
+  display: -webkit-box;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 12.5px;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  /* Duas linhas no maximo: o titulo da conversa E' a primeira pergunta, que
+     pode ser um paragrafo inteiro. Sem o corte, um item empurraria os outros
+     pra fora da tela. */
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.conversa-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 10.5px;
+  color: var(--text-muted);
+}
+
+/* A lixeira so' aparece na linha sob o cursor (ou com foco por teclado): seis
+   icones vermelhos permanentes competiriam com os titulos. */
+.conversa-lixeira {
+  flex: none;
+  margin-right: 6px;
+  padding: 5px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--danger-fg);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+
+.conversa-linha:hover .conversa-lixeira,
+.conversa-lixeira:focus-visible {
+  opacity: 1;
+}
+
+.conversa-confirma {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  margin-right: 6px;
+}
+
+.conversa-apagar,
+.conversa-cancelar {
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.conversa-apagar {
+  border: 0;
+  background: var(--danger);
+  color: #fff;
+}
+
+.conversa-cancelar {
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--text);
+}
+
+.conversa-apagar:disabled,
+.conversa-cancelar:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.historico-vazio {
+  padding: 22px 14px;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+/* `margin-top: auto` prende o botao no rodape: sem ele, com poucas conversas o
+   "Nova conversa" subia e colava na ultima da lista, com o vazio embaixo. */
+.historico-rodape {
+  margin-top: auto;
+  padding: 10px 12px 12px;
+}
+
+/* Nova conversa: TINTA solida, largura cheia — igual a referencia. */
+.btn-nova {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  border: 0;
+  background: var(--primary);
+  color: var(--text-on-brand);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 140ms ease;
+}
+
+.btn-nova:hover {
+  background: var(--primary-hover);
+}
+
+/* A aba de reabrir: meia pastilha colada na borda direita, no meio da altura.
+   Fica sobre o conteudo (`fixed`) porque a coluna dela nao existe mais — e' o
+   unico jeito de ela ter onde morar. */
+.historico-abrir {
+  position: fixed;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 54px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-right: 0;
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+  background: var(--surface);
+  backdrop-filter: var(--blur-card);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    color 140ms ease;
+}
+
+.historico-abrir:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.historico-abrir:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Abaixo de 1100px o historico nao cabe ao lado sem espremer o miolo: ele sai
+   da linha e vira uma faixa ABAIXO do chat. */
+@media (max-width: 1100px) {
+  .conteudo-ia {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+    min-height: 0;
+  }
+
+  .historico {
+    max-height: 420px;
+  }
+
+  /* Sem coluna pra reabrir ao lado, a aba fixa perde o sentido: aqui o painel
+     fica sempre visivel, empilhado. */
+  .historico-abrir {
+    display: none;
   }
 }

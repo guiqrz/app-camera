@@ -107,7 +107,7 @@ export const CampoComExemplo = forwardRef<HTMLInputElement, CampoComExemploProps
 
     return (
       <label className="flex flex-col gap-1.5">
-        <span className="text-text-muted text-xs font-bold">{rotulo}</span>
+        <span className="text-text-muted text-xs font-semibold">{rotulo}</span>
         <input
           ref={ref}
           value={valor}

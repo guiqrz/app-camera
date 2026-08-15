@@ -2,225 +2,513 @@
    TOKENS SEMANTICOS — tema claro (padrao) e escuro
    Referencie SEMPRE estes na UI, nunca as escalas cruas.
    O tema escuro liga com <html data-theme="dark">.
+
+   REDESIGN 13/08/2026: os VALORES vieram do prototipo aprovado
+   (cupcam-redesign.html). Os NOMES dos tokens continuam os
+   mesmos de propósito — o app tem ~750 usos das classes
+   Tailwind (bg-surface, text-text-muted...) e ~400 var(--token)
+   inline espalhados por 102 arquivos. Trocar valor migra as 6
+   telas de uma vez; trocar nome exigiria reescrever todas.
+
+   O sistema e' de VIDRO: superficies translucidas sobre a
+   camada de atmosfera (ver .atmosfera em globals.css). Card
+   translucido sem a atmosfera atras vira cinza sujo — os dois
+   andam juntos.
    ============================================================ */
 
 :root,
 :root[data-theme="light"] {
   color-scheme: light;
 
-  /* Superficies */
-  --bg: var(--surface-lt); /* pagina */
-  --surface: var(--white); /* cards, header */
-  --surface-2: #eef4f9; /* elevacao sutil */
+  /* Superficies — translucidas, com blur (ver --blur-card) */
+  --bg: #eddef7; /* pagina: o lilas de fundo */
+  --surface: rgba(255, 253, 255, 0.3); /* cards, header */
+  --surface-2: rgba(255, 253, 255, 0.16); /* elevacao sutil / bloco interno */
   --surface-brand: var(--violet-500); /* bloco solido da marca */
-  --surface-soft: var(--violet-100); /* secao tingida */
+  --surface-soft: rgba(255, 255, 255, 0.62); /* secao tingida / veu */
 
-  /* Menu lateral — versao do Figma: lilas claro com texto escuro.
-     (O Chamada.dc.html usava gradiente roxo com texto branco; descartado.) */
-  --sidebar-bg: #cbbfe7;
-  --sidebar-text: var(--violet-950);
-  --sidebar-text-active: var(--violet-500);
-  --sidebar-item-active: var(--white);
+  /* Vidro: usados por .cartao e afins. Sao PARTE do token de superficie —
+     quem usa --surface sem o blur perde metade do efeito. */
+  --blur-card: blur(20px) saturate(135%);
+  --blur-painel: blur(30px) saturate(125%);
+  --painel: rgba(255, 252, 255, 0.15); /* o painel que cobre a atmosfera */
+  /* Substituto SOLIDO do vidro onde backdrop-filter nao existe (ver o
+     @supports em globals.css). Sem ele o card translucido fica ilegivel. */
+  --painel-solido: #efe7f5;
+
+  /* Veu sobre o bloco PASTEL da agenda (o fundo do botao de editar). Nao e'
+     --surface: aquele e' translucido sobre a atmosfera, e aqui o que esta
+     atras e' o pastel solido da materia. Precisa clarear o pastel, nao o
+     fundo da pagina. */
+  --veu-bloco: rgba(255, 255, 255, 0.55);
+  --veu-bloco-hover: rgba(255, 255, 255, 0.85);
+
+  /* Menu lateral — a faixa de gradiente vem da atmosfera, por baixo. */
+  --sidebar-bg: transparent;
+  --sidebar-text: #241c30;
+  --sidebar-text-active: #4f2c67;
+  --sidebar-item-active: rgba(255, 255, 255, 0.38);
 
   /* Texto */
-  --text: var(--ink);
-  --text-body: var(--body);
-  --text-muted: var(--muted);
-  --text-brand: var(--violet-700);
-  --text-on-brand: var(--white);
-  --text-display: var(--violet-500);
+  --text: #241c30;
+  --text-body: #4a4359;
+  --text-muted: #494253;
+  --text-brand: #4f2c67;
+  --text-on-brand: #ffffff;
+  --text-display: #4f2c67;
 
-  /* Linhas e foco */
-  --border: var(--line);
-  --border-strong: var(--navy-200);
-  --focus-ring: var(--violet-500);
+  /* Linhas e foco.
+     No vidro a BORDA e' o que separa o card do fundo — a sombra quase nao
+     existe (ver --shadow-card). Borda clara e' o brilho da quina do vidro,
+     nao um contorno: por isso branca, e nao um roxo mais escuro. Medido em
+     13/08: com rgba(102,63,127,0.1) os cards sumiam contra a atmosfera.
 
-  /* Interativo */
-  --primary: var(--violet-500);
-  --primary-hover: var(--violet-600);
-  --primary-active: var(--violet-700);
+     O alpha e' 0.46, medido no artifact em 15/08 (`--card-borda` do tema
+     claro). Estava 0.55 aqui — quina de vidro clara demais contra o fundo. */
+  --border: rgba(255, 255, 255, 0.46);
+  --border-strong: rgba(79, 44, 103, 0.22);
+  --focus-ring: #4f2c67;
+
+  /* Interativo — a "tinta" do prototipo */
+  --primary: #4f2c67;
+  --primary-hover: #663f7f;
+  --primary-active: #3a1f4d;
   --accent: var(--cyan-500);
 
+  /* Fundos do botao de tinta (acao secundaria, sem preenchimento solido) */
+  --primary-soft: rgba(79, 44, 103, 0.09);
+  --primary-soft-hover: rgba(79, 44, 103, 0.16);
+
   /* Gradiente da marca, em pares que respeitam o tema.
-     O mascote e o titulo da abertura do Cup AI usam estes — no escuro o
-     `violet-900` do fim quase se confunde com o fundo da pagina. */
+     O par -aro- pinta TEXTO (o titulo do Cup AI, via background-clip), entao
+     as duas pontas precisam passar contraste sozinhas — um gradiente e' tao
+     legivel quanto a sua pior parada. O ciano da marca (--cyan-500, #00c1d7)
+     foi calibrado contra branco e da 1,71:1 sobre o lilas #eddef7 desta
+     paleta: metade do titulo sumia (medido em 13/08). O -800 mantem a
+     identidade ciano e sobe pra faixa aprovada. */
   --brand-grad-1: #b57bff;
   --brand-grad-2: var(--violet-500);
   --brand-grad-3: var(--violet-900);
-  --brand-aro-1: var(--violet-400);
-  --brand-aro-2: var(--cyan-500);
+  --brand-aro-1: var(--violet-500);
+  --brand-aro-2: var(--cyan-950);
 
-  /* Elevacao */
-  --shadow-card: 0 4px 4px rgba(0, 0, 0, 0.04);
-  --shadow-raise: 2px 4px 4px 1px rgba(0, 0, 0, 0.25);
-  --shadow-header: 0 3px 34.8px rgba(76, 67, 83, 0.12);
+  /* Mascote Cup (v2) — rampa PROPRIA, violeta -> ciano, medida no artifact.
+     Nao reusa `--brand-grad-*` de proposito: aquela rampa termina em
+     `--violet-900` (#2b0052) porque foi calibrada pra TEXTO, onde as duas
+     pontas precisam passar contraste sozinhas. No corpo bojudo da v2 ela
+     pinta uma xicara roxa escura e mata a iridescencia, que e' justamente o
+     que a v2 traz do render 3D. Aqui o desenho e' decorativo (`aria-hidden`
+     ou com rotulo proprio), entao a regra de contraste de texto nao se
+     aplica. */
+  --cup-corpo-1: #a855f7;
+  --cup-corpo-2: #7c4ae8;
+  --cup-corpo-3: #5b7ee8;
+  --cup-corpo-4: #3fc0e8;
+  --cup-aro-1: #c084fc;
+  --cup-aro-2: #8b7ff0;
+  --cup-aro-3: #5cd0f0;
 
-  --radius-sm: 8px;
+  /* Atmosfera — os gradientes do fundo da pagina. Ficam aqui, e nao em
+     globals.css, porque cada um tem um par no tema escuro. */
+  --mancha: rgba(96, 58, 150, 0.62);
+  --mancha-2: rgba(70, 110, 180, 0.34);
+  --atm-violeta: rgba(155, 95, 225, 0.16);
+  --atm-azul: rgba(70, 165, 220, 0.12);
+  --atm-rosa: rgba(235, 170, 205, 0.12);
+  --atm-branco: rgba(255, 255, 255, 0.5);
+  --ponto-azul: rgba(60, 150, 220, 0.1);
+  --faixa-sidebar: linear-gradient(
+    180deg,
+    rgba(158, 92, 232, 0.46) 0%,
+    rgba(126, 74, 205, 0.38) 40%,
+    rgba(150, 88, 224, 0.44) 100%
+  );
+
+  /* VIDRO FORTE — a faixa "Você parou aqui", o card com MENOS véu da tela.
+     Alpha .09 (contra .30 dos cards normais) porque é a mancha do fundo
+     chegando viva do outro lado que entrega "vidro", não o véu branco. O
+     custo é o contorno quase sumir — por isso a borda vai a .82: num vidro
+     tão fino é ela, e só ela, que desenha o objeto. */
+  --vidro-forte: rgba(255, 255, 255, 0.09);
+  --vidro-forte-borda: rgba(255, 255, 255, 0.82);
+
+  /* Vidro do botão "Gerar com a Cup AI", que vive DENTRO do vidro forte.
+     Em .10 ele fica mais transparente que o próprio card que o abriga —
+     quem o desenha é a moldura acesa, não o fundo. */
+  --vidro-botao: rgba(255, 255, 255, 0.1);
+  --vidro-botao-hover: rgba(255, 255, 255, 0.22);
+
+  /* MOLDURA do botão. No claro ela é só BRANCA, variando opacidade: com
+     tinta roxa ela não acende contra um card claro — ESCURECE, e o olho lê
+     um tracinho cinza-roxo sujo em vez de luz na quina. */
+  --moldura-botao: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.98),
+    rgba(255, 255, 255, 0.55) 42%,
+    rgba(255, 255, 255, 0.85) 68%,
+    rgba(255, 255, 255, 0.6)
+  );
+
+  /* Elevacao — sombra quase nula: no vidro, a separacao vem da borda
+     clara e do blur, nao de sombra projetada. Sombra forte sobre
+     superficie translucida vira uma mancha escura visivel atraves dela. */
+  --shadow-card: 0 1px 3px rgba(50, 30, 70, 0.045);
+  --shadow-raise: 0 4px 16px rgba(50, 30, 70, 0.1);
+  --shadow-header: 0 1px 3px rgba(50, 30, 70, 0.045);
+
+  --radius-sm: 9px;
   --radius: 12px;
   --radius-lg: 16px;
   --radius-xl: 24px;
+
+  /* Largura do menu lateral. Vive aqui, e nao so' na classe do <aside>, porque
+     a ATMOSFERA precisa dela pra saber onde termina a faixa de gradiente que
+     desenha o menu. Se as duas divergirem, a faixa corta no meio dos itens. */
+  --sidebar-w: 218px;
+
+  /* Estado — no claro os fundos sao translucidos pra assentar no vidro. */
+  --ok-bg: rgba(214, 245, 227, 0.55);
+  --ok-fg: #0e5836;
+  --warn-bg: rgba(253, 240, 214, 0.6);
+  --warn-fg: #7a530d;
+  --danger: #d64545;
+  --danger-bg: rgba(214, 69, 69, 0.14);
+  --danger-fg: #a12f2f;
 
   /* Cores de materia — o grifo atras do nome na grade e na lista.
      Par -bg/-fg por cor: o fundo e' o grifo, o texto vai por cima dele.
      Os ids (azul, verde, ...) espelham CORES_MATERIA no backend; o banco
      guarda o id, e o tom exato de cada tema e' decidido aqui. */
-  --materia-azul-bg: #dbeafe;
-  --materia-azul-fg: #1e429f;
-  --materia-verde-bg: #d7f5e3;
-  --materia-verde-fg: #12643a;
-  --materia-ambar-bg: #fdf0d5;
-  --materia-ambar-fg: #8a5a06;
-  --materia-vermelho-bg: #fde0de;
+  --materia-azul-bg: rgba(220, 233, 252, 0.6);
+  --materia-azul-fg: #1a3d7d;
+  --materia-verde-bg: rgba(218, 242, 229, 0.6);
+  --materia-verde-fg: #0f5836;
+  --materia-ambar-bg: rgba(252, 238, 212, 0.6);
+  --materia-ambar-fg: #6b4405;
+  --materia-vermelho-bg: rgba(253, 224, 222, 0.6);
   --materia-vermelho-fg: #9b2c26;
-  --materia-roxo-bg: #ebe0fb;
-  --materia-roxo-fg: #5b2a91;
-  --materia-rosa-bg: #fce0ee;
+  --materia-roxo-bg: rgba(235, 224, 249, 0.6);
+  --materia-roxo-fg: #4a2775;
+  --materia-rosa-bg: rgba(252, 224, 238, 0.6);
   --materia-rosa-fg: #9b2c6a;
-  --materia-ciano-bg: #d5f2f6;
+  --materia-ciano-bg: rgba(213, 242, 246, 0.6);
   --materia-ciano-fg: #0d5b66;
-  --materia-cinza-bg: #e6ebf0;
+  --materia-cinza-bg: rgba(230, 235, 240, 0.6);
   --materia-cinza-fg: #414b57;
+
+  /* Cores de grafico. Separadas das de materia de proposito: o grifo de
+     texto precisa de contraste com o TEXTO por cima, o grafico precisa de
+     contraste com o FUNDO. Usar o mesmo tom nos dois reprova num deles.
+
+     A ORDEM importa e nao pode ser reordenada: ela e' a sequencia em que as
+     series sao pintadas, e foi escolhida pra separar o par roxo/azul — na
+     ordem "natural" (azul, roxo, ambar, verde) esses dois ficam adjacentes e
+     dao ΔE 1,9 sob deuteranopia, ou seja, a MESMA cor pra quem tem o
+     daltonismo mais comum. Validado com scripts/validate_palette.js da skill
+     dataviz: os 5 checks passam nos dois temas.
+
+     Cinza NAO entra nesta lista: ele e' o "sem materia", que deve LER como
+     neutro. Ele reprova o piso de croma de proposito. */
+  --grafico-azul: #3573e3;
+  --grafico-ambar: #a26c16;
+  --grafico-roxo: #9654e8;
+  --grafico-verde: #128751;
+  --grafico-neutro: #7d7288;
+  --grafico: #4a3aff;
+  --grafico-baixo: #17a9c9;
+  /* Linha do grafico "Atencao ao longo da aula" — ele pediu ciano em 15/08.
+     Token proprio (nao reusa `--grafico-baixo`, que e' 1px mais escuro):
+     medido no artifact, `#0891a8`. */
+  --graf-linha: #0891a8;
+}
+
+/* Menu recolhido: so' os icones. Trocar a variavel num ponto so' basta — o
+   <aside> tem `w-[var(--sidebar-w)]` e a faixa da atmosfera le' a mesma
+   variavel, entao os dois acompanham juntos.
+
+   A classe fica no <html> (quem a escreve e' `Sidebar`), e nao no shell,
+   porque a `.atmosfera` mora no <body> FORA dele: definida mais pra dentro,
+   a faixa de cor continuaria pintada na largura antiga.
+
+   Fora dos blocos de tema de proposito: a largura nao muda entre claro e
+   escuro, e repetir a regra nos dois so' criaria uma chance de divergirem. */
+:root.sidebar-recolhida {
+  --sidebar-w: 62px;
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
 
-  --bg: var(--coal-950);
-  --surface: var(--coal-800);
-  --surface-2: var(--coal-700);
+  --bg: #191228;
+  --surface: rgba(200, 170, 255, 0.055);
+  --surface-2: rgba(200, 170, 255, 0.035);
   --surface-brand: var(--violet-700);
-  --surface-soft: #241a33;
+  --surface-soft: rgba(0, 0, 0, 0.3);
 
-  /* No escuro o menu vira superficie escura com acento lilas — manter o
-     lilas claro do tema claro daria contraste insuficiente com o texto. */
-  --sidebar-bg: #1e1729;
-  --sidebar-text: var(--grey-200);
-  --sidebar-text-active: var(--lilac-100);
+  --blur-card: blur(26px) saturate(140%);
+  --blur-painel: blur(30px) saturate(125%);
+  --painel: rgba(196, 165, 255, 0.055);
+  --painel-solido: #241d2e;
+
+  /* No escuro o pastel da materia ja e' escuro: o veu ESCURECE em vez de
+     clarear, senao o botao virava um quadrado branco sobre o bloco. */
+  --veu-bloco: rgba(0, 0, 0, 0.3);
+  --veu-bloco-hover: rgba(0, 0, 0, 0.45);
+
+  --sidebar-bg: transparent;
+  --sidebar-text: #ddd6e8;
+  --sidebar-text-active: #d9c8ee;
   --sidebar-item-active: rgba(255, 255, 255, 0.1);
 
-  --text: var(--white);
-  --text-body: var(--grey-200);
-  --text-muted: #a99fb3;
-  --text-brand: #c79bf5;
-  --text-on-brand: var(--white);
-  --text-display: #b57bff;
+  --text: #f4f1f9;
+  --text-body: #ddd6e8;
+  --text-muted: #c9c2d6;
+  --text-brand: #d9c8ee;
+  --text-on-brand: #241536;
+  --text-display: #d9c8ee;
 
-  --border: rgba(255, 255, 255, 0.1);
-  --border-strong: rgba(255, 255, 255, 0.22);
-  --focus-ring: #b57bff;
+  --border: rgba(205, 180, 255, 0.17);
+  --border-strong: rgba(217, 200, 238, 0.26);
+  --focus-ring: #d9c8ee;
 
-  --primary: var(--violet-400); /* violet-500 nao passa contraste no escuro */
-  --primary-hover: #b57bff;
-  --primary-active: var(--violet-500);
+  /* A tinta INVERTE no escuro: vira lilas claro, e o texto por cima dela
+     vira escuro (--text-on-brand). Manter o roxo profundo daria botao
+     invisivel sobre o fundo #191228. */
+  --primary: #d9c8ee;
+  --primary-hover: #c3aade;
+  --primary-active: #e6dbf5;
   --accent: var(--cyan-500);
 
-  /* O fim do gradiente clareia no escuro: `violet-900` (#2b0052) sobre o
-     `coal-950` (#130f19) do fundo sumia — a metade de baixo do mascote se
-     dissolvia na pagina. */
+  --primary-soft: rgba(217, 200, 238, 0.1);
+  --primary-soft-hover: rgba(217, 200, 238, 0.18);
+
   --brand-grad-1: #d0a8ff;
   --brand-grad-2: var(--violet-400);
   --brand-grad-3: var(--violet-700);
   --brand-aro-1: #b57bff;
   --brand-aro-2: var(--cyan-500);
 
-  --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.45);
-  --shadow-raise: 2px 4px 16px rgba(0, 0, 0, 0.55);
-  --shadow-header: 0 3px 24px rgba(0, 0, 0, 0.6);
+  /* Mascote Cup (v2). O corpo CLAREIA no escuro pelo mesmo motivo dos
+     `--brand-grad-*`: a base da xicara e' a parte mais escura do desenho e,
+     com os valores do claro, ela se dissolvia no fundo da pagina. */
+  --cup-corpo-1: #c084fc;
+  --cup-corpo-2: #9d7bf5;
+  --cup-corpo-3: #7fa3f0;
+  --cup-corpo-4: #5cd0f0;
+  --cup-aro-1: #d8b4fe;
+  --cup-aro-2: #a99cf5;
+  --cup-aro-3: #7fdcf5;
+
+  --mancha: rgba(140, 80, 225, 0.42);
+  --mancha-2: rgba(70, 115, 200, 0.3);
+  --atm-violeta: rgba(140, 85, 205, 0.2);
+  --atm-azul: rgba(50, 130, 175, 0.14);
+  --atm-rosa: rgba(180, 95, 140, 0.1);
+  --atm-branco: rgba(255, 255, 255, 0.03);
+  --ponto-azul: rgba(60, 150, 220, 0.09);
+  --faixa-sidebar: linear-gradient(
+    180deg,
+    rgba(10, 4, 24, 0.5) 0%,
+    rgba(14, 6, 30, 0.42) 40%,
+    rgba(10, 4, 26, 0.48) 100%
+  );
+
+  --vidro-forte: rgba(255, 255, 255, 0.035);
+  --vidro-forte-borda: rgba(255, 255, 255, 0.16);
+
+  /* CLARO no escuro, ao contrário das pastilhas pretas: elas existem pra
+     afundar texto claro; o botão faz o oposto — ele sobe do card. */
+  --vidro-botao: rgba(255, 255, 255, 0.055);
+  --vidro-botao-hover: rgba(255, 255, 255, 0.12);
+
+  /* No escuro a moldura com tinta FUNCIONA: a tinta aqui é clara e acende
+     de verdade contra o card escuro. */
+  --moldura-botao: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.95),
+    var(--primary-hover) 45%,
+    rgba(255, 255, 255, 0.35) 70%,
+    var(--primary-hover)
+  );
+
+  /* Sombra desligada no escuro: sombra preta sobre fundo escuro nao
+     separa nada, so' suja o vidro. A borda clara faz o trabalho. */
+  --shadow-card: none;
+  --shadow-raise: 0 4px 16px rgba(0, 0, 0, 0.45);
+  --shadow-header: none;
 
   /* Fundos de estado precisam ser escuros no tema escuro; os claros
-     (--ok-bg etc.) ficariam ofuscantes sobre a superficie escura. */
-  --ok-bg: rgba(26, 157, 92, 0.18);
-  --ok-fg: #4ade80;
-  --warn-bg: rgba(242, 169, 59, 0.18);
-  --warn-fg: #fbbf24;
-  --danger-bg: rgba(224, 72, 63, 0.18);
-  --danger-fg: #f87171;
+     ficariam ofuscantes sobre a superficie escura. */
+  --ok-bg: #16382a;
+  --ok-fg: #6fd6a3;
+  --warn-bg: #3a2e16;
+  --warn-fg: #f2c470;
+  --danger: #e2685f;
+  --danger-bg: rgba(226, 104, 95, 0.16);
+  --danger-fg: #f2a29c;
 
-  /* Cores de materia no escuro: fundo translucido (o grifo claro ofuscaria
-     sobre a superficie escura) e texto claro por cima. */
-  --materia-azul-bg: rgba(59, 130, 246, 0.2);
-  --materia-azul-fg: #93c5fd;
-  --materia-verde-bg: rgba(26, 157, 92, 0.2);
-  --materia-verde-fg: #6ee7a8;
-  --materia-ambar-bg: rgba(242, 169, 59, 0.2);
-  --materia-ambar-fg: #fcd34d;
+  --materia-azul-bg: #1f2f4d;
+  --materia-azul-fg: #bcd6fa;
+  --materia-verde-bg: #17372a;
+  --materia-verde-fg: #a7e8c4;
+  --materia-ambar-bg: #3d3018;
+  --materia-ambar-fg: #f7d9a3;
   --materia-vermelho-bg: rgba(224, 72, 63, 0.2);
   --materia-vermelho-fg: #fca5a5;
-  --materia-roxo-bg: rgba(149, 97, 226, 0.24);
-  --materia-roxo-fg: #cbaaf8;
+  --materia-roxo-bg: #33244a;
+  --materia-roxo-fg: #e0cbfa;
   --materia-rosa-bg: rgba(219, 92, 158, 0.22);
   --materia-rosa-fg: #f9a8d4;
   --materia-ciano-bg: rgba(34, 172, 190, 0.2);
   --materia-ciano-fg: #7fdbe8;
   --materia-cinza-bg: rgba(255, 255, 255, 0.12);
   --materia-cinza-fg: #cbd5e1;
+
+  /* No escuro o grafico clareia: os tons do claro somem no fundo #191228. */
+  /* Ver o comentario da versao clara: a ordem separa o par roxo/azul, e
+     estes tons sao os validados contra a superficie escura #191228 — os
+     pasteis de texto do tema reprovavam como cor de grafico. */
+  --grafico-azul: #4d8ce6;
+  --grafico-ambar: #c2872b;
+  --grafico-roxo: #9a68df;
+  --grafico-verde: #22a870;
+  --grafico-neutro: #8c8199;
+  --grafico: #7d70ff;
+  --grafico-baixo: #3ec8e6;
+  --graf-linha: #34d3ee;
 }
 
 /* Respeita a preferencia do sistema quando o usuario ainda nao escolheu
-   um tema manualmente (sem data-theme no <html>). */
+   um tema manualmente (sem data-theme no <html>).
+
+   O bloco e' duplicado a mao (nao ha como um seletor herdar de outro em CSS
+   puro): se um token mudar de valor no bloco [data-theme="dark"] acima, ele
+   precisa mudar aqui tambem, senao "Sistema: escuro" e "Escuro" divergem. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
     color-scheme: dark;
 
-    --bg: var(--coal-950);
-    --surface: var(--coal-800);
-    --surface-2: var(--coal-700);
+    --bg: #191228;
+    --surface: rgba(200, 170, 255, 0.055);
+    --surface-2: rgba(200, 170, 255, 0.035);
     --surface-brand: var(--violet-700);
-    --surface-soft: #241a33;
+    --surface-soft: rgba(0, 0, 0, 0.3);
 
-    --sidebar-bg: #1e1729;
-    --sidebar-text: var(--grey-200);
-    --sidebar-text-active: var(--lilac-100);
+    --blur-card: blur(26px) saturate(140%);
+    --blur-painel: blur(30px) saturate(125%);
+    --painel: rgba(196, 165, 255, 0.055);
+    --painel-solido: #241d2e;
+
+    /* No escuro o pastel da materia ja e' escuro: o veu ESCURECE em vez de
+       clarear, senao o botao virava um quadrado branco sobre o bloco. */
+    --veu-bloco: rgba(0, 0, 0, 0.3);
+    --veu-bloco-hover: rgba(0, 0, 0, 0.45);
+
+    --sidebar-bg: transparent;
+    --sidebar-text: #ddd6e8;
+    --sidebar-text-active: #d9c8ee;
     --sidebar-item-active: rgba(255, 255, 255, 0.1);
 
-    --text: var(--white);
-    --text-body: var(--grey-200);
-    --text-muted: #a99fb3;
-    --text-brand: #c79bf5;
-    --text-on-brand: var(--white);
-    --text-display: #b57bff;
+    --text: #f4f1f9;
+    --text-body: #ddd6e8;
+    --text-muted: #c9c2d6;
+    --text-brand: #d9c8ee;
+    --text-on-brand: #241536;
+    --text-display: #d9c8ee;
 
-    --border: rgba(255, 255, 255, 0.1);
-    --border-strong: rgba(255, 255, 255, 0.22);
-    --focus-ring: #b57bff;
+    --border: rgba(205, 180, 255, 0.17);
+    --border-strong: rgba(217, 200, 238, 0.26);
+    --focus-ring: #d9c8ee;
 
-    --primary: var(--violet-400);
-    --primary-hover: #b57bff;
-    --primary-active: var(--violet-500);
+    --primary: #d9c8ee;
+    --primary-hover: #c3aade;
+    --primary-active: #e6dbf5;
+    --accent: var(--cyan-500);
 
-    /* Mesmos tons do bloco [data-theme="dark"] — ver o comentario la'. */
+    --primary-soft: rgba(217, 200, 238, 0.1);
+    --primary-soft-hover: rgba(217, 200, 238, 0.18);
+
     --brand-grad-1: #d0a8ff;
     --brand-grad-2: var(--violet-400);
     --brand-grad-3: var(--violet-700);
     --brand-aro-1: #b57bff;
     --brand-aro-2: var(--cyan-500);
 
-    --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.45);
-    --shadow-raise: 2px 4px 16px rgba(0, 0, 0, 0.55);
-    --shadow-header: 0 3px 24px rgba(0, 0, 0, 0.6);
+    /* Mascote Cup (v2) — copia do bloco escuro acima. */
+    --cup-corpo-1: #c084fc;
+    --cup-corpo-2: #9d7bf5;
+    --cup-corpo-3: #7fa3f0;
+    --cup-corpo-4: #5cd0f0;
+    --cup-aro-1: #d8b4fe;
+    --cup-aro-2: #a99cf5;
+    --cup-aro-3: #7fdcf5;
 
-    --ok-bg: rgba(26, 157, 92, 0.18);
-    --ok-fg: #4ade80;
-    --warn-bg: rgba(242, 169, 59, 0.18);
-    --warn-fg: #fbbf24;
-    --danger-bg: rgba(224, 72, 63, 0.18);
-    --danger-fg: #f87171;
+    --mancha: rgba(140, 80, 225, 0.42);
+    --mancha-2: rgba(70, 115, 200, 0.3);
+    --atm-violeta: rgba(140, 85, 205, 0.2);
+    --atm-azul: rgba(50, 130, 175, 0.14);
+    --atm-rosa: rgba(180, 95, 140, 0.1);
+    --atm-branco: rgba(255, 255, 255, 0.03);
+    --ponto-azul: rgba(60, 150, 220, 0.09);
+    --faixa-sidebar: linear-gradient(
+      180deg,
+      rgba(10, 4, 24, 0.5) 0%,
+      rgba(14, 6, 30, 0.42) 40%,
+      rgba(10, 4, 26, 0.48) 100%
+    );
 
-    --materia-azul-bg: rgba(59, 130, 246, 0.2);
-    --materia-azul-fg: #93c5fd;
-    --materia-verde-bg: rgba(26, 157, 92, 0.2);
-    --materia-verde-fg: #6ee7a8;
-    --materia-ambar-bg: rgba(242, 169, 59, 0.2);
-    --materia-ambar-fg: #fcd34d;
+    --vidro-forte: rgba(255, 255, 255, 0.035);
+    --vidro-forte-borda: rgba(255, 255, 255, 0.16);
+    --vidro-botao: rgba(255, 255, 255, 0.055);
+    --vidro-botao-hover: rgba(255, 255, 255, 0.12);
+    --moldura-botao: linear-gradient(
+      160deg,
+      rgba(255, 255, 255, 0.95),
+      var(--primary-hover) 45%,
+      rgba(255, 255, 255, 0.35) 70%,
+      var(--primary-hover)
+    );
+
+    --shadow-card: none;
+    --shadow-raise: 0 4px 16px rgba(0, 0, 0, 0.45);
+    --shadow-header: none;
+
+    --ok-bg: #16382a;
+    --ok-fg: #6fd6a3;
+    --warn-bg: #3a2e16;
+    --warn-fg: #f2c470;
+    --danger: #e2685f;
+    --danger-bg: rgba(226, 104, 95, 0.16);
+    --danger-fg: #f2a29c;
+
+    --materia-azul-bg: #1f2f4d;
+    --materia-azul-fg: #bcd6fa;
+    --materia-verde-bg: #17372a;
+    --materia-verde-fg: #a7e8c4;
+    --materia-ambar-bg: #3d3018;
+    --materia-ambar-fg: #f7d9a3;
     --materia-vermelho-bg: rgba(224, 72, 63, 0.2);
     --materia-vermelho-fg: #fca5a5;
-    --materia-roxo-bg: rgba(149, 97, 226, 0.24);
-    --materia-roxo-fg: #cbaaf8;
+    --materia-roxo-bg: #33244a;
+    --materia-roxo-fg: #e0cbfa;
     --materia-rosa-bg: rgba(219, 92, 158, 0.22);
     --materia-rosa-fg: #f9a8d4;
     --materia-ciano-bg: rgba(34, 172, 190, 0.2);
     --materia-ciano-fg: #7fdbe8;
     --materia-cinza-bg: rgba(255, 255, 255, 0.12);
     --materia-cinza-fg: #cbd5e1;
+
+    /* Escurecidas e saturadas em relacao aos pasteis do tema: os tons de
+       TEXTO do escuro (L~0,87, croma ~0,07) reprovavam 3 dos 5 checks como
+       cor de GRAFICO — lilas x ambar davam ΔE 13,6 mesmo com visao normal.
+       Estes passam os 5, medidos contra a superficie real #191228. */
+    --grafico-azul: #4d8ce6;
+    --grafico-ambar: #c2872b;
+    --grafico-roxo: #9a68df;
+    --grafico-verde: #22a870;
+    --grafico-neutro: #8c8199;
+    --grafico: #7d70ff;
+    --grafico-baixo: #3ec8e6;
+    --graf-linha: #34d3ee;
   }
 }
