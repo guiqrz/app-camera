@@ -5,14 +5,18 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { DetalheAluno } from "@/components/chamada/detalhe-aluno";
 import { LinhaAluno } from "@/components/chamada/linha-aluno";
+import { CartaoNumero } from "@/components/aulas/cartao-numero";
+import { DicaAjuda } from "@/components/ui/dica-ajuda";
 import {
   IconBusca,
   IconCamera,
+  IconCheckSimples,
   IconPessoaAusente,
   IconPessoaPresente,
+  IconSetaDireita,
   IconTendencia,
 } from "@/components/ui/icons";
-import { StatCard } from "@/components/ui/stat-card";
+import { gradientePresenca } from "@/lib/cor-presenca";
 import {
   dataDoTimestamp,
   formatarDataExtensa,
@@ -56,6 +60,12 @@ export function VistaChamada({ inicial, sessaoId }: VistaChamadaProps) {
   const [desfazer, setDesfazer] = useState<{ ras: string[] } | null>(null);
   const timerDesfazer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Progresso da confirmacao em lote ("Confirmando… (12/31)"). Null = parada.
+  const [confirmando, setConfirmando] = useState<{
+    feitos: number;
+    total: number;
+  } | null>(null);
+
   // O aviso de erro some sozinho; o timer e' limpo se outro erro chegar antes.
   const timerAviso = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mostrarErro = useCallback((mensagem: string) => {
@@ -78,7 +88,7 @@ export function VistaChamada({ inicial, sessaoId }: VistaChamadaProps) {
    * 3. Se falhar, restaura o aluno exatamente como estava antes do clique.
    */
   const marcar = useCallback(
-    async (ra: string, presente: boolean) => {
+    async (ra: string, presente: boolean, silencioso = false) => {
       let anterior: AlunoChamada | undefined;
 
       gravandoRef.current.add(ra);
@@ -113,9 +123,14 @@ export function VistaChamada({ inicial, sessaoId }: VistaChamadaProps) {
             aluno.ra === ra && anterior ? anterior : aluno,
           ),
         );
-        mostrarErro(
-          "Não foi possível salvar a presença. Verifique a conexão e tente de novo.",
-        );
+        // `silencioso` na confirmacao em lote: com 3 falhas o aviso piscaria 3
+        // vezes e seria sobrescrito pelo resumo no fim. Quem chama em lote
+        // conta as falhas e avisa UMA vez, com o numero certo.
+        if (!silencioso) {
+          mostrarErro(
+            "Não foi possível salvar a presença. Verifique a conexão e tente de novo.",
+          );
+        }
         return false;
       } finally {
         gravandoRef.current.delete(ra);
@@ -185,6 +200,46 @@ export function VistaChamada({ inicial, sessaoId }: VistaChamadaProps) {
     if (timerDesfazer.current) clearTimeout(timerDesfazer.current);
   }, [desfazer, marcar]);
 
+  /**
+   * Confirma a chamada INTEIRA, respeitando a lista como ela esta.
+   *
+   * Diferente de "Marcar todos presentes": aqui ninguem muda de estado —
+   * presente continua presente, AUSENTE CONTINUA AUSENTE. O que a acao faz e'
+   * carimbar `confirmado_professor` em todos, ou seja, o professor assume a
+   * lista como dele. Marcar presente quem faltou seria justamente o erro que
+   * uma chamada nao pode cometer.
+   *
+   * SERIALIZADO, e nao em paralelo: aqui pode ser a turma inteira de uma vez, e
+   * 30 POSTs simultaneos contra um SQLite dao "database is locked". O
+   * "Marcar todos presentes" continua paralelo porque so' toca nos ausentes e
+   * ja' era assim.
+   */
+  const confirmarChamada = useCallback(async () => {
+    // Quem ja' foi confirmado nao precisa de outra requisicao.
+    const pendentes = alunos.filter((aluno) => aluno.confirmado_professor !== 1);
+    if (pendentes.length === 0) return;
+
+    setConfirmando({ feitos: 0, total: pendentes.length });
+    let falhas = 0;
+
+    for (const [indice, aluno] of pendentes.entries()) {
+      const ok = await marcar(aluno.ra, aluno.presente === 1, true);
+      if (!ok) falhas += 1;
+      setConfirmando({ feitos: indice + 1, total: pendentes.length });
+    }
+
+    setConfirmando(null);
+    // Falha parcial e' DECLARADA: dizer "pronto" escondendo 3 alunos que nao
+    // gravaram faria o professor pensar que a chamada esta fechada.
+    if (falhas > 0) {
+      mostrarErro(
+        falhas === 1
+          ? "1 aluno não foi confirmado. Verifique a conexão e tente de novo."
+          : `${falhas} alunos não foram confirmados. Verifique a conexão e tente de novo.`,
+      );
+    }
+  }, [alunos, marcar, mostrarErro]);
+
   /* --- Numeros derivados do estado local (reagem a cada clique) --- */
 
   const total = alunos.length;
@@ -195,6 +250,13 @@ export function VistaChamada({ inicial, sessaoId }: VistaChamadaProps) {
   ).length;
   const presencaPct = total > 0 ? Math.round((100 * presentes) / total) : null;
   const mediaHistoricaPct = inicial.comparativo.media_historica_pct;
+
+  // A chamada esta confirmada quando NENHUM aluno ficou sem o carimbo do
+  // professor. Turma vazia nao conta como confirmada: nao ha o que assumir.
+  const naoConfirmados = alunos.filter(
+    (aluno) => aluno.confirmado_professor !== 1,
+  ).length;
+  const chamadaConfirmada = total > 0 && naoConfirmados === 0;
 
   const filtrados = useMemo(() => {
     const termo = busca.trim().toLowerCase();
@@ -247,19 +309,15 @@ export function VistaChamada({ inicial, sessaoId }: VistaChamadaProps) {
   ];
 
   return (
-    <div className="flex flex-col gap-7">
+    <div className="flex flex-col gap-4">
+      {/* Cabecalho: turma, materia, horario e data. Materia e horario somem
+          quando a sessao nao tem aula associada — sem placeholder no lugar. */}
       <div>
-        <h1
-          className="text-text text-2xl font-semibold sm:text-3xl"
-          style={{ fontFamily: "var(--font-display)" }}
-        >
-          Fazer Chamada
-        </h1>
-        <p className="text-text-body mt-1.5 flex flex-wrap items-center gap-2 text-sm">
-          {identificacao}. Cada marcação é salva na hora.
+        <p className="text-text-body m-0 flex flex-wrap items-center gap-2 text-[13px]">
+          {identificacao}
           {emAndamento && (
             <span
-              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold tracking-wide uppercase"
+              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10.5px] font-semibold tracking-wide uppercase"
               style={{ background: "var(--ok-bg)", color: "var(--ok-fg)" }}
             >
               <span
@@ -278,10 +336,10 @@ export function VistaChamada({ inicial, sessaoId }: VistaChamadaProps) {
       {desfazer && (
         <div
           role="status"
-          className="flex flex-wrap items-center justify-between gap-3 rounded-xl px-4 py-3"
+          className="flex flex-wrap items-center gap-3 rounded-[12px] px-4 py-3"
           style={{ background: "var(--ok-bg)", color: "var(--ok-fg)" }}
         >
-          <span className="text-sm font-semibold">
+          <span className="text-[13px] font-semibold">
             {desfazer.ras.length === 1
               ? "1 aluno marcado como presente."
               : `${desfazer.ras.length} alunos marcados como presentes.`}
@@ -289,173 +347,173 @@ export function VistaChamada({ inicial, sessaoId }: VistaChamadaProps) {
           <button
             type="button"
             onClick={desfazerMarcarTodos}
-            className="rounded-lg px-3 py-1.5 text-sm font-semibold underline underline-offset-2"
+            className="ml-auto rounded-lg px-3 py-1.5 text-[12.5px] font-semibold underline underline-offset-2"
           >
             Desfazer
           </button>
         </div>
       )}
 
-      {/* Cards de resumo — reagem a cada clique na lista. */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          rotulo="Presença geral"
-          valor={formatarPct(presencaPct) ?? "Sem alunos"}
-          apoio={`de ${total} alunos matriculados`}
-          icone={
-            <span style={{ color: "var(--ok)" }}>
-              <IconPessoaPresente />
-            </span>
-          }
-        />
-        <StatCard
+      {/* ---- NUMEROS ----
+          No topo, como nas outras telas: sao o motivo de abrir a chamada.
+          Reagem a cada clique na lista, porque saem do estado local. */}
+      <div className="numeros-cam">
+        <CartaoNumero
           rotulo="Presentes"
+          cor="verde"
           valor={
             <>
               {presentes}
-              <span className="text-text-muted text-lg font-semibold">/{total}</span>
+              <span className="text-text-muted text-[22px]">/{total}</span>
             </>
           }
-          apoio="Confirmados nesta aula"
-          icone={
-            <span style={{ color: "var(--ok)" }}>
-              <IconPessoaPresente />
-            </span>
-          }
+          nota="Presentes nesta aula"
+          icone={<IconPessoaPresente size={18} />}
         />
-        <StatCard
+        <CartaoNumero
           rotulo="Ausentes"
+          cor="ambar"
           valor={ausentes}
-          apoio="Sem presença registrada"
-          icone={
-            <span style={{ color: "var(--danger)" }}>
-              <IconPessoaAusente />
-            </span>
-          }
+          nota="Sem presença registrada"
+          icone={<IconPessoaAusente size={18} />}
         />
-        <StatCard
-          variante="brand"
-          rotulo="Detecção Cupcam"
+        <CartaoNumero
+          rotulo="Presença hoje"
+          cor="roxo"
+          valor={formatarPct(presencaPct) ?? "—"}
+          nota={
+            mediaHistoricaPct === null
+              ? "Primeira aula desta turma"
+              : `Média da turma: ${formatarPct(mediaHistoricaPct)}`
+          }
+          icone={<IconTendencia size={18} />}
+        />
+        {/* Discreto: quantos a câmera achou sozinha é diagnóstico do
+            reconhecimento, não métrica pedagógica. */}
+        <CartaoNumero
+          discreto
+          rotulo="Detectados pela câmera"
+          cor="azul"
           valor={
             <>
               {detectados}
-              <span className="text-lg font-semibold opacity-85">/{total}</span>
+              <span className="text-text-muted text-[14px]">/{total}</span>
             </>
           }
-          apoio="Alunos detectados automaticamente"
-          icone={
-            <span style={{ color: "var(--text-on-brand)" }}>
-              <IconCamera />
-            </span>
-          }
+          nota="Sem precisar de chamada manual"
+          icone={<IconCamera size={16} />}
         />
       </div>
 
-      {/* Comparativo com a media historica da turma. */}
+      {/* ---- ESTADO DA CONFIRMACAO ----
+          A chamada só é do professor quando ele assume a lista. Enquanto isso
+          não acontece, a faixa fica âmbar (pendência, não erro). */}
       <div
-        className="rounded-2xl p-6"
-        style={{
-          background: "var(--surface)",
-          border: "1px solid var(--border)",
-          boxShadow: "var(--shadow-card)",
-        }}
+        className="chamada-estado"
+        data-confirmada={chamadaConfirmada ? "sim" : "nao"}
+        role="status"
       >
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-text flex items-center gap-2 text-base font-semibold">
-            <span style={{ color: "var(--primary)" }}>
-              <IconTendencia size={16} />
-            </span>
-            Comparativo da turma
-          </h2>
-          <EtiquetaComparativo hoje={presencaPct} media={mediaHistoricaPct} />
-        </div>
+        <span className="chamada-estado-texto">
+          {chamadaConfirmada
+            ? "Chamada confirmada por você."
+            : confirmando
+              ? `Confirmando… (${confirmando.feitos}/${confirmando.total})`
+              : naoConfirmados === total
+                ? "Chamada ainda não confirmada."
+                : `${naoConfirmados} ${naoConfirmados === 1 ? "aluno ainda não confirmado" : "alunos ainda não confirmados"}.`}
+        </span>
 
-        <BarraComparativo
-          rotulo="Hoje"
-          pct={presencaPct}
-          cor="var(--primary)"
-        />
-        <div className="h-3.5" />
+        {!chamadaConfirmada && total > 0 && (
+          <button
+            type="button"
+            onClick={() => void confirmarChamada()}
+            disabled={confirmando !== null}
+            className="btn-acao vidro"
+          >
+            <IconCheckSimples size={14} />
+            {confirmando ? "Confirmando…" : "Confirmar chamada"}
+          </button>
+        )}
+      </div>
+
+      {/* ---- COMPARATIVO ---- */}
+      <section className="border-border-default bg-surface shadow-card bloco-cam rounded-[12px] border">
+        <div className="bloco-cam-topo">
+          <span className="bloco-cam-rotulo">Comparativo da turma</span>
+          <span className="bloco-cam-ajuda">
+            <DicaAjuda
+              texto="Compara a presença de hoje com a média das outras aulas desta turma. É presença, não engajamento — atenção da turma nunca é medida por aluno."
+              rotulo="Como o comparativo é calculado"
+              lado="esquerda"
+            />
+          </span>
+        </div>
+        {/* Sem `cor` fixa: a barra pega a cor da propria porcentagem, igual a'
+            barrinha de frequencia da lista (ele pediu em 16/08). Antes eram
+            duas cores de MARCA — roxo e ciano — que distinguiam as duas
+            linhas mas nao diziam nada sobre o numero: 25% e 95% saiam do
+            mesmo roxo. */}
+        <BarraComparativo rotulo="Hoje" pct={presencaPct} />
         <BarraComparativo
           rotulo="Média das últimas aulas"
           pct={mediaHistoricaPct}
-          cor="var(--cyan-500)"
         />
-      </div>
+      </section>
 
-      {/* Busca, filtros e acao em massa. */}
-      <div className="flex flex-wrap items-center gap-3">
-        <label
-          className="border-border-default bg-surface flex min-w-[200px] flex-1 items-center gap-2.5 rounded-xl border px-4 py-2.5"
-        >
-          <span className="text-text-muted flex-none">
-            <IconBusca size={16} />
-          </span>
+      {/* ---- BUSCA, FILTROS E ACOES ---- */}
+      <div className="chamada-acoes">
+        <label className="busca">
+          <IconBusca size={13} />
           <span className="sr-only">Buscar aluno por nome</span>
           <input
             value={busca}
             onChange={(evento) => setBusca(evento.target.value)}
-            placeholder="Buscar aluno por nome..."
-            className="text-text w-full bg-transparent text-sm outline-none"
+            placeholder="Buscar aluno por nome…"
+            type="search"
+            autoComplete="off"
           />
         </label>
 
-        <div className="flex gap-2" role="group" aria-label="Filtrar alunos">
-          {FILTROS.map(({ chave, rotulo }) => {
-            const ativo = filtro === chave;
-            return (
-              <button
-                key={chave}
-                type="button"
-                onClick={() => setFiltro(chave)}
-                aria-pressed={ativo}
-                className="rounded-xl px-4 py-2.5 text-[13px] font-semibold whitespace-nowrap transition-colors"
-                style={{
-                  background: ativo ? "var(--primary)" : "var(--surface)",
-                  color: ativo ? "#fff" : "var(--text-body)",
-                  border: ativo ? "1px solid transparent" : "1px solid var(--border)",
-                }}
-              >
-                {rotulo}
-              </button>
-            );
-          })}
+        <div className="chamada-filtros" role="group" aria-label="Filtrar alunos">
+          {FILTROS.map(({ chave, rotulo }) => (
+            <button
+              key={chave}
+              type="button"
+              onClick={() => setFiltro(chave)}
+              aria-pressed={filtro === chave}
+              className="chamada-filtro"
+            >
+              {rotulo}
+            </button>
+          ))}
         </div>
 
+        {/* Secundário de propósito: marcar todos PRESENTES muda quem faltou —
+            é a mais perigosa das duas ações, e não a que fecha a chamada. */}
         <button
           type="button"
           onClick={marcarTodosPresentes}
-          disabled={ausentes === 0}
-          className="rounded-xl border-2 px-4 py-2 text-sm font-semibold whitespace-nowrap transition-opacity disabled:cursor-not-allowed disabled:opacity-40 sm:ml-auto"
-          style={{ borderColor: "var(--primary)", color: "var(--primary)" }}
+          disabled={ausentes === 0 || confirmando !== null}
+          className="btn-acao"
         >
           Marcar todos presentes
         </button>
       </div>
 
-      {/* Lista de alunos. */}
-      <div
-        className="overflow-hidden rounded-2xl"
-        style={{
-          background: "var(--surface)",
-          border: "1px solid var(--border)",
-          boxShadow: "var(--shadow-card)",
-        }}
-      >
-        <div
-          className="bg-surface-2 hidden grid-cols-[1fr_150px_130px_110px] gap-3 px-6 py-3.5 text-[11px] font-semibold tracking-wide uppercase sm:grid"
-          style={{ color: "var(--text-muted)" }}
-          aria-hidden
-        >
+      {/* ---- LISTA ---- */}
+      <div className="chamada-lista">
+        <div className="chamada-cabecalho" aria-hidden>
           <span>Aluno</span>
-          <span>Status</span>
+          <span>Presença nesta aula</span>
           <span>Frequência</span>
           <span />
         </div>
 
         {filtrados.length === 0 ? (
-          <p className="text-text-muted px-6 py-10 text-center text-sm">
-            Nenhum aluno encontrado.
+          <p className="chamada-vazio">
+            {alunos.length === 0
+              ? "Nenhum aluno matriculado nesta turma."
+              : "Nenhum aluno encontrado com esse filtro."}
           </p>
         ) : (
           <ul>
@@ -465,18 +523,25 @@ export function VistaChamada({ inicial, sessaoId }: VistaChamadaProps) {
                 aluno={aluno}
                 aoMarcar={marcar}
                 aoAbrirDetalhe={() => setRaAberto(aluno.ra)}
+                ocupado={confirmando !== null}
               />
             ))}
           </ul>
         )}
       </div>
 
+      {/* Contagem para leitor de tela: os números acima mudam sozinhos a cada
+          clique, e sem isto a mudança seria silenciosa. */}
+      <span className="sr-only" role="status" aria-live="polite">
+        {presentes} de {total} alunos presentes.
+      </span>
+
       <Link
         href={`/relatorios/sessao/${sessaoId}`}
-        className="self-end rounded-xl px-7 py-3.5 text-[15px] font-semibold text-white"
-        style={{ background: "var(--primary)", boxShadow: "var(--shadow-raise)" }}
+        className="btn-acao vidro self-end no-underline"
       >
         Concluir e ver relatório
+        <IconSetaDireita size={13} />
       </Link>
     </div>
   );
@@ -498,52 +563,38 @@ function AvisoErro({ mensagem }: { mensagem: string }) {
   );
 }
 
+/**
+ * Uma barra do comparativo (hoje x media historica).
+ *
+ * A cor sai da PORCENTAGEM, pelas mesmas faixas da barrinha de frequencia
+ * (`gradientePresenca`/`corPresenca`) — as duas leem presenca, e a mesma
+ * porcentagem tem que sair da mesma cor nos dois lugares. O trilho e' de
+ * VIDRO (`.chamada-barra-trilho`), igual ao "Chamada automática" do
+ * relatorio de sessao — ele pediu igualar em 16/08.
+ *
+ * `null` mostra "—" e barra vazia — e' diferente de 0%, que seria "medimos e
+ * ninguem veio".
+ */
 function BarraComparativo({
   rotulo,
   pct,
-  cor,
 }: {
   rotulo: string;
   pct: number | null;
-  cor: string;
 }) {
   return (
-    <div>
-      <div
-        className="mb-1.5 flex justify-between text-[13px]"
-        style={{ color: "var(--text-muted)" }}
-      >
-        <span>{rotulo}</span>
-        <span className="font-semibold">{formatarPct(pct) ?? "Sem dados"}</span>
-      </div>
-      <div className="bg-surface-2 h-2 overflow-hidden rounded-full">
-        <div
-          className="h-full rounded-full transition-[width] duration-300"
-          style={{ width: `${pct ?? 0}%`, background: cor }}
+    <div className="chamada-barra-linha">
+      <span className="chamada-barra-rotulo">{rotulo}</span>
+      <span className="chamada-barra-trilho" aria-hidden>
+        <span
+          className="chamada-barra-preenchida"
+          style={{ width: `${pct ?? 0}%`, background: gradientePresenca(pct) }}
         />
-      </div>
+      </span>
+      <span className="chamada-barra-valor">
+        {formatarPct(pct) ?? "—"}
+      </span>
     </div>
   );
 }
 
-/** Etiqueta "+4% vs média" — so' aparece quando ha historico pra comparar. */
-function EtiquetaComparativo({
-  hoje,
-  media,
-}: {
-  hoje: number | null;
-  media: number | null;
-}) {
-  if (hoje === null || media === null) return null;
-
-  const diferenca = Math.round(hoje - media);
-  return (
-    <span
-      className="rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap"
-      style={{ background: "var(--violet-100)", color: "var(--text-brand)" }}
-    >
-      {diferenca >= 0 ? "+" : ""}
-      {diferenca}% vs média
-    </span>
-  );
-}

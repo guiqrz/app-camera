@@ -64,10 +64,14 @@
   );
 
   /* ---- Cores de estado ----
-     Verde/amarelo/vermelho das faixas de engajamento e presenca. O tom CHEIO
-     (--ok/--warn/--danger) e' fixo nos dois temas: significado semaforico nao
-     muda com o tema, e ele e' usado como cor de preenchimento (barra, ponto),
-     nao como texto sobre superficie.
+     Verde/amarelo/vermelho das faixas de engajamento e presenca, no tom CHEIO
+     (preenchimento de barra e ponto, nunca texto sobre superficie).
+
+     ESTES SAO OS VALORES DO TEMA CLARO. O tema escuro CLAREIA os tres em
+     semantic.css: o significado semaforico nao muda com o tema, mas a
+     legibilidade sim — #128751 numa barrinha de 6px sobre o fundo #191228
+     some (medido em 16/08). `--danger` ja' era sobrescrito la' desde o
+     redesign; `--ok`/`--warn` entraram em 16/08, pelo mesmo motivo.
 
      Os pares -bg/-fg NAO ficam aqui — eles precisam mudar por tema (fundo
      translucido no claro, escuro no escuro) e por isso vivem em semantic.css.

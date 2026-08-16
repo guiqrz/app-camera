@@ -45,7 +45,7 @@ export function Header({ aoAbrirMenu, titulo, children }: HeaderProps) {
   // baixo, entao nao ha' blur nem fundo. O `pb-0` do desktop vira o padrao nos
   // dois tamanhos porque o `.miolo` logo abaixo ja' traz o proprio respiro.
   return (
-    <header className="flex flex-wrap items-center gap-[14px] px-5 pt-4 lg:px-[45px] lg:pt-[22px]">
+    <header className="relative flex flex-wrap items-center gap-[14px] px-5 pt-4 lg:px-[45px] lg:pt-[22px]">
       {/* p-3 (nao p-1): e' o alvo mais tocado do celular e media 26px. */}
       <button
         type="button"
@@ -56,11 +56,20 @@ export function Header({ aoAbrirMenu, titulo, children }: HeaderProps) {
         <IconMenu />
       </button>
 
+      {/* FORA DO FLUXO no computador, de proposito.
+          O `--recuo-texto: 45px` do prototipo e' 28 (respiro da janela) + 17
+          (padding interno do card): ele existe pra que o h1 nasca na MESMA
+          vertical do titulo de dentro de cada card. O `.topo` do prototipo nao
+          tem botao de voltar, entao essa conta nunca previu um irmao antes do
+          h1 — medido em 16/08, a seta (38px + 14px de gap) empurrava o titulo
+          de x=263 pra x=307, 44px a' direita de todo o resto da pagina.
+          Absoluto, ele fica na margem e o h1 volta pro lugar; no celular
+          continua no fluxo, onde o titulo divide a linha com o menu. */}
       {podeVoltar && (
         <button
           type="button"
           onClick={() => router.back()}
-          className="text-text hover:bg-surface-2 focus-visible:ring-primary -m-1 flex-none rounded-lg p-2.5 transition-colors focus-visible:ring-2 focus-visible:outline-none"
+          className="text-text hover:bg-surface-2 focus-visible:ring-primary -m-1 flex-none rounded-lg p-2.5 transition-colors focus-visible:ring-2 focus-visible:outline-none lg:absolute lg:top-[22px] lg:left-[7px] lg:m-0"
           aria-label="Voltar para a página anterior"
           title="Voltar"
         >
