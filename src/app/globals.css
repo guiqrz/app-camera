@@ -943,3 +943,1500 @@ h4 {
     display: none;
   }
 }
+
+/* ================= TELA CAMERA =================
+   Porte do `#tela-camera` do prototipo. Reaproveita o design system: o card de
+   numero e' o mesmo `CartaoNumero` das outras telas, a cor por modo sai dos
+   tokens --materia-*, e o "?" e' a `DicaAjuda` que ja existia.
+
+   Tokens: o prototipo usa --tinta/--card/--card-fundo/--card-borda, que NAO
+   existem aqui. Equivalentes reais: --primary / --surface / --surface-2 /
+   --border. `--tinta-fundo` e `--primary-soft` sao identicos nos dois temas
+   (conferido). */
+
+/* ---- Botao de acao ----
+   Nao existia no app: os botoes da camera eram Tailwind + style inline. */
+.btn-acao {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 13px;
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease;
+  /* Dentro de um card em coluna flex, o filho esticaria pra 100% de largura por
+     padrao (`align-items: stretch`) — o "inline" do inline-flex nao protege
+     disso, so' vale pro CONTEUDO do botao. Sem isto o "Capturar de novo" toma a
+     largura inteira do card. */
+  align-self: flex-start;
+}
+.btn-acao:hover {
+  border-color: var(--primary-hover);
+  background: var(--primary-soft);
+}
+.btn-acao:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+.btn-acao:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.btn-acao.forte {
+  background: var(--primary);
+  color: var(--text-on-brand);
+  border-color: transparent;
+}
+.btn-acao.forte:hover {
+  background: var(--primary-hover);
+}
+
+/* ---- Botao de VIDRO ----
+   A acao principal de um card que ja' e' vidro. A chapa de tinta do `.forte`
+   funciona sobre a pagina, mas dentro de um card translucido ela vira um
+   retangulo opaco cravado no meio do vidro (ele mandou o print em 16/08).
+
+   Aqui o botao e' o mesmo material do card, so' que um degrau mais claro:
+   `--vidro-botao` sobe do fundo em vez de tapa-lo. O que o desenha e' a
+   MOLDURA (--moldura-botao), nao o preenchimento — por isso ela entra como
+   segunda camada de background com `border-box`, deixando so' a borda de 1px
+   acesa. Os dois tokens ja' existiam, do botao "Gerar com a Cup AI".
+
+   O texto continua em --text (nao --text-on-brand): sem chapa de tinta atras,
+   a cor de "sobre a marca" perderia contraste contra o vidro. */
+/* O FUNDO e' de vidro — o botao continua sendo um objeto solido e legivel.
+   E' a mesma ideia do `.cartao`: superficie translucida + blur + borda clara,
+   so' que no tamanho de um botao.
+
+   ⚠️ A primeira versao (16/08) errou a leitura do pedido: usou `--vidro-botao`
+   (.055) + veu de `--primary-soft` (.10), somando ~15% de opacidade. Isso
+   funciona num painel GRANDE, onde a area sustenta a leitura, mas num
+   retangulo de 36px de altura solto sobre a pagina o botao quase sumia — foi
+   o que ele apontou. Um card de vidro nao e' um card invisivel.
+
+   `--vidro-solido` da' o CORPO (a chapa de vidro em si), o blur trata o que
+   passa atras e a borda desenha a quina. Os tres juntos sao o que faz o vidro
+   ler como vidro em area pequena. */
+.btn-acao.vidro {
+  color: var(--text);
+  background: var(--vidro-solido);
+  border: 1px solid var(--vidro-solido-borda);
+  backdrop-filter: var(--blur-card);
+  box-shadow: var(--shadow-card);
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    box-shadow 140ms ease;
+}
+.btn-acao.vidro:hover {
+  background: var(--vidro-solido-hover);
+  border-color: var(--vidro-solido-borda-hover);
+  box-shadow: var(--shadow-raise);
+}
+/* Sem `backdrop-filter` o vidro perde o blur, que e' metade do efeito: a
+   chapa precisa ficar mais densa pra continuar legivel sozinha. */
+@supports not (backdrop-filter: blur(1px)) {
+  .btn-acao.vidro {
+    background: var(--painel-solido);
+    border-color: var(--border-strong);
+  }
+}
+
+/* ---- Faixa "ao vivo" ----
+   Ponto vermelho pulsante + turma + Desligar. O vermelho aqui e' "esta
+   capturando", nao erro; o pulso e' o mesmo desenho da faixa de microfone
+   gravando, pra nao inventar uma segunda linguagem de "ao vivo" na tela. */
+.faixa-vivo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  padding: 15px 18px;
+}
+.vivo-ponto {
+  position: relative;
+  width: 11px;
+  height: 11px;
+  flex: none;
+}
+.vivo-ponto::before,
+.vivo-ponto::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--danger);
+}
+.vivo-ponto::before {
+  animation: cameraPulso 1.6s ease-out infinite;
+}
+@keyframes cameraPulso {
+  0% {
+    opacity: 0.65;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.6);
+  }
+}
+.vivo-texto {
+  min-width: 0;
+}
+.vivo-titulo {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.vivo-sub {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+/* "Ha quanto tempo isso ta ligado" e' a primeira pergunta de quem esqueceu a
+   camera rodando — mesmo tom do subtitulo, so' um pouco mais forte. */
+.vivo-duracao {
+  font-weight: 650;
+  color: var(--text);
+}
+.faixa-vivo .btn-acao {
+  margin-left: auto;
+}
+
+/* ---- Bloco generico (Modo / Microfone / Quadro) ----
+   Mesmo cabecalho nos tres: rotulo pequeno maiusculo + "?" a direita. */
+.bloco-cam {
+  padding: 15px 17px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+.bloco-cam-topo {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.bloco-cam-rotulo {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.bloco-cam-aviso {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--warn-fg);
+}
+/* O "?" da DicaAjuda encosta na direita quando nao ha aviso no meio. */
+.bloco-cam-topo > .bloco-cam-ajuda {
+  margin-left: auto;
+}
+
+/* Gancho explicito pro botao que vive numa LINHA (texto a' esquerda, acao a'
+   direita), e nao numa coluna. O `align-self: flex-start` do `.btn-acao`
+   existe pro caso oposto — card em COLUNA, onde sem ele o botao esticaria pra
+   largura inteira — e numa linha ele so' pendurava o botao no topo, 5px acima
+   do texto (medido em 16/08).
+
+   Classe propria em vez de `self-center` do Tailwind: as duas regras tem a
+   mesma especificidade, e quem vence dependeria da ordem das folhas. */
+.btn-acao.centrado {
+  align-self: center;
+}
+
+/* ---- Modo da aula: 4 cartoes ----
+   Cor por modo sempre visivel no icone; fundo tingido so' no ATIVO (varios
+   fundos fortes lado a lado competiriam). O selo "Ativo" vai ESCRITO — a cor
+   nunca e' o unico sinal (WCAG 1.4.1). */
+.modos-grade {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+@media (min-width: 900px) {
+  .modos-grade {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+.modo-cartao {
+  position: relative;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 12px 13px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  cursor: pointer;
+  font-family: inherit;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease;
+}
+/* O cartao e' uma <div> com um <button> esticado por cima (o "?" precisa ser
+   irmao do botao — botao dentro de botao e' HTML invalido). Entao o hover mora
+   na div, e nao no `:hover:not(:disabled)` do prototipo, que aqui nunca
+   casaria: `:disabled` nao se aplica a <div>. O estado desabilitado vem do
+   `opacity` inline que o componente controla.
+
+   ⚠️ A cor do modo chega por `--modo-cor` / `--modo-fundo`, e nao por
+   `style={{borderColor}}`: propriedade inline vence folha de estilo, e o hover
+   abaixo nunca chegaria a pintar nada. */
+.modo-cartao:hover {
+  border-color: var(--primary-hover);
+}
+/* `:focus-within` porque quem recebe o foco e' o <button> de dentro. */
+.modo-cartao:focus-within {
+  border-color: var(--primary);
+}
+
+/* Ativo: a cor do proprio modo, com anel interno pra engrossar a borda sem
+   deslocar 1px de conteudo (border-width maior mexeria no layout). Vem depois
+   do hover pra que o cartao ativo nao perca a cor ao passar o mouse. */
+.modo-cartao[data-ativo="sim"] {
+  border-color: var(--modo-cor);
+  background: var(--modo-fundo);
+  box-shadow: inset 0 0 0 1px var(--modo-cor);
+}
+.modo-topo {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px;
+}
+.modo-nome {
+  font-size: 13px;
+  font-weight: 600;
+}
+.modo-resumo {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+.modo-selo {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* ---- Microfone ----
+   Faixa cheia vermelha quando gravando de fato. Privacidade numa sala com
+   menores nao pode passar despercebida (CLAUDE.md do backend). */
+.mic-linha {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 13px;
+  border-radius: var(--radius-sm);
+  background: var(--danger-bg);
+  color: var(--danger-fg);
+}
+.mic-linha .vivo-ponto::before,
+.mic-linha .vivo-ponto::after {
+  background: currentColor;
+}
+.mic-texto {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 650;
+  line-height: 1.4;
+}
+.mic-texto span {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.85;
+  margin-top: 1px;
+}
+.mic-switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 13px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  cursor: pointer;
+  font-family: inherit;
+  color: inherit;
+}
+.mic-switch:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.mic-switch:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+.mic-switch-rotulo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.mic-trilho {
+  position: relative;
+  width: 38px;
+  height: 21px;
+  flex: none;
+  border-radius: 999px;
+  background: var(--text-muted);
+  opacity: 0.4;
+  transition:
+    background 140ms ease,
+    opacity 140ms ease;
+}
+.mic-trilho::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: #fff;
+  transition: left 140ms ease;
+}
+.mic-switch.ligado .mic-trilho {
+  background: var(--danger);
+  opacity: 1;
+}
+.mic-switch.ligado .mic-trilho::after {
+  left: 19px;
+}
+/* Antes de a captura comecar o microfone ainda nao grava: o aviso e' de
+   intencao, nao de gravacao em curso — ambar, nao vermelho. */
+.mic-switch.pre-inicio .mic-trilho {
+  background: var(--warn);
+  opacity: 1;
+}
+.mic-linha.pre-inicio {
+  background: var(--warn-bg);
+  color: var(--warn-fg);
+}
+
+/* ---- Alerta de dispersao ----
+   Cor cheia, como a faixa ao vivo, mas so' aparece acima do limiar. */
+.alerta-dispersao {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 16px;
+  border-radius: var(--radius);
+  background: var(--danger);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+.alerta-dispersao svg {
+  flex: none;
+}
+.alerta-dispersao-texto {
+  flex: 1;
+  min-width: 0;
+}
+/* Fecha o loop aviso -> acao sem o professor ter que cacar o modo Descanso mais
+   embaixo. Vidro claro sobre o vermelho cheio: precisa ficar legivel em cima de
+   fundo solido e continuar obviamente DENTRO do alerta. */
+.alerta-dispersao-acao {
+  flex: none;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  transition: background 140ms ease;
+}
+.alerta-dispersao-acao:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.32);
+}
+.alerta-dispersao-acao:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+.alerta-dispersao-acao:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+/* ---- Grade de metricas ----
+   FPS e MQTT ficam discretos: sao diagnostico de captura, nao metrica
+   pedagogica, e nao devem competir com Chamada/Dispersao. */
+.numeros-cam {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  /* `start`, e nao o `stretch` padrao do grid: sem isto o cartao discreto e'
+     esticado pra altura dos vizinhos e o min-height menor dele nunca aparece. */
+  align-items: start;
+}
+
+/* ---- Quadro da aula (modo Lousa) ---- */
+.lousa-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.lousa-item {
+  display: grid;
+  grid-template-columns: 84px 1fr;
+  gap: 11px;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+.lousa-item .lousa-foto {
+  aspect-ratio: 4 / 3;
+  margin: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--painel-solido);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+.lousa-item .lousa-foto img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.lousa-cabecalho {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.lousa-cabecalho .num {
+  font-size: 12px;
+  font-weight: 600;
+}
+.lousa-cabecalho .hora {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.lousa-texto-item {
+  margin: 4px 0 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-body);
+}
+/* Estado vazio: convite discreto, nao erro nem aviso. */
+.lousa-vazia {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+/* Abaixo de 620px a moldura de 84px espreme o texto da captura a ponto de
+   quebrar palavra por palavra: a foto passa pra cima, em largura cheia. */
+@media (max-width: 620px) {
+  .lousa-item {
+    grid-template-columns: 1fr;
+  }
+  .lousa-item .lousa-foto {
+    aspect-ratio: 16 / 9;
+  }
+}
+
+/* ================= TELA CHAMADA =================
+   Nao existe no prototipo: criada seguindo o padrao das telas ja portadas.
+   Reusa `.numeros-cam`, `.bloco-cam*`, `.btn-acao` e `CartaoNumero`.
+
+   ⚠️ PRIVACIDADE: a coluna por aluno e' FREQUENCIA (presenca historica, dado
+   individual permitido). Engajamento por aluno e' PROIBIDO no projeto e nao
+   existe na API — nada aqui pode exibir ou insinuar atencao por pessoa. */
+
+/* Barra de acoes: busca + filtros + acoes em massa. */
+.chamada-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+/* O `.busca` global tem margem lateral pensada pro painel do Cup AI; aqui ele
+   e' um controle solto numa barra, entao a margem sai e ele cresce. */
+.chamada-acoes .busca {
+  margin: 0;
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+/* Filtros: pilulas do mesmo tamanho do `.btn-acao`, so' que agrupadas. */
+.chamada-filtros {
+  display: flex;
+  gap: 6px;
+  flex: none;
+}
+.chamada-filtro {
+  padding: 8px 13px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-body);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    color 140ms ease;
+}
+.chamada-filtro:hover {
+  border-color: var(--primary-hover);
+}
+.chamada-filtro:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+/* O ativo e' TINTA cheia: num grupo de tres, borda mais forte nao basta pra
+   dizer qual esta valendo. */
+.chamada-filtro[aria-pressed="true"] {
+  background: var(--primary);
+  color: var(--text-on-brand);
+  border-color: transparent;
+}
+
+/* ---- Faixa de estado da confirmacao ----
+   Enquanto a chamada nao foi confirmada, a faixa fica ambar (pendencia, nao
+   erro). Confirmada, vira verde discreto — o professor precisa saber de
+   relance se ja assumiu a lista. */
+.chamada-estado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 16px;
+  border-radius: var(--radius);
+  background: var(--warn-bg);
+  color: var(--warn-fg);
+  font-size: 13px;
+  font-weight: 650;
+}
+.chamada-estado[data-confirmada="sim"] {
+  background: var(--ok-bg);
+  color: var(--ok-fg);
+}
+.chamada-estado-texto {
+  flex: 1;
+  min-width: 0;
+}
+.chamada-estado .btn-acao {
+  margin-left: auto;
+  align-self: center;
+}
+/* O botao de vidro aqui NAO vive sobre a atmosfera: atras dele esta a faixa
+   ambar (--warn-bg), que e' opaca no escuro. Um veu branco por cima dela
+   lavaria o ambar e o botao sumiria no proprio fundo. Entao aqui o vidro e' a
+   propria cor de ESTADO, clareada: o botao continua sendo "o mesmo material
+   do que esta atras, um degrau acima", que e' a regra do vidro no sistema.
+   `currentColor` acompanha o par ambar/verde sem repetir os dois casos. */
+.chamada-estado .btn-acao.vidro {
+  color: currentColor;
+  background: color-mix(in srgb, currentColor 13%, transparent);
+  border-color: color-mix(in srgb, currentColor 34%, transparent);
+  backdrop-filter: none;
+  box-shadow: none;
+}
+.chamada-estado .btn-acao.vidro:hover {
+  background: color-mix(in srgb, currentColor 22%, transparent);
+  border-color: color-mix(in srgb, currentColor 52%, transparent);
+  box-shadow: none;
+}
+
+/* ---- Lista de alunos ---- */
+.chamada-lista {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  backdrop-filter: var(--blur-card);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+/* Cabecalho de colunas: so' no computador. No celular a linha vira cartao
+   empilhado e um cabecalho de tabela nao teria a que se referir. */
+.chamada-cabecalho {
+  display: none;
+  /* 16px de gap (era 12): com os rotulos centrados sobre colunas vizinhas,
+     "Presença nesta aula" e "Frequência" ficavam a 12px um do outro e liam
+     como uma frase so' (ele apontou em 16/08). */
+  gap: 16px;
+  /* Respiro vertical maior que o horizontal de proposito: e' uma faixa de
+     rotulos, e 11px em cima deixava o texto encostado na quina do card. */
+  padding: 13px 17px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+/* As colunas 2 e 3 sao CENTRADAS sobre o proprio conteudo: os botoes de
+   presenca e a barrinha tem largura fixa, e um cabecalho encostado a esquerda
+   de uma coluna larga nao aponta pro que descreve.
+
+   As larguras (172/150) sao as MEDIDAS do conteudo, nao um chute: o par de
+   botoes soma 94+91+6 de gap = 191px e antes vazava 41px pra fora da coluna
+   de 150px, invadindo a Frequencia — era isso que colava o "Ausente" na
+   barrinha (medido em 16/08). Ver `.chamada-status`. */
+@media (min-width: 780px) {
+  .chamada-cabecalho {
+    display: grid;
+    grid-template-columns: 1fr 172px 150px 108px;
+  }
+  .chamada-cabecalho > :nth-child(2),
+  .chamada-cabecalho > :nth-child(3) {
+    text-align: center;
+  }
+}
+
+.chamada-linha {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 10px 12px;
+  padding: 12px 17px;
+  border-top: 1px solid var(--border);
+}
+/* A primeira linha encosta no cabecalho (ou no topo do card, no celular): a
+   borda dela seria uma segunda risca colada na de baixo do cabecalho. */
+.chamada-linha:first-child {
+  border-top: 0;
+}
+.chamada-linha:hover {
+  background: var(--surface-2);
+}
+/* Mesmas larguras do cabecalho — as duas grades TEM que andar juntas, senao
+   o rotulo deixa de cair sobre a coluna que descreve. */
+@media (min-width: 780px) {
+  .chamada-linha {
+    grid-template-columns: 1fr 172px 150px 108px;
+  }
+}
+
+.chamada-aluno {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+}
+.chamada-nome {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+  /* Nome longo corta em vez de empurrar as colunas da direita pra fora. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chamada-ra {
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Selo de origem: distingue o que a CAMERA afirmou do que o PROFESSOR decidiu.
+   Os dois carimbos vivem lado a lado no banco justamente pra isso. */
+.chamada-selo {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 3px;
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.chamada-selo[data-tipo="camera"] {
+  background: var(--materia-azul-bg);
+  color: var(--materia-azul-fg);
+}
+.chamada-selo[data-tipo="corrigido"] {
+  background: var(--materia-ambar-bg);
+  color: var(--materia-ambar-fg);
+}
+.chamada-selo[data-tipo="confirmado"] {
+  background: var(--ok-bg);
+  color: var(--ok-fg);
+}
+
+/* ---- Frequencia ----
+   Barrinha + numero, a mesma linguagem das barrinhas de Minhas Aulas. */
+.chamada-freq {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  /* Respiro a' esquerda: os botoes de presenca terminam na coluna anterior e,
+     sem isto, a barrinha comecava colada neles (ele apontou em 16/08 — na
+     medicao os dois chegavam a se sobrepor em 29px, ver `.chamada-linha`). */
+  padding-left: 4px;
+}
+/* Trilho de VIDRO — o mesmo desenho da barra de frequencia do relatorio de
+   sessao (`BlocoChamada`, "Chamada automática"): borda clara + blur, pra
+   revelar o fundo em vez de ser um cinza chapado. Ele pediu igualar em
+   16/08. `.chamada-barra-glass` e' a classe COMPARTILHADA (ver
+   `.chamada-barra-*` abaixo, o comparativo da turma usa a mesma). */
+.chamada-freq-trilho {
+  display: block;
+  flex: 1;
+  min-width: 42px;
+  height: 9px;
+}
+/* `display: block` NAO e' decorativo: a barra e' um <span>, e em elemento
+   inline `width`/`height` sao IGNORADOS pelo layout. Ela nascia com 0x0 e
+   nunca apareceu — era a "barrinha sem cor" do print de 16/08. A cor sempre
+   esteve aplicada; o que faltava era caixa. */
+.chamada-freq-barra {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  transition: width 300ms ease;
+}
+
+/* ---- Trilho de VIDRO, compartilhado ----
+   Usado pelo trilho de frequencia (`.chamada-freq-trilho`) e pelo do
+   comparativo (`.chamada-barra-trilho`) — mesmo material do
+   "Chamada automática" no relatorio de sessao. Trilho translucido com blur +
+   borda clara, e um brilho especular no topo da parte preenchida simulando
+   reflexo de vidro. */
+.chamada-freq-trilho,
+.chamada-barra-trilho {
+  position: relative;
+  overflow: hidden;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--text-muted) 13%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  backdrop-filter: blur(6px) saturate(1.3);
+}
+/* O brilho vive num pseudo-elemento do TRILHO (nao da barra preenchida): ele
+   precisa cobrir a largura inteira do trilho, nao so' a parte colorida —
+   e' luz batendo no vidro do objeto inteiro, nao um reflexo so' onde ha' cor. */
+.chamada-freq-trilho::before,
+.chamada-barra-trilho::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 55% 0;
+  border-radius: 99px 99px 0 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.28), transparent);
+  pointer-events: none;
+}
+.chamada-freq-valor {
+  flex: none;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-body);
+}
+/* Sem historico e' diferente de 0%: o aluno nunca teve aula registrada, e um
+   zero ali leria como "nunca vem". */
+.chamada-freq-vazio {
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+/* ---- Alternador presente/ausente ----
+   Os dois botoes tem a MESMA largura e o par fica centrado na coluna: com
+   larguras diferentes (94 vs 91px, medido) as colunas de baixo entravam e
+   saiam de linha de aluno pra aluno. */
+.chamada-status {
+  display: flex;
+  gap: 8px;
+  flex: none;
+  justify-content: center;
+}
+.chamada-status-botao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  /* Quadrado: so' o simbolo, sem texto (ele pediu em 16/08). O NOME da acao
+     nao se perde — vive no `aria-label`, com o nome do aluno junto, que e' o
+     que o leitor de tela anuncia. O `title` traz o mesmo texto de volta no
+     mouse. */
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    color 140ms ease;
+}
+.chamada-status-botao:hover:not(:disabled) {
+  border-color: var(--primary-hover);
+}
+.chamada-status-botao:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+.chamada-status-botao:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.chamada-status-botao[aria-pressed="true"][data-status="presente"] {
+  background: var(--ok-bg);
+  color: var(--ok-fg);
+  border-color: var(--ok);
+}
+.chamada-status-botao[aria-pressed="true"][data-status="ausente"] {
+  background: var(--danger-bg);
+  color: var(--danger-fg);
+  border-color: var(--danger);
+}
+
+/* Vazio da lista (busca sem resultado): convite discreto, nao erro. */
+.chamada-vazio {
+  margin: 0;
+  padding: 34px 17px;
+  text-align: center;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+/* ---- Comparativo hoje x media ---- */
+.chamada-barra-linha {
+  display: grid;
+  grid-template-columns: 168px 1fr 52px;
+  align-items: center;
+  gap: 11px;
+}
+.chamada-barra-rotulo {
+  font-size: 12.5px;
+  color: var(--text-body);
+}
+/* So' a altura: o resto do material de vidro (fundo, blur, borda, raio,
+   brilho) vem da regra COMPARTILHADA com `.chamada-freq-trilho`, la' em cima
+   — ver "Trilho de VIDRO, compartilhado". */
+.chamada-barra-trilho {
+  height: 9px;
+}
+/* Mesmo motivo do `.chamada-freq-barra`: <span> inline ignora width/height. */
+.chamada-barra-preenchida {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  transition: width 300ms ease;
+}
+.chamada-barra-valor {
+  font-size: 12.5px;
+  font-weight: 600;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+@media (max-width: 620px) {
+  .chamada-barra-linha {
+    grid-template-columns: 1fr 52px;
+  }
+  /* No celular o rotulo sobe pra linha inteira: 168px de rotulo + barra num
+     telefone deixaria a barra com ~80px, curta demais pra comparar. */
+  .chamada-barra-rotulo {
+    grid-column: 1 / -1;
+  }
+}
+
+/* ==================================================================== */
+/* COORDENACAO                                                          */
+/* Tela de cadastro da escola: turmas, alunos, materias e o que falta    */
+/* configurar. Redesenhada em 16/08/2026 — era a ultima tela no layout   */
+/* antigo (usava StatCard, nao os tokens do redesign).                   */
+/* ==================================================================== */
+
+/* ---- Precisa de configuracao ----
+   O bloco que abre a tela. AMBAR, nao vermelho: pendencia de cadastro e'
+   trabalho a fazer, nao falha — vermelho leria como "algo quebrou" e, pior,
+   como reprimenda a quem cuida daquela turma.
+
+   ⚠️ Nada de desempenho entra aqui. Ver o JSDoc de `PainelPendencias`. */
+.pendencias {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 15px 17px 16px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  backdrop-filter: var(--blur-card);
+  box-shadow: var(--shadow-card);
+  /* A faixa ambar na borda esquerda e' o unico sinal de cor do bloco: chapar
+     o fundo inteiro de ambar competiria com os cartoes de numero logo acima. */
+  border-left: 3px solid var(--warn);
+}
+.pendencias-topo {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.pendencias-titulo {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text);
+}
+.pendencias-conta {
+  display: inline-grid;
+  place-items: center;
+  min-width: 21px;
+  height: 21px;
+  padding: 0 6px;
+  border-radius: 99px;
+  background: var(--warn-bg);
+  color: var(--warn-fg);
+  font-size: 11.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.pendencias-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pendencia {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 11px;
+  border-radius: var(--radius-sm);
+  transition: background 140ms ease;
+}
+.pendencia:hover {
+  background: var(--surface-2);
+}
+.pendencia-icone {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border-radius: 9px;
+  background: var(--warn-bg);
+  color: var(--warn-fg);
+}
+.pendencia-texto {
+  min-width: 0;
+  flex: 1;
+}
+.pendencia-titulo {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.pendencia-apoio {
+  margin: 2px 0 0;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+/* Tudo configurado: o bloco continua existindo, so' muda de cor e de tom.
+   Sumir com ele deixaria o coordenador sem saber se esta tudo certo ou se a
+   secao nao existe. */
+.pendencias-ok {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  border-left-color: var(--ok);
+}
+.pendencias-ok-selo {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border-radius: 9px;
+  background: var(--ok-bg);
+  color: var(--ok-fg);
+}
+.pendencias-vazio {
+  margin: 2px 0 0;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+@media (max-width: 620px) {
+  /* No celular a acao desce pra baixo do texto: um botao de 130px ao lado de
+     um titulo de duas linhas espremeria os dois. */
+  .pendencia {
+    flex-wrap: wrap;
+  }
+  .pendencia .btn-acao {
+    margin-left: 41px; /* alinha com o texto, pulando o icone (30px + 11 de gap) */
+  }
+}
+
+/* ---- Painel generico da Coordenacao ----
+   Turmas, alunos e materias usam a mesma casca: card de vidro com cabecalho
+   (titulo + acao). Antes cada um repetia o mesmo `style` inline com
+   --surface/--border/--shadow-card. */
+.coord-painel {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  backdrop-filter: var(--blur-card);
+  box-shadow: var(--shadow-card);
+  /* O conteudo interno tem cantos proprios (linhas com hover); sem isto eles
+     escapariam pelo canto arredondado do card. */
+  overflow: hidden;
+}
+.coord-painel-topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 13px 15px;
+  border-bottom: 1px solid var(--border);
+}
+.coord-painel-titulo {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text);
+}
+/* O botao do cabecalho nao pode herdar o `align-self: flex-start` do
+   `.btn-acao` (o painel e' uma coluna flex) — ver `.btn-acao.centrado`. */
+.coord-painel-topo .btn-acao {
+  flex: none;
+}
+
+/* ---- Lista de turmas ---- */
+.coord-turmas {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.coord-turma {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  border-top: 1px solid var(--border);
+  transition: background 140ms ease;
+}
+.coord-turma:first-child {
+  border-top: 0;
+}
+.coord-turma:hover {
+  background: var(--surface-2);
+}
+/* Selecionada: faixa de tinta na esquerda em vez de fundo chapado. Numa lista
+   de 30 turmas, um retangulo preenchido a cada clique pisca a tela inteira;
+   a faixa marca sem repintar. */
+.coord-turma[data-selecionada="sim"] {
+  background: var(--primary-soft);
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+.coord-turma-botao {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  padding: 11px 14px;
+  text-align: left;
+  font: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.coord-turma-nome {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.coord-turma[data-selecionada="sim"] .coord-turma-nome {
+  color: var(--text-brand);
+}
+.coord-turma-sala {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.coord-turma-dados {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  margin-top: 5px;
+}
+.coord-dado {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.coord-dado-valor {
+  font-weight: 650;
+  color: var(--text-body);
+  font-variant-numeric: tabular-nums;
+}
+/* Zero que IMPEDE a turma de funcionar (sem aluno / sem grade). E' o mesmo
+   fato que virou pendencia no topo — aqui so' marca quem, pra quem esta
+   varrendo a lista. Frequencia NUNCA recebe esta marca, mesmo baixa: seria
+   transformar desempenho em alerta, que e' o que esta tela nao faz. */
+.coord-dado[data-alerta="sim"],
+.coord-dado[data-alerta="sim"] .coord-dado-valor {
+  color: var(--warn-fg);
+}
+
+/* ---- Vazio de painel ---- */
+.coord-vazio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 34px 20px;
+  text-align: center;
+}
+.coord-vazio-icone {
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+.coord-vazio-titulo {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.coord-vazio-apoio {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  max-width: 34ch;
+}
+
+/* ---- Pagina da turma (/coordenacao/turmas/{id}) ----
+   Fase 2 do redesign da Coordenacao, 16/08/2026. */
+
+/* Linha de apoio abaixo do cabecalho, nas DUAS telas da Coordenacao (a
+   principal e a da turma).
+
+   Nenhuma das duas tem `h1` proprio: o titulo da pagina e' o do cabecalho
+   (AppShell). As duas tinham um, e nos dois casos ele repetia — na principal
+   escrevia "Coordenação" logo abaixo da palavra "Coordenação", e na da turma
+   competia com a trilha. Dois `h1` no mesmo documento tambem deixam o leitor
+   de tela sem saber qual e' o titulo de verdade.
+
+   Os 3 atalhos que ficavam a direita na pagina da turma sairam em 16/08
+   (`.turma-atalhos` removida junto) — o menu lateral ja' leva as mesmas
+   telas. */
+.turma-cabecalho {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.turma-identificacao,
+.coord-apoio {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-body);
+}
+
+/* O formulario usa a casca do `.coord-painel`, mas com respiro interno: la' o
+   conteudo tem cabecalho proprio e linhas coladas nas bordas; aqui sao campos,
+   que precisam de margem. */
+.turma-form {
+  gap: 14px;
+  padding: 15px 17px 16px;
+}
+
+/* ---- Faixa do turno de referencia ----
+   Recomendacao, nunca limite — por isso NEUTRA, sem cor de estado: ambar aqui
+   leria como "seu horario esta errado", quando o texto diz o oposto. */
+.turma-turno {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 11px;
+  padding: 12px 15px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  backdrop-filter: var(--blur-card);
+}
+.turma-turno-icone {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border-radius: 9px;
+  background: var(--primary-soft);
+  color: var(--text-brand);
+}
+.turma-turno-titulo {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+.turma-turno-apoio {
+  margin: 2px 0 0;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+/* ---- Grade semanal ---- */
+.grade-topo {
+  align-items: flex-start;
+}
+.grade-apoio {
+  margin: 3px 0 0;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+.grade-conta {
+  flex: none;
+  font-size: 11.5px;
+  font-weight: 650;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Faixa de aviso dentro da grade (aulas ocultas / semana inteira). */
+.grade-faixa {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 13px 15px 0;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+/* Ambar: aula escondida pelo filtro e' a causa do 409 "conflito com algo
+   invisivel" — precisa de peso pra ser lida ANTES da tentativa. */
+.grade-faixa[data-tom="aviso"] {
+  background: var(--warn-bg);
+}
+.grade-faixa-texto {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+.grade-faixa[data-tom="aviso"] .grade-faixa-texto {
+  color: var(--warn-fg);
+}
+.grade-faixa-texto strong {
+  font-weight: 700;
+  color: var(--text);
+}
+.grade-faixa[data-tom="aviso"] .grade-faixa-texto strong {
+  color: inherit;
+}
+.grade-faixa-acao {
+  flex: none;
+  padding: 3px 8px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 650;
+  color: var(--text-brand);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.grade-faixa[data-tom="aviso"] .grade-faixa-acao {
+  color: inherit;
+}
+.grade-faixa-acao:hover {
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+
+/* Coluna de um dia. */
+.grade-dia {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 9px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.grade-dia-titulo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0 3px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.grade-dia-conta {
+  display: inline-grid;
+  place-items: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 99px;
+  background: var(--primary-soft);
+  color: var(--text-brand);
+  font-size: 9.5px;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Cartao de uma aula. */
+.grade-aula {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 9px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  transition:
+    border-color 140ms ease,
+    background 140ms ease;
+}
+.grade-aula:hover {
+  border-color: var(--border-strong);
+}
+/* Armada pra exclusao: o vermelho e' o unico sinal de que o proximo clique
+   apaga. Ver o comentario da confirmacao inline no componente. */
+.grade-aula[data-armada="sim"] {
+  border-color: var(--danger);
+  background: var(--danger-bg);
+}
+.grade-aula-hora {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.grade-aula-editar {
+  align-self: flex-start;
+  padding: 2px 6px;
+  margin-left: -6px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--text-brand);
+  cursor: pointer;
+}
+.grade-aula-editar:hover {
+  background: var(--primary-soft);
+}
+
+/* Espaco vazio esperando aula — tracejado de proposito, pra nao competir com
+   os cartoes reais ao lado. */
+.grade-adicionar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px;
+  border-radius: var(--radius-sm);
+  border: 1.5px dashed var(--border-strong);
+  background: none;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--text-brand);
+  cursor: pointer;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease;
+}
+.grade-adicionar:hover {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+/* ---- Painel de alunos (cabecalho) ----
+   O cabecalho tem 2 linhas de texto + busca + acao, entao ele quebra em telas
+   estreitas — por isso nao usa o `.coord-painel-topo` puro, que e' de uma
+   linha so'. */
+.alunos-topo {
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+.alunos-conta {
+  margin: 3px 0 0;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+.alunos-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+/* O `.busca` global nasce com margem lateral pensada pro painel do Cup AI;
+   aqui ele e' um controle solto numa barra de acoes.
+
+   `min-height` casa com a altura do `.btn-acao` (36px): os dois dividem a
+   linha, e 34 contra 36 deixava um degrau visivel entre eles (medido em
+   16/08). A base do flex cai pra 170 pra que busca + botao caibam na mesma
+   linha em vez de o botao quebrar pra baixo. */
+.alunos-busca {
+  margin: 0;
+  flex: 1 1 170px;
+  min-width: 0;
+  min-height: 36px;
+}

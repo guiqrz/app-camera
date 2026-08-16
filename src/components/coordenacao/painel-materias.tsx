@@ -63,12 +63,10 @@ export function PainelMaterias({
           </span>
         </div>
 
-        <button
-          type="button"
-          onClick={aoNovaMateria}
-          className="flex flex-none items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold transition-colors"
-          style={{ color: "var(--text-brand)" }}
-        >
+        {/* Vidro, como as outras acoes da tela. Antes era so' texto colorido:
+            ficava mais fraco que "Nova turma" e "Adicionar aluno", que sao
+            acoes do mesmo peso. */}
+        <button type="button" onClick={aoNovaMateria} className="btn-acao vidro centrado">
           <IconMais size={13} />
           Nova matéria
         </button>

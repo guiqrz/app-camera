@@ -272,6 +272,66 @@ export type VisaoAdmin = {
   };
 };
 
+/**
+ * Uma turma no panorama da Coordenacao (GET /admin/panorama).
+ *
+ * ⚠️ `frequencia_media_pct` e' presenca AGREGADA da turma — nunca engajamento,
+ * nunca por aluno. E a lista NAO pode ser ordenada por ele: a ordem e'
+ * alfabetica, vinda do backend, porque ordenar por frequencia transformaria a
+ * tela num ranking de turmas e, por tabela, de professores. Ver o docstring de
+ * `montar_panorama_coordenacao` no backend.
+ *
+ * `null` em `frequencia_media_pct` e' "nunca houve chamada", que e' diferente
+ * de 0% ("mediu-se e ninguem veio").
+ */
+export type TurmaPanorama = {
+  id: number;
+  nome: string;
+  sala_id: string;
+  total_alunos: number;
+  aulas_na_grade: number;
+  sessoes_monitoradas: number;
+  ultima_sessao: string | null;
+  frequencia_media_pct: number | null;
+};
+
+/**
+ * Uma pendencia de CONFIGURACAO da escola.
+ *
+ * Sempre "falta cadastrar/configurar isto", nunca "esta turma vai mal" — a
+ * segunda leitura seria juizo sobre o professor, proibido pelo CLAUDE.md.
+ *
+ * As de turma (`turma_sem_aluno`, `turma_sem_grade`) carregam a turma porque a
+ * tela oferece a acao que resolve; as agregadas trazem so' `total`, de
+ * proposito: nomear turmas nelas viraria uma lista de "turmas mal
+ * configuradas".
+ */
+export type PendenciaCoordenacao =
+  | {
+      tipo: "turma_sem_aluno";
+      turma_id: number;
+      turma_nome: string;
+      sessoes_monitoradas: number;
+    }
+  | { tipo: "turma_sem_grade"; turma_id: number; turma_nome: string }
+  | { tipo: "aulas_sem_materia"; total: number }
+  | { tipo: "alunos_sem_reconhecimento"; total: number }
+  | { tipo: "sessoes_em_aberto"; total: number };
+
+/** GET /admin/panorama — estado de cadastro da escola pra tela de Coordenacao. */
+export type PanoramaCoordenacao = {
+  turmas: TurmaPanorama[];
+  pendencias: PendenciaCoordenacao[];
+  totais: {
+    turmas: number;
+    alunos: number;
+    materias: number;
+    aulas_na_grade: number;
+    sessoes_monitoradas: number;
+    sessoes_em_aberto: number;
+  };
+};
+
 /** Corpo de POST /admin/turmas. */
 export type NovaTurma = {
   nome: string;
@@ -482,6 +542,19 @@ export type EstadoCamera =
       atualizado_em: string;
       turma: { id: number; nome: string } | null;
       sessao_id: number | null;
+      /**
+       * Quando a SESSAO comecou ("AAAA-MM-DD HH:MM:SS"), pra tela dizer ha
+       * quanto tempo a captura esta no ar.
+       *
+       * Nao confundir com `atualizado_em`, que e' o instante do ultimo ciclo e
+       * muda a cada segundo. Sem este campo a unica alternativa seria o app
+       * cronometrar do momento em que ABRIU a tela — o que mentiria toda vez
+       * que o professor entrasse com a aula ja em andamento.
+       *
+       * Opcional (estado escrito por backend anterior a esta versao nao traz) e
+       * null quando nao ha sessao. Nos dois casos a tela nao mostra duracao.
+       */
+      iniciada_em?: string | null;
       chamada: { presentes: number; total: number };
       pct_desatento: number;
       media_pessoas: number;

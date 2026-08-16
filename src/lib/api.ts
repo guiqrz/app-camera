@@ -45,6 +45,7 @@ import type {
   RespostaDoAssistente,
   Transcricao,
   Turma,
+  PanoramaCoordenacao,
   VisaoAdmin,
   VisaoGeral,
 } from "./types";
@@ -328,6 +329,20 @@ export function confirmarPresenca(
  */
 export function buscarVisaoAdmin(): Promise<VisaoAdmin> {
   return requisitar<VisaoAdmin>("/admin/visao", { revalidate: 0 });
+}
+
+/**
+ * Tela "Coordenacao" — panorama de cadastro da escola.
+ *
+ * Complementa `buscarVisaoAdmin`: aquela traz o cadastro editavel (com RA e
+ * nome, que a tela edita), esta traz os agregados por turma e a lista do que
+ * falta configurar. Sao rotas separadas de proposito — o panorama nao expoe
+ * aluno nenhum.
+ *
+ * Sem cache pelo mesmo motivo da visao: cadastrou, tem que aparecer.
+ */
+export function buscarPanoramaCoordenacao(): Promise<PanoramaCoordenacao> {
+  return requisitar<PanoramaCoordenacao>("/admin/panorama", { revalidate: 0 });
 }
 
 /** Cria uma turma nova. */

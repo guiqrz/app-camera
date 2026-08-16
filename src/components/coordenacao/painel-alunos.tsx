@@ -50,51 +50,43 @@ export function PainelAlunos({
   }, [alunos, busca]);
 
   return (
-    <div
-      className="flex flex-col rounded-2xl"
-      style={{
-        background: "var(--surface)",
-        border: "1px solid var(--border)",
-        boxShadow: "var(--shadow-card)",
-      }}
-    >
+    <section className="coord-painel">
       {/* Cabecalho: nome da turma, contagem, busca e acao de adicionar. */}
-      <div
-        className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
-        style={{ borderBottom: "1px solid var(--border)" }}
-      >
-        <div>
-          <h2 className="text-text text-base font-semibold">
-            {turma ? turma.nome : "Alunos"}
-          </h2>
-          <p className="text-text-muted text-xs">
+      <div className="coord-painel-topo alunos-topo">
+        <div className="min-w-0">
+          <h2 className="coord-painel-titulo">{turma ? turma.nome : "Alunos"}</h2>
+          <p className="alunos-conta">
             {turma
               ? `${alunos.length} ${alunos.length === 1 ? "aluno matriculado" : "alunos matriculados"}`
               : "Selecione uma turma para ver os alunos"}
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
-          <label className="border-border-default bg-surface flex min-w-[180px] flex-1 items-center gap-2 rounded-xl border px-3.5 py-2 sm:flex-none">
-            <span className="text-text-muted flex-none">
-              <IconBusca size={14} />
-            </span>
+        <div className="alunos-acoes">
+          {/* `.busca` global (o mesmo campo do Cup AI e da Chamada) em vez de
+              um desenho proprio: era a unica busca do app com raio e paddings
+              diferentes de todas as outras. */}
+          <label className="busca alunos-busca">
+            <IconBusca size={13} />
             <span className="sr-only">Buscar aluno por nome ou RA</span>
             <input
               value={busca}
               onChange={(evento) => setBusca(evento.target.value)}
-              placeholder="Buscar por nome ou RA..."
-              className="text-text w-full bg-transparent text-sm outline-none"
+              placeholder="Buscar por nome ou RA…"
+              type="search"
+              autoComplete="off"
               disabled={!turma}
             />
           </label>
 
+          {/* Vidro, nao tinta chapada: sobre o painel de vidro o `--primary`
+              cheio virava um retangulo lilas claro cravado no cabecalho (ele
+              apontou em 16/08). */}
           <button
             type="button"
             onClick={aoNovoAluno}
             disabled={!turma}
-            className="flex flex-none items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
-            style={{ background: "var(--primary)" }}
+            className="btn-acao vidro centrado"
           >
             <IconMais size={14} />
             Adicionar aluno
@@ -180,7 +172,7 @@ export function PainelAlunos({
           </ul>
         </>
       )}
-    </div>
+    </section>
   );
 }
 

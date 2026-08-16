@@ -116,22 +116,20 @@ export function GradeSemanal({
   }, [aulasVisiveis]);
 
   return (
-    <div
-      className="flex flex-col rounded-2xl"
-      style={{
-        background: "var(--surface)",
-        border: "1px solid var(--border)",
-        boxShadow: "var(--shadow-card)",
-      }}
-    >
-      <div
-        className="flex flex-col gap-1 px-5 py-4"
-        style={{ borderBottom: "1px solid var(--border)" }}
-      >
-        <h2 className="text-text text-base font-semibold">Grade semanal</h2>
-        <p className="text-text-muted text-xs">
-          Clique no <strong>+</strong> do dia para adicionar uma aula.
-        </p>
+    <section className="coord-painel">
+      <div className="coord-painel-topo grade-topo">
+        <div>
+          <h2 className="coord-painel-titulo">Grade semanal</h2>
+          <p className="grade-apoio">
+            Clique no <strong>+</strong> do dia para adicionar uma aula.
+          </p>
+        </div>
+        {/* Quantas aulas a semana tem, do lado do titulo: e' o numero que diz
+            se a grade esta montada, e antes so' dava pra saber contando os
+            cartoes na tela. */}
+        <span className="grade-conta">
+          {aulas.length} {aulas.length === 1 ? "aula" : "aulas"}
+        </span>
       </div>
 
       {/* Falha na busca aparece acima da grade: a grade anterior pode ainda
@@ -150,10 +148,13 @@ export function GradeSemanal({
           aula, o coordenador ve quantas sao e consegue trazer todas de volta
           num clique. Sem isso, uma aula esquecida no outro turno so' apareceria
           como um 409 de conflito com algo invisivel. */}
+      {/* AMBAR, nao neutra: aula escondida pelo filtro e' a causa daquele 409
+          de "conflito com algo invisivel". A faixa precisa de peso suficiente
+          pra ser lida antes de o coordenador tentar cadastrar por cima. */}
       {totalOcultas > 0 && (
-        <div className="mx-5 mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl px-4 py-2.5">
-          <p className="text-text-muted text-xs">
-            <strong className="text-text font-semibold">
+        <div className="grade-faixa" data-tom="aviso">
+          <p className="grade-faixa-texto">
+            <strong>
               {totalOcultas} {totalOcultas === 1 ? "aula" : "aulas"}
             </strong>{" "}
             fora do turno da {turno.nome.toLowerCase()}{" "}
@@ -162,8 +163,7 @@ export function GradeSemanal({
           <button
             type="button"
             onClick={() => setMostrarTodas(true)}
-            className="text-xs font-semibold"
-            style={{ color: "var(--text-brand)" }}
+            className="grade-faixa-acao"
           >
             Mostrar todas
           </button>
@@ -171,13 +171,12 @@ export function GradeSemanal({
       )}
 
       {mostrarTodas && (
-        <div className="mx-5 mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl px-4 py-2.5">
-          <p className="text-text-muted text-xs">Mostrando a semana inteira.</p>
+        <div className="grade-faixa">
+          <p className="grade-faixa-texto">Mostrando a semana inteira.</p>
           <button
             type="button"
             onClick={() => setMostrarTodas(false)}
-            className="text-xs font-semibold"
-            style={{ color: "var(--text-brand)" }}
+            className="grade-faixa-acao"
           >
             Ver só o turno da {turno.nome.toLowerCase()}
           </button>
@@ -202,15 +201,18 @@ export function GradeSemanal({
               const criandoAqui = formulario?.tipo === "criar" && formulario.dia === dia;
 
               return (
-                <section
-                  key={dia}
-                  className="flex flex-col gap-2 rounded-xl p-2.5"
-                  style={{ background: "var(--surface-2)" }}
-                >
-                  <h3 className="text-text-muted px-1 text-[11px] font-semibold tracking-wide uppercase">
+                <section key={dia} className="grade-dia">
+                  {/* A contagem ao lado do dia responde "quantas aulas tem
+                      quarta?" sem obrigar a contar cartoes — e deixa o dia
+                      VAZIO obvio de relance, que e' o que o coordenador
+                      procura ao montar a grade. */}
+                  <h3 className="grade-dia-titulo">
                     <abbr title={nomes.longo} className="no-underline">
                       {nomes.curto}
                     </abbr>
+                    {aulasDoDia.length > 0 && (
+                      <span className="grade-dia-conta">{aulasDoDia.length}</span>
+                    )}
                   </h3>
 
                   {aulasDoDia.map((aula) => {
@@ -242,17 +244,12 @@ export function GradeSemanal({
                     return (
                       <div
                         key={aula.id}
-                        className="flex flex-col gap-1.5 rounded-xl p-2.5"
-                        style={{
-                          background: "var(--surface)",
-                          border: armada
-                            ? "1.5px solid var(--danger)"
-                            : "1.5px solid var(--border)",
-                        }}
+                        className="grade-aula"
+                        data-armada={armada ? "sim" : undefined}
                       >
                         <div className="flex items-start justify-between gap-1.5">
                           <div className="min-w-0">
-                            <p className="text-text text-xs font-semibold">
+                            <p className="grade-aula-hora">
                               {aula.hora_inicio}–{aula.hora_fim}
                             </p>
                             <p className="mt-0.5 text-[11px]">
@@ -314,8 +311,7 @@ export function GradeSemanal({
                               setAulaParaExcluirId(null);
                               setFormulario({ tipo: "editar", dia, aula });
                             }}
-                            className="rounded-lg py-1 text-[11px] font-semibold"
-                            style={{ color: "var(--text-brand)" }}
+                            className="grade-aula-editar"
                           >
                             Editar
                           </button>
@@ -338,6 +334,9 @@ export function GradeSemanal({
                       }}
                     />
                   ) : (
+                    /* Tracejado de proposito: e' um espaco VAZIO esperando
+                       conteudo, nao um objeto. A borda cheia o faria competir
+                       com os cartoes de aula reais ao lado. */
                     <button
                       type="button"
                       onClick={() => {
@@ -345,11 +344,7 @@ export function GradeSemanal({
                         setFormulario({ tipo: "criar", dia });
                       }}
                       aria-label={`Adicionar aula na ${nomes.longo}`}
-                      className="flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-[11px] font-semibold transition-colors"
-                      style={{
-                        color: "var(--text-brand)",
-                        border: "1.5px dashed var(--border)",
-                      }}
+                      className="grade-adicionar"
                     >
                       <IconMais size={13} />
                       Aula
@@ -361,7 +356,7 @@ export function GradeSemanal({
           </div>
         </div>
       )}
-    </div>
+    </section>
   );
 }
 

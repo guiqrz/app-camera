@@ -138,6 +138,32 @@
   --vidro-botao: rgba(255, 255, 255, 0.1);
   --vidro-botao-hover: rgba(255, 255, 255, 0.22);
 
+  /* VIDRO SÓLIDO — botão de vidro que vive SOLTO na página (`.btn-acao.vidro`),
+     sem card por baixo pra sustentá-lo.
+
+     Alpha bem mais alto que os `--vidro-*` acima, e o motivo é a ÁREA: aqueles
+     vestem painéis grandes, onde 10% de véu já lê como superfície; num botão
+     de 36px de altura o mesmo alpha some no fundo (medido em 16/08 — ele
+     apontou que "não dá quase pra ver"). Área pequena precisa de mais corpo
+     pra ler como o mesmo material.
+
+     No claro o vidro é BRANCO sobre o lilás da página: clareia, como todas as
+     outras superfícies deste tema. */
+  --vidro-solido: rgba(255, 255, 255, 0.58);
+  --vidro-solido-hover: rgba(255, 255, 255, 0.78);
+  /* ⚠️ A borda do vidro claro NÃO é branca, ao contrário de `--border`.
+     Aquela veste cards GRANDES, onde a silhueta se lê pela área; aqui o
+     objeto tem 36px de altura, e o corpo branco sobre o lilás dá só 1,16:1
+     contra a página (medido) — o retângulo some, mesmo com o texto a 14,76:1.
+     Quem desenha um botão de vidro é a BORDA, e no tema claro ela só desenha
+     se ESCURECER.
+
+     0.58 de tinta = 3,05:1 contra a página, o mínimo que a WCAG 1.4.11 pede
+     pra contorno de componente. Calibrado varrendo a rampa em 16/08, não
+     chutado. */
+  --vidro-solido-borda: rgba(79, 44, 103, 0.58);
+  --vidro-solido-borda-hover: rgba(79, 44, 103, 0.78);
+
   /* MOLDURA do botão. No claro ela é só BRANCA, variando opacidade: com
      tinta roxa ela não acende contra um card claro — ESCURECE, e o olho lê
      um tracinho cinza-roxo sujo em vez de luz na quina. */
@@ -321,6 +347,18 @@
   --vidro-botao: rgba(255, 255, 255, 0.055);
   --vidro-botao-hover: rgba(255, 255, 255, 0.12);
 
+  /* Vidro sólido — ver o comentário na versão clara. No escuro o alpha é
+     menor em número mas o efeito é o mesmo: sobre o fundo #191228 um véu
+     branco a .14 já levanta o botão bem acima do `--surface` dos cards
+     (.055), que é o degrau que faltava. Passar disso viraria chapa branca.
+
+     Aqui a borda CLAREIA (o oposto do tema claro): o que separa do fundo é a
+     luz na quina. 0.34 = 3,11:1 contra a página, o piso da WCAG 1.4.11. */
+  --vidro-solido: rgba(255, 255, 255, 0.14);
+  --vidro-solido-hover: rgba(255, 255, 255, 0.22);
+  --vidro-solido-borda: rgba(255, 255, 255, 0.34);
+  --vidro-solido-borda-hover: rgba(255, 255, 255, 0.5);
+
   /* No escuro a moldura com tinta FUNCIONA: a tinta aqui é clara e acende
      de verdade contra o card escuro. */
   --moldura-botao: linear-gradient(
@@ -343,9 +381,26 @@
   --ok-fg: #6fd6a3;
   --warn-bg: #3a2e16;
   --warn-fg: #f2c470;
-  --danger: #e2685f;
   --danger-bg: rgba(226, 104, 95, 0.16);
   --danger-fg: #f2a29c;
+
+  /* Tons CHEIOS de estado — usados como preenchimento (barrinha de
+     frequencia, ponto do "ao vivo"), nao como texto.
+
+     `tokens.css` os declara uma vez so', com a nota de que "significado
+     semaforico nao muda com o tema". O significado nao muda mesmo; a
+     LEGIBILIDADE muda. `--danger` ja' era clareado aqui (#d64545 -> #e2685f)
+     justamente por isso, e `--ok`/`--warn` tinham ficado pra tras: o verde
+     #128751 numa barrinha de 6px sobre o fundo #191228 desaparecia — era o
+     "a barrinha nao tem cor" que ele apontou em 16/08 (medido: a barra
+     estava pintada, so' nao dava pra ver).
+
+     Mesma familia de cor, so' que na luminancia que o fundo escuro pede — os
+     valores acompanham os `--grafico-*` do escuro, ja' validados contra
+     #191228. */
+  --ok: #22a870;
+  --warn: #c2872b;
+  --danger: #e2685f;
 
   --materia-azul-bg: #1f2f4d;
   --materia-azul-fg: #bcd6fa;
@@ -461,6 +516,14 @@
     --vidro-forte-borda: rgba(255, 255, 255, 0.16);
     --vidro-botao: rgba(255, 255, 255, 0.055);
     --vidro-botao-hover: rgba(255, 255, 255, 0.12);
+
+    /* Vidro sólido — cópia do bloco [data-theme="dark"] acima, onde está o
+       motivo dos alphas. */
+    --vidro-solido: rgba(255, 255, 255, 0.14);
+    --vidro-solido-hover: rgba(255, 255, 255, 0.22);
+    --vidro-solido-borda: rgba(255, 255, 255, 0.34);
+    --vidro-solido-borda-hover: rgba(255, 255, 255, 0.5);
+
     --moldura-botao: linear-gradient(
       160deg,
       rgba(255, 255, 255, 0.95),
@@ -477,9 +540,14 @@
     --ok-fg: #6fd6a3;
     --warn-bg: #3a2e16;
     --warn-fg: #f2c470;
-    --danger: #e2685f;
     --danger-bg: rgba(226, 104, 95, 0.16);
     --danger-fg: #f2a29c;
+
+    /* Tons cheios — copia do bloco [data-theme="dark"] acima, onde esta o
+       motivo de `--ok`/`--warn` serem clareados no escuro. */
+    --ok: #22a870;
+    --warn: #c2872b;
+    --danger: #e2685f;
 
     --materia-azul-bg: #1f2f4d;
     --materia-azul-fg: #bcd6fa;

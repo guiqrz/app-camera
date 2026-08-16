@@ -117,10 +117,13 @@ export function FormularioAula({
     <form
       onSubmit={aoSubmeter}
       noValidate
-      className="flex flex-col gap-3 rounded-xl p-3"
+      /* `--radius-sm` (9px) como o resto da grade: o `rounded-xl` (12px) do
+         formulario destoava dos cartoes de aula ao lado, que sao 9. */
+      className="flex flex-col gap-3 p-3"
       style={{
         background: "var(--surface)",
         border: "1.5px solid var(--primary)",
+        borderRadius: "var(--radius-sm)",
       }}
     >
       <CampoComExemplo
@@ -146,8 +149,11 @@ export function FormularioAula({
         <select
           value={materiaId}
           onChange={(evento) => setMateriaId(evento.target.value)}
-          className="text-text w-full rounded-lg bg-transparent px-3 py-2 text-sm outline-none"
-          style={{ border: "1px solid var(--border)" }}
+          className="text-text w-full bg-transparent px-3 py-2 text-sm outline-none"
+          style={{
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius-sm)",
+          }}
           disabled={enviando}
         >
           <option value={SEM_MATERIA}>Sem matéria</option>
@@ -177,17 +183,23 @@ export function FormularioAula({
         </p>
       )}
 
+      {/* `.forte` no salvar (e' o que GRAVA) e vidro no cancelar. O `flex-1`
+          precisa vencer o `align-self: flex-start` do `.btn-acao`, dai o
+          `centrado` nos dois. */}
       <div className="flex items-center gap-2">
         <button
           type="submit"
           disabled={enviando}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
-          style={{ background: "var(--primary)" }}
+          className="btn-acao forte centrado flex-1 justify-center"
         >
           {enviando && (
             <span
               aria-hidden
-              className="h-3 w-3 animate-spin rounded-full border-2 border-white/40 border-t-white"
+              className="h-3 w-3 animate-spin rounded-full border-2"
+              style={{
+                borderColor: "color-mix(in srgb, currentColor 35%, transparent)",
+                borderTopColor: "currentColor",
+              }}
             />
           )}
           {enviando ? "Salvando..." : editando ? "Salvar" : "Adicionar"}
@@ -196,7 +208,7 @@ export function FormularioAula({
           type="button"
           onClick={aoCancelar}
           disabled={enviando}
-          className="text-text-body rounded-lg px-3 py-2 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-40"
+          className="btn-acao vidro centrado"
         >
           Cancelar
         </button>
