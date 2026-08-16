@@ -1,4 +1,6 @@
-import type { CSSProperties } from "react";
+"use client";
+
+import { useState, type CSSProperties } from "react";
 
 type AvatarAlunoProps = {
   nome: string;
@@ -23,12 +25,24 @@ const PALETAS: { fundo: string; texto: string }[] = [
 ];
 
 /**
- * Avatar circular com as iniciais do aluno.
+ * Avatar circular do aluno: a miniatura cadastrada quando existe, as iniciais
+ * quando nao.
  *
- * A cor vem de um hash do RA, nao da posicao na lista: assim o mesmo aluno
- * tem sempre a mesma cor, mesmo com a lista filtrada ou reordenada.
+ * A cor das iniciais vem de um hash do RA, nao da posicao na lista: assim o
+ * mesmo aluno tem sempre a mesma cor, mesmo com a lista filtrada ou reordenada.
+ *
+ * A FOTO e' a `foto_thumb` do cadastro — a miniatura de ~96-128px que o projeto
+ * autoriza guardar; a original nunca e' salva. Ela chega pela ponte
+ * `/api/admin/alunos/{ra}/foto`, que responde 404 pra quem nao tem: o `onError`
+ * abaixo entao cai nas iniciais. Isso NAO e' caso raro — no banco real, 5 dos 8
+ * alunos estao sem foto.
  */
 export function AvatarAluno({ nome, ra, tamanho = 40 }: AvatarAlunoProps) {
+  // Comeca otimista (tenta a foto) e desiste no primeiro erro. Sem estado
+  // "carregando": o circulo com as iniciais ja' esta desenhado por tras, entao
+  // a foto aparece por cima quando chega — nunca ha buraco no lugar dela.
+  const [semFoto, setSemFoto] = useState(false);
+
   let hash = 0;
   for (const caractere of ra) hash += caractere.charCodeAt(0);
   const paleta = PALETAS[hash % PALETAS.length];
@@ -43,11 +57,22 @@ export function AvatarAluno({ nome, ra, tamanho = 40 }: AvatarAlunoProps) {
 
   return (
     <span
-      className="flex flex-none items-center justify-center rounded-full font-semibold"
+      className="relative flex flex-none items-center justify-center overflow-hidden rounded-full font-semibold"
       style={estilo}
       aria-hidden
     >
       {iniciaisDe(nome)}
+      {!semFoto && (
+        /* next/image exigiria configurar o host e otimizar no servidor; aqui a
+           imagem vem da nossa propria ponte, ja' em tamanho de miniatura. */
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={`/api/admin/alunos/${encodeURIComponent(ra)}/foto`}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover"
+          onError={() => setSemFoto(true)}
+        />
+      )}
     </span>
   );
 }

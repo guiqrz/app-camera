@@ -1,13 +1,14 @@
 "use client";
 
+import { CartaoNumero } from "@/components/aulas/cartao-numero";
 import { AvatarAluno } from "@/components/chamada/avatar-aluno";
 import {
+  IconCadeado,
   IconCamera,
   IconCheck,
   IconSeta,
   IconTendencia,
 } from "@/components/ui/icons";
-import { StatCard } from "@/components/ui/stat-card";
 import { formatarPct } from "@/lib/format";
 import type { AlunoChamada } from "@/lib/types";
 
@@ -93,52 +94,49 @@ export function DetalheAluno({
       </div>
 
       {/* Numeros individuais permitidos: presenca e frequencia. */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
+      <div className="numeros-cam">
+        <CartaoNumero
           rotulo="Frequência no período"
+          cor="roxo"
           valor={formatarPct(aluno.frequencia_pct) ?? "Sem histórico"}
-          apoio="Presença nas aulas monitoradas"
-          icone={
-            <span style={{ color: "var(--primary)" }}>
-              <IconTendencia />
-            </span>
-          }
+          nota="Presença nas aulas monitoradas"
+          icone={<IconTendencia size={18} />}
         />
-        <StatCard
+        <CartaoNumero
           rotulo="Nesta aula"
+          cor={presente ? "verde" : "ambar"}
           valor={presente ? "Presente" : "Ausente"}
-          apoio={
+          nota={
             confirmado
               ? aluno.presente !== aluno.detectado_automaticamente
-                ? "Confirmado pelo professor, corrigindo a câmera"
-                : "Confirmado pelo professor"
-              : "Ainda sem confirmação manual"
+                ? "Confirmado por você, corrigindo a câmera"
+                : "Confirmado por você"
+              : "Ainda sem confirmação sua"
           }
-          icone={
-            <span style={{ color: presente ? "var(--ok)" : "var(--danger)" }}>
-              <IconCheck />
-            </span>
-          }
+          icone={<IconCheck size={18} />}
         />
-        <StatCard
-          variante="brand"
+        <CartaoNumero
+          discreto
           rotulo="Detecção Cupcam"
+          cor="azul"
           valor={detectado ? "Detectado" : "Não detectado"}
-          apoio={
+          nota={
             detectado
               ? "A câmera reconheceu o aluno em sala"
               : "A câmera não registrou o aluno nesta aula"
           }
-          icone={
-            <span style={{ color: "var(--text-on-brand)" }}>
-              <IconCamera />
-            </span>
-          }
+          icone={<IconCamera size={16} />}
         />
-        <StatCard
+        {/* Esta tela mostra dado INDIVIDUAL (presença e frequência, que o
+            projeto permite). O card existe pra deixar escrito o que ela NAO
+            mostra: atenção por aluno não é medida, em lugar nenhum. */}
+        <CartaoNumero
+          discreto
           rotulo="Privacidade"
+          cor="verde"
           valor="Coletivo"
-          apoio="O engajamento é medido por turma, nunca por aluno"
+          nota="O engajamento é medido por turma, nunca por aluno"
+          icone={<IconCadeado size={16} />}
         />
       </div>
     </div>

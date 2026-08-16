@@ -143,11 +143,10 @@ export function PainelLousa({ sessaoId, desabilitado = false }: PainelLousaProps
   const capturando = capturaPendente;
 
   return (
-    <div className="border-border-default bg-surface shadow-card flex flex-col gap-3 rounded-2xl border p-5">
-      <div className="flex items-baseline justify-between gap-3">
-        <span className="text-text-muted text-xs font-semibold tracking-wide uppercase">
-          Quadro da aula
-        </span>
+    <div className="border-border-default bg-surface shadow-card bloco-cam rounded-[12px] border">
+      <div className="bloco-cam-topo">
+        <span className="bloco-cam-rotulo">Quadro da aula</span>
+        <span className="bloco-cam-ajuda">
         <DicaAjuda
           texto={
             "Guarda uma foto do que você escreveu no quadro e lê o texto dela. " +
@@ -157,10 +156,11 @@ export function PainelLousa({ sessaoId, desabilitado = false }: PainelLousaProps
           rotulo="O que a captura do quadro faz"
           lado="esquerda"
         />
+        </span>
       </div>
 
       {sessaoId === null ? (
-        <p className="text-text-muted text-xs leading-relaxed">
+        <p className="lousa-vazia">
           A câmera está sem turma nesta sessão, então não há aula onde guardar o
           quadro. Inicie a câmera com uma turma para usar a captura.
         </p>
@@ -170,23 +170,16 @@ export function PainelLousa({ sessaoId, desabilitado = false }: PainelLousaProps
             type="button"
             onClick={capturar}
             disabled={desabilitado || capturando}
-            className="focus-visible:ring-primary flex items-center justify-center gap-2.5 rounded-xl border px-4 py-3 transition-colors focus-visible:ring-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
-            style={{
-              borderColor: "var(--primary)",
-              background: "var(--primary)",
-              color: "#fff",
-            }}
+            className="btn-acao forte"
           >
             <span aria-hidden>
-              {jaCapturou ? <IconRecomecar size={18} /> : <IconLousa size={18} />}
+              {jaCapturou ? <IconRecomecar size={14} /> : <IconLousa size={14} />}
             </span>
-            <span className="text-sm font-semibold">
-              {capturando
-                ? "Capturando…"
-                : jaCapturou
-                  ? "Capturar de novo"
-                  : "Capturar quadro"}
-            </span>
+            {capturando
+              ? "Capturando…"
+              : jaCapturou
+                ? "Capturar de novo"
+                : "Capturar quadro"}
           </button>
 
           {erro && (
@@ -200,38 +193,39 @@ export function PainelLousa({ sessaoId, desabilitado = false }: PainelLousaProps
           )}
 
           {!jaCapturou && !carregando && !erro && (
-            <p className="text-text-muted text-xs leading-relaxed">
-              Nenhum quadro guardado nesta aula ainda.
+            <p className="lousa-vazia">
+              Nenhum quadro guardado nesta aula ainda. Use o botão acima quando
+              escrever algo no quadro que valha guardar.
             </p>
           )}
 
           {lousas.length > 0 && (
-            <ul className="flex flex-col gap-3">
+            <ul className="lousa-lista">
               {lousas.map((lousa, indice) => (
-                <li
-                  key={lousa.id}
-                  className="border-border-default flex flex-col gap-2 rounded-xl border p-3"
-                >
-                  <div className="flex items-baseline justify-between gap-2">
-                    <span className="text-text text-xs font-semibold">
-                      Captura {indice + 1}
-                    </span>
-                    <span className="text-text-muted text-[11px]">
-                      {horaDoTimestamp(lousa.capturada_em)}
-                    </span>
+                <li key={lousa.id} className="lousa-item">
+                  {/* Foto AO LADO do texto (grade 84px 1fr), e nao empilhada:
+                      a lista fica varrivel de relance, que e' como o professor
+                      procura "aquela captura da equacao". */}
+                  <span className="lousa-foto">
+                    {/* eslint-disable-next-line @next/next/no-img-element --
+                        next/image exigiria configurar o host e otimiza no
+                        servidor; aqui a imagem vem da nossa propria ponte, ja'
+                        pequena, e uma so' por captura. */}
+                    <img
+                      src={`/api/lousas/${lousa.sessao_id}/${lousa.id}/imagem`}
+                      alt={`Foto do quadro, captura ${indice + 1}`}
+                    />
+                  </span>
+
+                  <div className="min-w-0">
+                    <div className="lousa-cabecalho">
+                      <span className="num">Captura {indice + 1}</span>
+                      <span className="hora">
+                        {horaDoTimestamp(lousa.capturada_em)}
+                      </span>
+                    </div>
+                    <TextoDaLousa lousa={lousa} />
                   </div>
-
-                  {/* eslint-disable-next-line @next/next/no-img-element --
-                      next/image exigiria configurar o host e otimiza no
-                      servidor; aqui a imagem vem da nossa propria ponte, ja'
-                      pequena, e uma so' por captura. */}
-                  <img
-                    src={`/api/lousas/${lousa.sessao_id}/${lousa.id}/imagem`}
-                    alt={`Foto do quadro, captura ${indice + 1}`}
-                    className="border-border-default w-full rounded-lg border"
-                  />
-
-                  <TextoDaLousa lousa={lousa} />
                 </li>
               ))}
             </ul>
@@ -260,7 +254,7 @@ function TextoDaLousa({ lousa }: { lousa: Lousa }) {
   if (lousa.estado === "falhou") {
     return (
       <p
-        className="text-xs leading-relaxed font-semibold"
+        className="lousa-texto-item font-semibold"
         style={{ color: "var(--danger-fg)" }}
       >
         Não foi possível ler este quadro
@@ -269,9 +263,5 @@ function TextoDaLousa({ lousa }: { lousa: Lousa }) {
     );
   }
 
-  return (
-    <p className="text-text text-xs leading-relaxed whitespace-pre-wrap">
-      {lousa.texto}
-    </p>
-  );
+  return <p className="lousa-texto-item whitespace-pre-wrap">{lousa.texto}</p>;
 }

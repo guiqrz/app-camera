@@ -24,6 +24,15 @@ type Props = {
   grafico?: ReactNode;
   /** Conteudo extra no pe do card — as barrinhas de frequencia, por exemplo. */
   rodape?: ReactNode;
+  /**
+   * Cartao de DIAGNOSTICO (FPS e MQTT na tela de Camera): mesma familia, mas
+   * menor e com a pastilha neutra em vez de colorida.
+   *
+   * Existe porque esses dois nao sao metrica pedagogica — sao saude da captura.
+   * No mesmo peso visual competiriam com Chamada e Dispersao, que sao o motivo
+   * de o professor abrir a tela durante a aula.
+   */
+  discreto?: boolean;
 };
 
 /**
@@ -46,20 +55,31 @@ export function CartaoNumero({
   selo,
   grafico,
   rodape,
+  discreto = false,
 }: Props) {
   return (
     <div
-      className="border-border-default bg-surface flex min-h-[178px] flex-col overflow-hidden rounded-[12px] border px-[18px] pt-[17px] pb-[16px]"
+      className={`border-border-default bg-surface flex flex-col overflow-hidden rounded-[12px] border ${
+        discreto
+          ? "px-[16px] pt-[14px] pb-[14px]"
+          : "min-h-[178px] px-[18px] pt-[17px] pb-[16px]"
+      }`}
       style={{ backdropFilter: "var(--blur-card)" }}
     >
       <div className="text-text-body flex items-start gap-2 text-[13px] leading-[1.25] font-semibold">
         {rotulo}
         <span
-          className="ml-auto grid h-[42px] w-[42px] flex-none place-items-center rounded-[12px]"
-          style={{
-            background: `var(--materia-${cor}-bg)`,
-            color: `var(--materia-${cor}-fg)`,
-          }}
+          className={`ml-auto grid flex-none place-items-center ${
+            discreto ? "h-[30px] w-[30px] rounded-[9px]" : "h-[42px] w-[42px] rounded-[12px]"
+          }`}
+          style={
+            discreto
+              ? { background: "var(--surface-2)", color: "var(--text-muted)" }
+              : {
+                  background: `var(--materia-${cor}-bg)`,
+                  color: `var(--materia-${cor}-fg)`,
+                }
+          }
           aria-hidden
         >
           {icone}
@@ -69,9 +89,9 @@ export function CartaoNumero({
       {/* `.valor-linha`: numero + selo lado a lado. Sem selo, o numero sobe
           sozinho igual antes — o `mt-auto` continua no wrapper, nao no
           numero, entao os dois casos ficam ancorados no mesmo lugar. */}
-      <div className="mt-auto flex items-center gap-2">
+      <div className={`flex items-center gap-2 ${discreto ? "mt-2" : "mt-auto"}`}>
         <div
-          className="text-text text-[40px] tabular-nums"
+          className={`text-text tabular-nums ${discreto ? "text-[20px]" : "text-[40px]"}`}
           style={{ fontWeight: 300, letterSpacing: "-0.035em", lineHeight: 1 }}
         >
           {valor}

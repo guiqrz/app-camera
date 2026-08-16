@@ -60,11 +60,10 @@ export function ControleMicrofone({
   const proximoValor = !gravando;
 
   return (
-    <div className="border-border-default bg-surface shadow-card flex flex-col gap-3 rounded-2xl border p-5">
-      <div className="flex items-baseline justify-between gap-3">
-        <span className="text-text-muted text-xs font-semibold tracking-wide uppercase">
-          Microfone da aula
-        </span>
+    <div className="border-border-default bg-surface shadow-card bloco-cam rounded-[12px] border">
+      <div className="bloco-cam-topo">
+        <span className="bloco-cam-rotulo">Microfone da aula</span>
+        <span className="bloco-cam-ajuda">
         <DicaAjuda
           texto={
             "Grava o áudio da aula para gerar a transcrição depois que a aula termina. " +
@@ -74,27 +73,19 @@ export function ControleMicrofone({
           rotulo="O que a gravação de áudio faz"
           lado="esquerda"
         />
+        </span>
       </div>
 
       {/* Faixa de gravacao em curso: cor de perigo cheia, igual ao alerta de
           dispersao. So' aparece com confirmacao POSITIVA da captura — nunca
           na tela parada, onde nada esta sendo gravado de fato. */}
       {gravando && !aindaNaoIniciou && (
-        <div
-          className="flex items-center gap-3 rounded-xl px-4 py-3"
-          style={{ background: "var(--danger)", color: "#fff" }}
-          role="status"
-        >
-          <span className="relative flex h-3 w-3 shrink-0" aria-hidden>
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
-            <span className="relative inline-flex h-3 w-3 rounded-full bg-white" />
-          </span>
-          <span className="text-sm leading-snug font-semibold">
+        <div className="mic-linha" role="status">
+          <span className="vivo-ponto" aria-hidden />
+          <p className="mic-texto">
             Gravando áudio da aula
-            <span className="mt-0.5 block text-xs font-semibold opacity-90">
-              O áudio é apagado assim que a transcrição fica pronta.
-            </span>
-          </span>
+            <span>O áudio é apagado assim que a transcrição fica pronta.</span>
+          </p>
         </div>
       )}
 
@@ -104,21 +95,17 @@ export function ControleMicrofone({
           que nao existe. `role=status` porque e' um aviso de privacidade
           relevante, mesmo sem ser urgente. */}
       {gravando && aindaNaoIniciou && (
-        <div
-          className="flex items-center gap-3 rounded-xl px-4 py-3"
-          style={{ background: "var(--warn-bg)", color: "var(--warn-fg)" }}
-          role="status"
-        >
+        <div className="mic-linha pre-inicio" role="status">
           <span aria-hidden>
-            <IconMicrofone size={18} />
+            <IconMicrofone size={16} />
           </span>
-          <span className="text-sm leading-snug font-semibold">
+          <p className="mic-texto">
             Microfone ativado
-            <span className="mt-0.5 block text-xs font-semibold opacity-90">
+            <span>
               Quando a câmera iniciar, o áudio da aula passa a ser gravado. O
               áudio é apagado assim que a transcrição fica pronta.
             </span>
-          </span>
+          </p>
         </div>
       )}
 
@@ -132,13 +119,21 @@ export function ControleMicrofone({
         aria-checked={gravando}
         disabled={desabilitado || aguardando}
         onClick={() => aoAlternar(proximoValor)}
-        className="focus-visible:ring-primary flex items-center justify-between gap-3 rounded-xl border px-4 py-3 transition-colors focus-visible:ring-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
-        style={{
-          borderColor: gravando ? (aindaNaoIniciou ? "var(--warn)" : "var(--danger)") : "var(--border)",
-          background: gravando ? (aindaNaoIniciou ? "var(--warn-bg)" : "var(--danger-bg)") : "var(--surface)",
-        }}
+        /* `ligado` pinta o trilho de vermelho; `pre-inicio` troca pra ambar,
+           porque antes de a captura comecar nada esta sendo gravado ainda. */
+        className={`mic-switch${gravando ? " ligado" : ""}${
+          gravando && aindaNaoIniciou ? " pre-inicio" : ""
+        }`}
+        style={
+          gravando
+            ? {
+                borderColor: aindaNaoIniciou ? "var(--warn)" : "var(--danger)",
+                background: aindaNaoIniciou ? "var(--warn-bg)" : "var(--danger-bg)",
+              }
+            : undefined
+        }
       >
-        <span className="flex items-center gap-2.5">
+        <span className="mic-switch-rotulo">
           <span
             aria-hidden
             style={{
@@ -149,10 +144,9 @@ export function ControleMicrofone({
                 : "var(--text-muted)",
             }}
           >
-            {gravando ? <IconMicrofone size={20} /> : <IconMicrofoneCortado size={20} />}
+            {gravando ? <IconMicrofone size={16} /> : <IconMicrofoneCortado size={16} />}
           </span>
           <span
-            className="text-sm font-semibold"
             style={{
               color: gravando
                 ? aindaNaoIniciou
@@ -171,22 +165,7 @@ export function ControleMicrofone({
 
         {/* Trilho do switch. `aria-hidden` porque o estado ja' vai no
             aria-checked do botao — o leitor de tela nao precisa do desenho. */}
-        <span
-          aria-hidden
-          className="relative h-6 w-11 shrink-0 rounded-full transition-colors"
-          style={{
-            background: gravando
-              ? aindaNaoIniciou
-                ? "var(--warn)"
-                : "var(--danger)"
-              : "var(--surface-2)",
-          }}
-        >
-          <span
-            className="absolute top-1 h-4 w-4 rounded-full bg-white transition-all"
-            style={{ left: gravando ? "calc(100% - 1.25rem)" : "0.25rem" }}
-          />
-        </span>
+        <span aria-hidden className="mic-trilho" />
       </button>
 
       {!gravando && (
