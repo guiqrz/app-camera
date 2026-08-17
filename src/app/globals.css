@@ -2440,3 +2440,395 @@ h4 {
   min-width: 0;
   min-height: 36px;
 }
+
+/* =========================================================================
+   CONFIGURACOES
+   Ultima tela portada pro redesign (17/08). Antes era 100% Tailwind cru
+   (`bg-surface` + `border-border-default`), sem vidro nenhum — chapada ao
+   lado das outras seis telas.
+
+   As abas viraram DUAS (Geral e Privacidade). A terceira, "Conta", era um
+   item travado que gastava um terco da navegacao pra dizer que nao existe;
+   virou uma linha dentro de Geral, que responde a mesma pergunta ("onde
+   configuro minha senha?") sem ocupar a barra.
+   ========================================================================= */
+
+/* ---- Barra de abas ----
+   Reusa o desenho do `.chamada-filtro` (grupo onde exatamente um esta
+   valendo) em vez de inventar um segundo padrao pra mesma ideia. Aqui a
+   marcacao e' de tab, entao quem acende e' `aria-selected`. */
+.cfg-abas {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 18px;
+  overflow-x: auto;
+}
+.cfg-aba {
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-body);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    color 140ms ease;
+}
+.cfg-aba:hover {
+  border-color: var(--primary-hover);
+}
+.cfg-aba:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+/* O ativo e' TINTA cheia, como o `.chamada-filtro`: com so' dois itens, borda
+   mais forte nao basta pra dizer qual esta valendo. */
+.cfg-aba[aria-selected="true"] {
+  background: var(--primary);
+  color: var(--text-on-brand);
+  border-color: transparent;
+}
+
+/* ---- Titulo de grupo ----
+   Separa "o que voce escolhe" de "o que o sistema esta fazendo". Sao duas
+   perguntas diferentes, e antes as cinco secoes vinham empilhadas sem essa
+   divisao — preferencia e diagnostico misturados na mesma pilha. */
+.cfg-grupo {
+  margin: 26px 0 11px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.cfg-grupo:first-child {
+  margin-top: 0;
+}
+
+/* ---- Painel de secao ----
+   Mesma casca do `.coord-painel`: vidro + blur + sombra. O `overflow: hidden`
+   e' o que segura as linhas internas dentro do canto arredondado. */
+.cfg-painel {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 14px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  backdrop-filter: var(--blur-card);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+@supports not (backdrop-filter: blur(1px)) {
+  .cfg-painel {
+    background: var(--painel-solido);
+  }
+}
+.cfg-painel-topo {
+  padding: 13px 15px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.cfg-painel-titulo {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text);
+}
+.cfg-painel-apoio {
+  margin: 3px 0 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+/* ---- Linha de configuracao ----
+   Rotulo + apoio a esquerda, controle a direita. A borda mora na LINHA
+   (`:not(:first-child)`) e nao no container, pra que qualquer bloco extra
+   entre linhas nao deixe uma borda solta pendurada. */
+.cfg-linhas {
+  display: flex;
+  flex-direction: column;
+}
+.cfg-linha {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  padding: 13px 15px;
+  border-top: 1px solid var(--border);
+}
+.cfg-linha:first-child {
+  border-top: 0;
+}
+.cfg-linha-texto {
+  min-width: 0;
+  flex: 1 1 min(100%, 240px);
+}
+.cfg-linha-rotulo {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.cfg-linha-apoio {
+  margin: 3px 0 0;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+/* Linha inerte (a "Conta", que ainda nao existe): o rotulo desbota pro tom de
+   apoio, mas continua legivel — ele e' a resposta pra quem veio procurar a
+   senha, entao nao pode sumir. */
+.cfg-linha[data-inerte="sim"] .cfg-linha-rotulo {
+  color: var(--text-muted);
+}
+
+/* Selo "em breve". Nao e' pilula de ESTADO (aquelas dizem o que esta
+   acontecendo agora); esta diz que a coisa ainda nao existe. */
+.cfg-selo {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* ---- Controles ----
+   O `<select>` nativo herdava a caixa crua do Tailwind. Aqui ele ganha a
+   mesma altura (36px) e o mesmo raio do `.btn-acao`, pra que os dois se
+   alinhem quando dividem a linha. */
+.cfg-select {
+  min-height: 36px;
+  padding: 7px 11px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 140ms ease;
+}
+.cfg-select:hover:not(:disabled) {
+  border-color: var(--primary-hover);
+}
+.cfg-select:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+.cfg-select:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Grupo do tema: trilho com a opcao que vence acesa. Diferente das abas, e'
+   um radiogroup — tres opcoes onde uma esta gravada. */
+.cfg-tema {
+  display: inline-flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.cfg-tema-opcao {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  border: 0;
+  border-radius: calc(var(--radius-sm) - 2px);
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    color 140ms ease;
+}
+.cfg-tema-opcao:hover {
+  color: var(--text);
+}
+.cfg-tema-opcao:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+.cfg-tema-opcao[aria-checked="true"] {
+  background: var(--primary);
+  color: var(--text-on-brand);
+}
+
+/* ---- Pilula de estado ----
+   Diagnostico ao vivo: ponto colorido + texto. O ponto so' pulsa quando o
+   estado e' "agora" (API no ar, camera ligada) — pulsar em "Fora do ar"
+   sugeriria atividade onde nao ha nenhuma. */
+.cfg-pilula {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: none;
+  padding: 6px 11px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+.cfg-pilula[data-tom="ok"] {
+  background: var(--ok-bg);
+  color: var(--ok-fg);
+}
+.cfg-pilula[data-tom="erro"] {
+  background: var(--danger-bg);
+  color: var(--danger-fg);
+}
+.cfg-pilula-ponto {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 999px;
+  background: currentColor;
+}
+.cfg-pilula[data-vivo="sim"] .cfg-pilula-ponto {
+  animation: cfg-pulso 2s ease-in-out infinite;
+}
+@keyframes cfg-pulso {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cfg-pilula[data-vivo="sim"] .cfg-pilula-ponto {
+    animation: none;
+  }
+}
+
+/* Valor so' de leitura (enderecos, ids). Monoespacado porque sao valores que
+   a pessoa compara caractere a caractere. */
+.cfg-valor {
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11.5px;
+  color: var(--text-body);
+  word-break: break-all;
+}
+
+/* ---- Faixa de aviso ----
+   Ambar DENTRO do painel que ela explica. Antes o aviso do SALA_ID flutuava
+   solto abaixo dos cartoes, longe do dado que o causa.
+
+   O `<code>` nao pode usar `--surface-2`: sobre o ambar (opaco no escuro) ele
+   viraria um retangulo cinza cravado na faixa. A saida e' a mesma do
+   `.chamada-estado` — a propria cor de estado clareada com `currentColor`,
+   que acompanha o par claro/escuro sem repetir os dois casos. */
+.cfg-aviso {
+  display: flex;
+  gap: 10px;
+  padding: 12px 15px;
+  border-top: 1px solid var(--border);
+  background: var(--warn-bg);
+  color: var(--warn-fg);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.cfg-aviso-icone {
+  flex: none;
+  margin-top: 1px;
+}
+.cfg-aviso code {
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: color-mix(in srgb, currentColor 13%, transparent);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+}
+
+/* Recado de resultado (salvando / salvo / falhou). Fica numa faixa propria,
+   nao ao lado do controle: aparecendo e sumindo ali, empurraria o `<select>`
+   de lugar toda vez que o modelo fosse trocado. */
+.cfg-recado {
+  margin: 0;
+  padding: 10px 15px;
+  border-top: 1px solid var(--border);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.cfg-recado[data-tom="erro"] {
+  background: var(--danger-bg);
+  color: var(--danger-fg);
+}
+
+/* ---- Aba Privacidade ----
+   O conteudo (seis topicos) ja' estava certo — e' regra de projeto, revisada.
+   O que faltava era a casca: os `<details>` viviam num retangulo `bg-surface`
+   cru, sem o vidro das outras telas. */
+.cfg-topicos {
+  padding: 0 15px;
+}
+.cfg-topico {
+  border-bottom: 1px solid var(--border);
+}
+.cfg-topico:last-child {
+  border-bottom: 0;
+}
+
+/* O aberto/fechado do topico mora AQUI, e nao nas variantes `group-open:` do
+   Tailwind que a versao de 28/07 usava.
+
+   Aquelas nunca funcionaram: medido em 17/08, o chevron ficava em `45deg` nos
+   dois estados e o icone nao trocava de cor — o Tailwind v4 nao gerou as
+   regras (nenhuma regra com `rotate` casava com o elemento, embora a classe
+   estivesse no HTML). Como o `<details>` ja' expoe o estado no proprio seletor
+   `[open]`, o CSS puro resolve sem depender da geracao de variante. */
+.cfg-topico summary {
+  cursor: pointer;
+  list-style: none;
+}
+.cfg-topico summary::-webkit-details-marker {
+  display: none;
+}
+.cfg-topico[open] > summary .cfg-topico-icone {
+  color: var(--primary);
+}
+/* Seta de duas bordas: 45deg aponta pra baixo (fechado), -135deg pra cima
+   (aberto). */
+.cfg-topico-seta {
+  rotate: 45deg;
+  transition: rotate 150ms ease;
+}
+.cfg-topico[open] > summary .cfg-topico-seta {
+  rotate: -135deg;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cfg-topico-seta {
+    transition: none;
+  }
+}

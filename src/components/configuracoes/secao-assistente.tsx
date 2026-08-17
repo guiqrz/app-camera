@@ -2,7 +2,14 @@
 
 import { useEffect, useState } from "react";
 
-import { Linha, Secao } from "@/components/configuracoes/secao";
+import {
+  Aviso,
+  Linha,
+  Linhas,
+  Recado,
+  Secao,
+} from "@/components/configuracoes/secao";
+import { IconIA } from "@/components/ui/icons";
 import type { ConfiguracaoIA } from "@/lib/types";
 
 /**
@@ -88,66 +95,50 @@ export function SecaoAssistente() {
       titulo="Assistente"
       descricao="Qual modelo responde no Cup AI. Vale já na próxima pergunta."
     >
-      <Linha
-        rotulo="Modelo"
-        apoio={escolhido?.descricao ?? "Carregando as opções…"}
-      >
-        <select
-          className="rounded-sm border border-border-default bg-surface px-2.5 py-1.5 text-sm text-text disabled:opacity-50"
-          value={configuracao?.modelo ?? ""}
-          onChange={(evento) => void trocarModelo(evento.target.value)}
-          disabled={carregando || salvando || configuracao === null}
-          aria-label="Modelo do assistente"
+      <Linhas>
+        <Linha
+          rotulo="Modelo"
+          apoio={escolhido?.descricao ?? "Carregando as opções…"}
+          icone={<IconIA size={15} />}
         >
-          {configuracao === null ? (
-            <option value="">—</option>
-          ) : (
-            configuracao.modelos.map((modelo) => (
-              <option key={modelo.id} value={modelo.id}>
-                {modelo.rotulo}
-              </option>
-            ))
-          )}
-        </select>
-      </Linha>
+          <select
+            className="cfg-select"
+            value={configuracao?.modelo ?? ""}
+            onChange={(evento) => void trocarModelo(evento.target.value)}
+            disabled={carregando || salvando || configuracao === null}
+            aria-label="Modelo do assistente"
+          >
+            {configuracao === null ? (
+              <option value="">—</option>
+            ) : (
+              configuracao.modelos.map((modelo) => (
+                <option key={modelo.id} value={modelo.id}>
+                  {modelo.rotulo}
+                </option>
+              ))
+            )}
+          </select>
+        </Linha>
+      </Linhas>
 
-      {(erro !== null || salvo || salvando) && (
-        <div className="py-3">
-          {erro !== null ? (
-            <p className="m-0 text-xs font-semibold text-danger" role="alert">
-              {erro}
-            </p>
-          ) : (
-            <p className="m-0 text-xs text-text-muted" role="status">
-              {salvando ? "Salvando…" : "Modelo salvo."}
-            </p>
-          )}
-        </div>
-      )}
+      {(erro !== null || salvo || salvando) &&
+        (erro !== null ? (
+          <Recado tom="erro">{erro}</Recado>
+        ) : (
+          <Recado>{salvando ? "Salvando…" : "Modelo salvo."}</Recado>
+        ))}
 
       {/* Sem chave o assistente responde 503 em toda pergunta. O passo a passo
           fica aqui porque quem resolve isso e' quem administra o notebook da
           sala — nao ha o que o professor clique pra corrigir. */}
       {configuracao !== null && !configuracao.chave_configurada && (
-        <div className="my-3 flex gap-2.5 rounded-sm bg-warn-bg px-3.5 py-3 text-xs leading-relaxed text-text-body">
-          <span aria-hidden>⚠</span>
-          <span>
-            <strong className="text-warn">
-              O assistente ainda não está configurado.
-            </strong>{" "}
-            Falta a chave de API no servidor. No notebook da sala, coloque{" "}
-            <code className="rounded bg-surface-2 px-1 py-0.5 font-mono">
-              GEMINI_API_KEY
-            </code>{" "}
-            no arquivo{" "}
-            <code className="rounded bg-surface-2 px-1 py-0.5 font-mono">
-              .env
-            </code>{" "}
-            do CUPCAM e reinicie a API. Até lá, as perguntas não são respondidas.
-          </span>
-        </div>
+        <Aviso>
+          <strong>O assistente ainda não está configurado.</strong> Falta a
+          chave de API no servidor. No notebook da sala, coloque{" "}
+          <code>GEMINI_API_KEY</code> no arquivo <code>.env</code> do CUPCAM e
+          reinicie a API. Até lá, as perguntas não são respondidas.
+        </Aviso>
       )}
-
     </Secao>
   );
 }

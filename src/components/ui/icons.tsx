@@ -195,6 +195,30 @@ export function IconInfo({ size = 13, className }: IconProps) {
   );
 }
 
+/**
+ * Triangulo de atencao — as faixas ambar de aviso.
+ *
+ * Diferente do `IconInfo` (circulo com "i"), que apenas explica: este marca
+ * que ha uma consequencia a tratar. Substitui o emoji `⚠` que as
+ * Configuracoes usavam, e que renderiza diferente em cada sistema.
+ */
+export function IconAlerta({ size = 14, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <g
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      >
+        <path d="M10.3 3.9 2.4 17.5a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />
+        <path d="M12 9.5v4M12 17.2h.01" />
+      </g>
+    </svg>
+  );
+}
+
 /** Estrela de 4 pontas — o selo da Cup AI no botao "Gerar com a Cup AI". */
 export function IconEstrela({ size = 13, className }: IconProps) {
   return (

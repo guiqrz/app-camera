@@ -3,11 +3,27 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { SecaoAssistente } from "@/components/configuracoes/secao-assistente";
-import { Linha, Secao, ValorFixo } from "@/components/configuracoes/secao";
+import {
+  Aviso,
+  GrupoTitulo,
+  Linha,
+  Linhas,
+  Pilula,
+  Secao,
+  Selo,
+  ValorFixo,
+} from "@/components/configuracoes/secao";
 import {
   useTheme,
   type PreferenciaTema,
 } from "@/components/theme/theme-provider";
+import {
+  IconCadeado,
+  IconCamera,
+  IconLua,
+  IconSol,
+  IconTurma,
+} from "@/components/ui/icons";
 import { definirTurmaPadrao, lerTurmaPadrao } from "@/lib/preferencias";
 import type { EstadoCamera, Turma } from "@/lib/types";
 
@@ -38,62 +54,20 @@ function SeletorTema() {
   const { preferencia, definirPreferencia } = useTheme();
 
   return (
-    <div
-      className="inline-flex gap-0.5 rounded-sm bg-surface-2 p-0.5"
-      role="radiogroup"
-      aria-label="Tema"
-    >
-      {OPCOES_TEMA.map(({ valor, rotulo }) => {
-        const ativo = preferencia === valor;
-        return (
-          <button
-            key={valor}
-            type="button"
-            role="radio"
-            aria-checked={ativo}
-            onClick={() => definirPreferencia(valor)}
-            className={`rounded-[6px] px-3 py-1.5 text-xs transition-colors ${
-              ativo
-                ? "bg-surface font-semibold text-primary shadow-sm"
-                : "text-text-muted hover:text-text-body"
-            }`}
-          >
-            {rotulo}
-          </button>
-        );
-      })}
+    <div className="cfg-tema" role="radiogroup" aria-label="Tema">
+      {OPCOES_TEMA.map(({ valor, rotulo }) => (
+        <button
+          key={valor}
+          type="button"
+          role="radio"
+          className="cfg-tema-opcao"
+          aria-checked={preferencia === valor}
+          onClick={() => definirPreferencia(valor)}
+        >
+          {rotulo}
+        </button>
+      ))}
     </div>
-  );
-}
-
-/** Pilula de estado, com ponto colorido. `pulsando` marca "ao vivo". */
-function Pilula({
-  tom,
-  pulsando = false,
-  children,
-}: {
-  tom: "ok" | "erro" | "neutro";
-  pulsando?: boolean;
-  children: React.ReactNode;
-}) {
-  const cores = {
-    ok: "bg-ok-bg text-ok",
-    erro: "bg-danger-bg text-danger",
-    neutro: "bg-surface-2 text-text-muted",
-  }[tom];
-
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${cores}`}
-    >
-      <span
-        className={`h-1.5 w-1.5 flex-none rounded-full bg-current ${
-          pulsando ? "animate-pulse" : ""
-        }`}
-        aria-hidden
-      />
-      {children}
-    </span>
   );
 }
 
@@ -106,6 +80,7 @@ export function PainelGeral({
   const [turmaPadrao, setTurmaPadrao] = useState<number | null>(null);
   const [saude, setSaude] = useState<Saude | null>(null);
   const [testando, setTestando] = useState(true);
+  const { theme } = useTheme();
 
   // A preferencia so' existe no navegador (localStorage): lendo depois da
   // montagem, o HTML do servidor e o primeiro render do cliente batem.
@@ -147,119 +122,148 @@ export function PainelGeral({
     definirTurmaPadrao(id);
   };
 
+  const alcanceIncompleto =
+    alcanceAutomatico !== null &&
+    alcanceAutomatico.alcancadas < alcanceAutomatico.total;
+
   return (
     <div>
-      <Secao titulo="Aparência" descricao="Vale só neste navegador.">
-        <Linha rotulo="Tema" apoio="“Sistema” acompanha o aparelho.">
-          <SeletorTema />
-        </Linha>
-      </Secao>
+      {/* ---- O que a pessoa escolhe ---- */}
+      <GrupoTitulo>Preferências</GrupoTitulo>
 
       <Secao
-        titulo="Preferências"
-        descricao="Atalhos pro seu dia a dia. Valem só neste navegador."
+        titulo="Aparência e atalhos"
+        descricao="Valem só neste navegador — cada aparelho tem os seus."
       >
-        <Linha
-          rotulo="Turma padrão"
-          apoio="Abre já nela em Chamada e Relatórios"
-        >
-          <select
-            className="rounded-sm border border-border-default bg-surface px-2.5 py-1.5 text-sm text-text"
-            value={turmaPadrao ?? ""}
-            onChange={(evento) => aoTrocarTurma(evento.target.value)}
-            aria-label="Turma padrão"
+        <Linhas>
+          <Linha
+            rotulo="Tema"
+            apoio="“Sistema” acompanha o aparelho."
+            icone={theme === "dark" ? <IconLua size={15} /> : <IconSol size={15} />}
           >
-            <option value="">Perguntar sempre</option>
-            {turmas.map((turma) => (
-              <option key={turma.id} value={turma.id}>
-                {turma.nome}
-              </option>
-            ))}
-          </select>
-        </Linha>
+            <SeletorTema />
+          </Linha>
+
+          <Linha
+            rotulo="Turma padrão"
+            apoio="Abre já nela em Chamada e Relatórios."
+            icone={<IconTurma size={15} />}
+          >
+            <select
+              className="cfg-select"
+              value={turmaPadrao ?? ""}
+              onChange={(evento) => aoTrocarTurma(evento.target.value)}
+              aria-label="Turma padrão"
+            >
+              <option value="">Perguntar sempre</option>
+              {turmas.map((turma) => (
+                <option key={turma.id} value={turma.id}>
+                  {turma.nome}
+                </option>
+              ))}
+            </select>
+          </Linha>
+
+          {/* Era uma ABA travada, que gastava um terco da barra pra dizer que
+              nao existe. Como linha, responde a mesma pergunta de quem veio
+              procurar a senha, sem ocupar a navegacao. */}
+          <Linha
+            rotulo="Conta e senha"
+            apoio="O CUPCAM não tem login: o app fala com a API por uma chave que fica no servidor."
+            icone={<IconCadeado size={15} />}
+            inerte
+          >
+            <Selo>Em breve</Selo>
+          </Linha>
+        </Linhas>
       </Secao>
 
-      {/* Antes de "Conexão" e "Sistema": estas duas sao diagnostico, e o
-          assistente e' ajuste de uso, mais perto de "Preferências". */}
       <SecaoAssistente />
 
-      <Secao titulo="Conexão" descricao="De onde o app busca os dados das aulas.">
-        <Linha
-          rotulo="Estado da API"
-          apoio={testando ? "Verificando…" : "Verificado agora há pouco"}
-        >
-          {saude === null || testando ? (
-            <Pilula tom="neutro">Verificando…</Pilula>
-          ) : saude.online ? (
-            <Pilula tom="ok" pulsando>
-              No ar · {saude.latenciaMs}&nbsp;ms
-            </Pilula>
-          ) : (
-            <Pilula tom="erro">Fora do ar</Pilula>
-          )}
-        </Linha>
-        <Linha rotulo="Endereço" apoio="Definido no servidor">
-          <ValorFixo>{saude?.endereco ?? "—"}</ValorFixo>
-        </Linha>
-        <Linha
-          rotulo="Testar de novo"
-          apoio="Use quando as telas pararem de carregar"
-        >
-          <button
-            type="button"
-            onClick={() => void testarConexao()}
-            disabled={testando}
-            className="rounded-sm border border-border-default bg-surface px-3.5 py-2 text-xs font-medium text-text-body transition-colors hover:bg-surface-2 disabled:opacity-50"
-          >
-            {testando ? "Testando…" : "Testar conexão"}
-          </button>
-        </Linha>
-      </Secao>
+      {/* ---- O que o sistema esta fazendo ----
+          Conexao e Sistema eram dois cartoes separados respondendo a mesma
+          pergunta ("o que esta ligado?"), e o aviso do SALA_ID flutuava solto
+          embaixo dos dois. Agora sao um painel, com o aviso preso ao pe. */}
+      <GrupoTitulo>Diagnóstico</GrupoTitulo>
 
       <Secao
-        titulo="Sistema"
-        descricao="Só leitura — para conferir quando algo não gravar."
+        titulo="Estado do sistema"
+        descricao="Só leitura. É o que conferir quando alguma tela parar de carregar ou algo não gravar."
       >
-        <Linha rotulo="Sala desta câmera" apoio="Usada só no modo automático">
-          <ValorFixo>{salaId ?? "—"}</ValorFixo>
-        </Linha>
-        <Linha rotulo="Câmera" apoio="Estado do processo de captura">
-          {estadoCamera === null ? (
-            <Pilula tom="neutro">Desconhecido</Pilula>
-          ) : estadoCamera.rodando ? (
-            <Pilula tom="ok" pulsando>
-              Ligada
-            </Pilula>
-          ) : (
-            <Pilula tom="erro">Desligada</Pilula>
-          )}
-        </Linha>
-      </Secao>
+        <Linhas>
+          <Linha
+            rotulo="API"
+            apoio={
+              testando
+                ? "Verificando…"
+                : "De onde o app busca os dados das aulas."
+            }
+          >
+            {saude === null || testando ? (
+              <Pilula tom="neutro">Verificando…</Pilula>
+            ) : saude.online ? (
+              <Pilula tom="ok" vivo>
+                No ar · {saude.latenciaMs}&nbsp;ms
+              </Pilula>
+            ) : (
+              <Pilula tom="erro">Fora do ar</Pilula>
+            )}
+          </Linha>
 
-      {/* Fica FORA do cartao "Sistema" de proposito: e' um alerta sobre a
-          consequencia da sala fixa, nao mais uma linha de dado. */}
-      {alcanceAutomatico !== null &&
-        alcanceAutomatico.alcancadas < alcanceAutomatico.total && (
-          <div className="-mt-1 mb-4 flex gap-2.5 rounded-sm bg-warn-bg px-3.5 py-3 text-xs leading-relaxed text-text-body">
-            <span aria-hidden>⚠</span>
-            <span>
-              <strong className="text-warn">
-                O modo automático alcança {alcanceAutomatico.alcancadas} de{" "}
-                {alcanceAutomatico.total} aulas.
-              </strong>{" "}
-              Ele só encontra aulas de turmas desta sala. Para capturar as
-              outras, escolha a turma na tela <strong>Câmera</strong>, ou troque{" "}
-              <code className="rounded bg-surface-2 px-1 py-0.5 font-mono">
-                SALA_ID
-              </code>{" "}
-              em{" "}
-              <code className="rounded bg-surface-2 px-1 py-0.5 font-mono">
-                cupcam/config.py
-              </code>
-              .
-            </span>
-          </div>
+          <Linha rotulo="Endereço" apoio="Definido no servidor.">
+            <ValorFixo>{saude?.endereco ?? "—"}</ValorFixo>
+          </Linha>
+
+          <Linha
+            rotulo="Câmera"
+            apoio="Estado do processo de captura."
+            icone={<IconCamera size={15} />}
+          >
+            {estadoCamera === null ? (
+              <Pilula tom="neutro">Desconhecido</Pilula>
+            ) : estadoCamera.rodando ? (
+              <Pilula tom="ok" vivo>
+                Ligada
+              </Pilula>
+            ) : (
+              <Pilula tom="erro">Desligada</Pilula>
+            )}
+          </Linha>
+
+          <Linha
+            rotulo="Sala desta câmera"
+            apoio="Usada só no modo automático."
+          >
+            <ValorFixo>{salaId ?? "—"}</ValorFixo>
+          </Linha>
+
+          <Linha
+            rotulo="Testar de novo"
+            apoio="Use quando as telas pararem de carregar."
+          >
+            <button
+              type="button"
+              onClick={() => void testarConexao()}
+              disabled={testando}
+              className="btn-acao vidro"
+            >
+              {testando ? "Testando…" : "Testar conexão"}
+            </button>
+          </Linha>
+        </Linhas>
+
+        {alcanceIncompleto && (
+          <Aviso>
+            <strong>
+              O modo automático alcança {alcanceAutomatico.alcancadas} de{" "}
+              {alcanceAutomatico.total} aulas.
+            </strong>{" "}
+            Ele só encontra aulas de turmas desta sala. Para capturar as outras,
+            escolha a turma na tela <strong>Câmera</strong>, ou troque{" "}
+            <code>SALA_ID</code> em <code>cupcam/config.py</code>.
+          </Aviso>
         )}
+      </Secao>
     </div>
   );
 }
