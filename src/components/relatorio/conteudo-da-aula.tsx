@@ -3,7 +3,11 @@
 import { useEffect, useState } from "react";
 
 import { TextoFormatado } from "@/components/ia/texto-formatado";
-import { IconTranscricao } from "@/components/ui/icons";
+import {
+  IconCheckSimples,
+  IconInfo,
+  IconLapis,
+} from "@/components/ui/icons";
 import type { ConteudoDaAula as Conteudo } from "@/lib/types";
 
 type ConteudoDaAulaProps = {
@@ -128,28 +132,26 @@ export function ConteudoDaAula({ sessaoId }: ConteudoDaAulaProps) {
     }
   };
 
+  // Os tres estados abaixo NAO desenham card proprio: quem desenha e' o
+  // `BlocoColapsavel` em volta. Antes cada um trazia sua `<section>` com borda
+  // e titulo, o que empilhava um card dentro do outro.
   if (carregando) {
     return (
-      <section
-        className="border-border-default flex flex-col gap-3 rounded-2xl border p-5"
-        style={{ background: "var(--surface)" }}
-      >
-        <div className="flex items-center gap-2.5" role="status">
-          <span className="relative flex h-2.5 w-2.5 shrink-0" aria-hidden>
-            <span
-              className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-75"
-              style={{ background: "var(--primary)" }}
-            />
-            <span
-              className="relative inline-flex h-2.5 w-2.5 rounded-full"
-              style={{ background: "var(--primary)" }}
-            />
-          </span>
-          <span className="text-text-muted text-sm font-semibold">
-            Carregando o conteúdo da aula…
-          </span>
-        </div>
-      </section>
+      <div className="flex items-center gap-2.5" role="status">
+        <span className="relative flex h-2.5 w-2.5 shrink-0" aria-hidden>
+          <span
+            className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-75"
+            style={{ background: "var(--primary)" }}
+          />
+          <span
+            className="relative inline-flex h-2.5 w-2.5 rounded-full"
+            style={{ background: "var(--primary)" }}
+          />
+        </span>
+        <span className="text-text-muted text-sm font-semibold">
+          Carregando o conteúdo da aula…
+        </span>
+      </div>
     );
   }
 
@@ -157,11 +159,7 @@ export function ConteudoDaAula({ sessaoId }: ConteudoDaAulaProps) {
   // Nao ha o que editar aqui — a linha so' nasce no encerramento da sessao.
   if (conteudo === null) {
     return (
-      <section
-        className="border-border-default flex flex-col gap-2 rounded-2xl border p-5"
-        style={{ background: "var(--surface)" }}
-      >
-        <Cabecalho />
+      <div className="flex flex-col gap-2">
         {erro !== null ? (
           <p
             className="text-xs font-semibold"
@@ -176,7 +174,7 @@ export function ConteudoDaAula({ sessaoId }: ConteudoDaAulaProps) {
             aula termina.
           </p>
         )}
-      </section>
+      </div>
     );
   }
 
@@ -185,29 +183,11 @@ export function ConteudoDaAula({ sessaoId }: ConteudoDaAulaProps) {
   // escrever o conteudo a mao.
   const semFonte = conteudo.fonte === "nenhuma";
 
+  // SEM `<section>` nem cabecalho proprios: este componente agora mora dentro
+  // do `BlocoColapsavel`, que ja' desenha o card, o titulo e a seta. Ter os
+  // dois deixava um card dentro de outro, com dois titulos "Conteúdo da aula".
   return (
-    <section
-      className="border-border-default flex w-full flex-col gap-3 rounded-2xl border p-5"
-      style={{ background: "var(--surface)" }}
-    >
-      <div className="flex flex-wrap items-center gap-2">
-        <Cabecalho />
-        {conteudo.editado_em !== null && !editando && (
-          <span className="text-text-muted text-xs font-semibold">
-            · editado por você
-          </span>
-        )}
-        {!editando && (
-          <button
-            type="button"
-            onClick={abrirEdicao}
-            className="text-text-muted hover:text-text-body ml-auto text-xs font-extrabold transition-colors"
-          >
-            {semFonte ? "Escrever conteúdo" : "Editar"}
-          </button>
-        )}
-      </div>
-
+    <div className="flex w-full flex-col gap-3">
       {erro !== null && (
         <p
           className="text-xs font-semibold"
@@ -221,7 +201,7 @@ export function ConteudoDaAula({ sessaoId }: ConteudoDaAulaProps) {
       {editando ? (
         <>
           <label className="flex flex-col gap-1.5">
-            <span className="text-text-muted text-xs font-bold tracking-wide uppercase">
+            <span className="text-text-muted text-xs font-semibold tracking-wide uppercase">
               Tópicos
             </span>
             {rascunhoTopicos.length > 0 && (
@@ -268,7 +248,7 @@ export function ConteudoDaAula({ sessaoId }: ConteudoDaAulaProps) {
           </label>
 
           <label className="flex flex-col gap-1.5">
-            <span className="text-text-muted text-xs font-bold tracking-wide uppercase">
+            <span className="text-text-muted text-xs font-semibold tracking-wide uppercase">
               Resumo
             </span>
             <textarea
@@ -281,7 +261,7 @@ export function ConteudoDaAula({ sessaoId }: ConteudoDaAulaProps) {
           </label>
 
           <label className="flex flex-col gap-1.5">
-            <span className="text-text-muted text-xs font-bold tracking-wide uppercase">
+            <span className="text-text-muted text-xs font-semibold tracking-wide uppercase">
               Parou em
             </span>
             <input
@@ -299,7 +279,7 @@ export function ConteudoDaAula({ sessaoId }: ConteudoDaAulaProps) {
               type="button"
               onClick={salvar}
               disabled={salvando}
-              className="text-text-on-brand rounded-xl px-4 py-2 text-xs font-extrabold transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+              className="text-text-on-brand rounded-xl px-4 py-2 text-xs font-semibold transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
               style={{ background: "var(--primary)" }}
             >
               {salvando ? "Salvando…" : "Salvar"}
@@ -311,7 +291,7 @@ export function ConteudoDaAula({ sessaoId }: ConteudoDaAulaProps) {
                 setErro(null);
               }}
               disabled={salvando}
-              className="text-text-body border-border-default rounded-xl border px-4 py-2 text-xs font-extrabold transition-colors hover:bg-[var(--surface-2)] disabled:cursor-not-allowed disabled:opacity-60"
+              className="text-text-body border-border-default rounded-xl border px-4 py-2 text-xs font-semibold transition-colors hover:bg-[var(--surface-2)] disabled:cursor-not-allowed disabled:opacity-60"
             >
               Cancelar
             </button>
@@ -325,55 +305,116 @@ export function ConteudoDaAula({ sessaoId }: ConteudoDaAulaProps) {
       ) : (
         <>
           {conteudo.topicos.length > 0 && (
-            <ul className="flex flex-wrap gap-2">
-              {conteudo.topicos.map((topico) => (
-                <li
-                  key={topico}
-                  className="text-text-body rounded-lg px-2.5 py-1 text-xs font-semibold"
-                  style={{ background: "var(--surface-soft)" }}
-                >
-                  {topico}
-                </li>
+            <ul className="mb-[17px] flex list-none flex-wrap gap-[7px] p-0">
+              {conteudo.topicos.map((topico, i) => (
+                <ChipTopico key={topico} texto={topico} indice={i} />
               ))}
             </ul>
           )}
 
           {conteudo.resumo !== "" && (
-            <div className="text-text-body text-sm leading-relaxed">
-              {/* Mesmo formatador da conversa: o texto vem do modelo e pode
-                  trazer negrito ou lista. */}
-              <TextoFormatado texto={conteudo.resumo} />
+            <div>
+              <p className="text-text-muted mb-[5px] text-[10.5px] font-semibold uppercase" style={{ letterSpacing: "0.06em" }}>
+                Resumo
+              </p>
+              <div className="text-text-body max-w-[78ch] text-[13.5px] leading-[1.6]">
+                {/* Mesmo formatador da conversa: o texto vem do modelo e pode
+                    trazer negrito ou lista. */}
+                <TextoFormatado texto={conteudo.resumo} />
+              </div>
             </div>
           )}
 
+          {/* "Parou em" ganha caixa própria: é o campo que a feature "onde
+              parei nesta turma" lê, e o professor precisa achá-lo de relance. */}
           {conteudo.ate_onde !== "" && (
-            <p className="text-text-body text-sm leading-relaxed">
-              <span className="font-bold">Parou em:</span> {conteudo.ate_onde}
-            </p>
+            <div
+              className="flex items-start gap-[10px] rounded-[9px] border px-[13px] py-[11px]"
+              style={{
+                background: "var(--primary-soft)",
+                borderColor: "var(--border-default)",
+              }}
+            >
+              <span
+                className="mt-px flex-none"
+                style={{ color: "var(--primary)" }}
+                aria-hidden
+              >
+                <IconCheckSimples size={15} />
+              </span>
+              <div>
+                <p className="text-text-muted mb-[2px] text-[10.5px] font-semibold uppercase" style={{ letterSpacing: "0.06em" }}>
+                  Parou em
+                </p>
+                <p className="text-text m-0 text-[13px] leading-[1.5]">
+                  {conteudo.ate_onde}
+                </p>
+              </div>
+            </div>
           )}
 
-          {/* O aviso some depois que ele edita: o texto passou a ser dele, e
-              continuar pedindo pra conferir a propria escrita nao faz sentido. */}
-          {conteudo.editado_em === null && (
-            <p className="text-text-muted text-xs leading-relaxed">
-              Gerado por IA a partir da transcrição automática — confira antes de
-              usar como registro da aula.
-            </p>
-          )}
+          {/* Procedência + o botão de editar na mesma linha, como no
+              protótipo. O aviso some depois que ele edita: o texto passou a
+              ser dele, e continuar pedindo pra conferir a própria escrita não
+              faz sentido. */}
+          <p className="text-text-muted mt-[13px] flex flex-wrap items-center gap-[6px] text-[11.5px]">
+            {conteudo.editado_em === null ? (
+              <>
+                <span className="flex-none opacity-70" aria-hidden>
+                  <IconInfo size={13} />
+                </span>
+                Gerado pela Cupcam a partir da transcrição e da lousa — confira
+                antes de usar como registro.
+              </>
+            ) : (
+              <>editado por você</>
+            )}
+
+            <button
+              type="button"
+              onClick={abrirEdicao}
+              className="border-border-default text-text hover:bg-surface-2 ml-auto inline-flex items-center gap-[7px] rounded-[9px] border px-[13px] py-2 text-[12.5px] font-semibold transition-colors"
+              style={{ background: "var(--surface-2)" }}
+            >
+              <IconLapis size={13} />
+              {semFonte ? "Escrever conteúdo" : "Editar"}
+            </button>
+          </p>
         </>
       )}
-    </section>
+    </div>
   );
 }
 
-/** Titulo do card. Repetido nos tres estados, entao mora numa funcao so'. */
-function Cabecalho() {
+/**
+ * Um tópico em pastilha (`.topicos li`).
+ *
+ * A cor gira num ciclo de 5, então vale pra qualquer quantidade de tópicos.
+ *
+ * ⚠️ A cor aqui é DECORATIVA, não carrega significado — tópico não tem estado
+ * bom/ruim. Por isso a dose é baixa (13% no fundo, 30% na borda) e o TEXTO
+ * fica sempre em `--text-body`: se ele herdasse a cor, o contraste cairia e a
+ * cor viraria informação falsa.
+ */
+function ChipTopico({ texto, indice }: { texto: string; indice: number }) {
+  const TONS = [
+    "var(--grafico)",
+    "var(--primary)",
+    "var(--grafico-verde)",
+    "var(--grafico-ambar)",
+    "var(--grafico-roxo)",
+  ];
+  const tom = TONS[indice % TONS.length];
+
   return (
-    <div className="flex items-center gap-2">
-      <span aria-hidden style={{ color: "var(--primary)" }}>
-        <IconTranscricao size={18} />
-      </span>
-      <h2 className="text-text text-base font-extrabold">Conteúdo da aula</h2>
-    </div>
+    <li
+      className="text-text-body rounded-full border px-3 py-[6px] text-[12.5px]"
+      style={{
+        background: `color-mix(in srgb, ${tom} 13%, transparent)`,
+        borderColor: `color-mix(in srgb, ${tom} 30%, transparent)`,
+      }}
+    >
+      {texto}
+    </li>
   );
 }

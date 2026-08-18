@@ -20,25 +20,45 @@ import { ModalMateria } from "@/components/coordenacao/modal-materia";
 import { ModalTurma } from "@/components/coordenacao/modal-turma";
 import { PainelAlunos } from "@/components/coordenacao/painel-alunos";
 import { PainelMaterias } from "@/components/coordenacao/painel-materias";
+import { PainelPendencias } from "@/components/coordenacao/painel-pendencias";
 import { PainelTurmas } from "@/components/coordenacao/painel-turmas";
-import { IconPessoas, IconTendencia, IconTurma } from "@/components/ui/icons";
-import { StatCard } from "@/components/ui/stat-card";
+import { CartaoNumero } from "@/components/aulas/cartao-numero";
+import {
+  IconAulas,
+  IconCamera,
+  IconPessoas,
+  IconTurma,
+} from "@/components/ui/icons";
 import type {
   AlunoAdmin,
   Materia,
   NovaMateria,
   NovaTurma,
+  PanoramaCoordenacao,
   TurmaAdmin,
+  TurmaPanorama,
   VisaoAdmin,
 } from "@/lib/types";
 
 type VistaAdministracaoProps = {
   /** Retrato inicial vindo do servidor no carregamento da pagina. */
   visaoInicial: VisaoAdmin;
+  /** Panorama (agregados + pendencias) vindo do servidor junto da visao. */
+  panoramaInicial: PanoramaCoordenacao;
 };
 
 /** Estado dos modais — modo mais o item sendo editado. */
-type EstadoModalAluno = { modo: "criar" | "editar"; aluno?: AlunoAdmin };
+type EstadoModalAluno = {
+  modo: "criar" | "editar";
+  aluno?: AlunoAdmin;
+  /**
+   * Turma a pre-selecionar ao criar. Só vem preenchido quando o modal foi
+   * aberto por uma PENDENCIA ("cadastrar alunos" numa turma vazia): a troca de
+   * turma passa pelo router e nao vale no mesmo tick, entao esperar
+   * `turmaSelecionada` acompanhar abriria o modal na turma anterior.
+   */
+  turmaId?: number;
+};
 type EstadoModalMateria = { modo: "criar" | "editar"; materia?: Materia };
 
 /**
@@ -66,8 +86,15 @@ type CorpoErro = {
  * Os filhos (PainelTurmas/PainelAlunos/PainelMaterias) sao "burros": so'
  * recebem dados e callbacks, a decisao fica toda aqui.
  */
-export function VistaAdministracao({ visaoInicial }: VistaAdministracaoProps) {
+export function VistaAdministracao({
+  visaoInicial,
+  panoramaInicial,
+}: VistaAdministracaoProps) {
   const [visao, setVisao] = useState<VisaoAdmin>(visaoInicial);
+  // O panorama anda JUNTO da visao: cadastrar um aluno muda a lista (visao) e
+  // pode fazer uma pendencia sumir (panorama). Por isso `recarregar` busca os
+  // dois em paralelo — atualizar so' um deixaria a tela se contradizendo.
+  const [panorama, setPanorama] = useState<PanoramaCoordenacao>(panoramaInicial);
 
   /* A turma selecionada mora na URL (?turma={id}), nao em estado local.
      Mesma decisao ja' tomada pelos seletores de Minhas Aulas, Chamada e
@@ -85,11 +112,11 @@ export function VistaAdministracao({ visaoInicial }: VistaAdministracaoProps) {
     const daUrl =
       Number.isInteger(turmaDaUrl) && turmaDaUrl > 0 ? turmaDaUrl : null;
 
-    if (daUrl !== null && visao.turmas.some((turma) => turma.id === daUrl)) {
+    if (daUrl !== null && panorama.turmas.some((turma) => turma.id === daUrl)) {
       return daUrl;
     }
-    return visao.turmas[0]?.id ?? null;
-  }, [turmaDaUrl, visao.turmas]);
+    return panorama.turmas[0]?.id ?? null;
+  }, [turmaDaUrl, panorama.turmas]);
 
   const selecionarTurma = useCallback(
     (turmaId: number) => {
@@ -123,18 +150,33 @@ export function VistaAdministracao({ visaoInicial }: VistaAdministracaoProps) {
   // por ate' 30s. Cada recarga bem-sucedida incrementa isto, mudando a URL do <img>.
   const [versaoFotos, setVersaoFotos] = useState(0);
 
-  /** Busca o retrato mais recente da API e substitui o estado local. */
+  /**
+   * Busca o retrato mais recente da API e substitui o estado local.
+   *
+   * As DUAS rotas em paralelo: `/visao` traz o cadastro (turmas e alunos que a
+   * tela edita) e `/panorama` traz os agregados e as pendencias. Elas mudam
+   * juntas — cadastrar um aluno numa turma vazia tira uma pendencia da lista —
+   * e atualizar so' uma deixaria a tela se contradizendo (a lista sem a turma
+   * vazia, o aviso ainda dizendo que ela existe).
+   */
   const recarregar = useCallback(async () => {
     try {
-      const resposta = await fetch("/api/admin/visao", { cache: "no-store" });
-      if (!resposta.ok) {
+      const [respostaVisao, respostaPanorama] = await Promise.all([
+        fetch("/api/admin/visao", { cache: "no-store" }),
+        fetch("/api/admin/panorama", { cache: "no-store" }),
+      ]);
+      if (!respostaVisao.ok || !respostaPanorama.ok) {
         setAvisoRecarga(
           "Salvo, mas não foi possível atualizar a lista — recarregue a página.",
         );
         return;
       }
-      const dados = (await resposta.json()) as VisaoAdmin;
+      const [dados, dadosPanorama] = (await Promise.all([
+        respostaVisao.json(),
+        respostaPanorama.json(),
+      ])) as [VisaoAdmin, PanoramaCoordenacao];
       setVisao(dados);
+      setPanorama(dadosPanorama);
       /* Nao ha selecao a corrigir aqui: `selecionadaId` deriva da URL cruzada
          com esta lista, entao uma turma que acabou de ser excluida cai sozinha
          na primeira do retrato novo. */
@@ -207,9 +249,13 @@ export function VistaAdministracao({ visaoInicial }: VistaAdministracaoProps) {
     return () => clearTimeout(id);
   }, [recarregarMaterias]);
 
+  /* A lista de turmas vem do PANORAMA, nao da visao: as duas trazem as mesmas
+     turmas (mesmos ids, mesma ordem alfabetica), mas a do panorama vem com
+     grade, sessoes e frequencia, que a lista exibe. A visao continua sendo a
+     fonte dos ALUNOS, que o panorama nao carrega de proposito. */
   const turmaSelecionada = useMemo(
-    () => visao.turmas.find((turma) => turma.id === selecionadaId) ?? null,
-    [visao.turmas, selecionadaId],
+    () => panorama.turmas.find((turma) => turma.id === selecionadaId) ?? null,
+    [panorama.turmas, selecionadaId],
   );
 
   const alunosDaTurma = useMemo(
@@ -219,11 +265,6 @@ export function VistaAdministracao({ visaoInicial }: VistaAdministracaoProps) {
         : [],
     [visao.alunos, turmaSelecionada],
   );
-
-  const mediaPorTurma =
-    visao.totais.turmas > 0
-      ? Math.round(visao.totais.alunos / visao.totais.turmas)
-      : null;
 
   /* --- Turma: so' criar aqui; editar mora na pagina da turma --- */
   const aoNovaTurma = useCallback(() => setModalNovaTurma(true), []);
@@ -349,6 +390,26 @@ export function VistaAdministracao({ visaoInicial }: VistaAdministracaoProps) {
 
   /* --- Aluno: criar/editar pelo mesmo modal (multipart) --- */
   const aoNovoAluno = useCallback(() => setModalAluno({ modo: "criar" }), []);
+
+  /**
+   * "Cadastrar alunos" a partir de uma pendencia de turma vazia.
+   *
+   * Seleciona a turma ANTES de abrir o modal, porque o `ModalAluno` recebe
+   * `turmaInicialId={turmaSelecionada?.id}`: sem isso, quem clica na pendencia
+   * da 21TC cairia no modal com outra turma pre-escolhida e cadastraria o
+   * aluno no lugar errado.
+   *
+   * A selecao passa pela URL (`selecionarTurma`), igual ao clique na lista —
+   * assim o painel de alunos ao lado ja' mostra a turma certa quando o modal
+   * fechar.
+   */
+  const aoCadastrarAlunosDaTurma = useCallback(
+    (turmaId: number) => {
+      selecionarTurma(turmaId);
+      setModalAluno({ modo: "criar", turmaId });
+    },
+    [selecionarTurma],
+  );
   const aoEditar = useCallback(
     (aluno: AlunoAdmin) => setModalAluno({ modo: "editar", aluno }),
     [],
@@ -427,8 +488,12 @@ export function VistaAdministracao({ visaoInicial }: VistaAdministracaoProps) {
     [alunoParaExcluir, recarregar],
   );
 
-  /* --- Excluir turma: modal com estado bloqueado (409 = turma com alunos) --- */
-  const aoExcluirTurma = useCallback((turma: TurmaAdmin) => {
+  /* --- Excluir turma: modal com estado bloqueado (409 = turma com alunos) ---
+     Recebe `TurmaPanorama` (a lista agora vem de la'), mas guarda como
+     `TurmaAdmin`: o modal so' usa nome e id, e o tipo menor deixa isso
+     explicito em vez de carregar frequencia pra dentro de um dialogo de
+     exclusao. */
+  const aoExcluirTurma = useCallback((turma: TurmaPanorama) => {
     setTurmaParaExcluir(turma);
   }, []);
 
@@ -480,18 +545,15 @@ export function VistaAdministracao({ visaoInicial }: VistaAdministracaoProps) {
   }, [turmaParaExcluir, recarregar]);
 
   return (
-    <div className="flex flex-col gap-7">
-      <div>
-        <h1
-          className="text-text text-2xl font-extrabold sm:text-3xl"
-          style={{ fontFamily: "var(--font-geologica)" }}
-        >
-          Coordenação
-        </h1>
-        <p className="text-text-body mt-1.5 text-sm">
-          Cadastre turmas, matricule alunos e gerencie a base do CUPCAM.
-        </p>
-      </div>
+    <div className="flex flex-col gap-4">
+      {/* Sem `h1` aqui: o titulo da pagina e' o do cabecalho (AppShell), e o
+          `h1` que existia neste ponto repetia a palavra "Coordenação" logo
+          abaixo dela — dois titulos iguais na mesma tela, e dois `h1` no
+          mesmo documento (leitor de tela fica sem saber qual e' o da pagina).
+          Mesma correcao ja' feita na pagina da turma. */}
+      <p className="coord-apoio">
+        Cadastre turmas, matricule alunos e gerencie a base do CUPCAM.
+      </p>
 
       {/* Aviso: a mutacao deu certo, mas a recarga da lista falhou depois. */}
       {avisoRecarga && (
@@ -504,40 +566,57 @@ export function VistaAdministracao({ visaoInicial }: VistaAdministracaoProps) {
         </p>
       )}
 
-      {/* Cards de resumo. */}
-      <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard
-          rotulo="Turmas ativas"
-          valor={visao.totais.turmas}
-          apoio="Cadastradas no sistema"
-          icone={
-            <span style={{ color: "var(--primary)" }}>
-              <IconTurma size={18} />
-            </span>
-          }
+      {/* Os numeros da escola. `CartaoNumero` (o mesmo de Minhas Aulas, Chamada
+          e Camera) no lugar do `StatCard` antigo: esta era a ultima tela fora
+          do padrao do redesign.
+
+          Os quatro sao de CADASTRO e OPERACAO — o que existe e o que a camera
+          ja' rodou. Nenhum e' media de desempenho: "media por turma" (o card
+          antigo) saiu porque um numero medio da escola so' serve pra comparar
+          turmas contra ele, que e' o que esta tela nao faz. */}
+      <div className="numeros-cam">
+        <CartaoNumero
+          rotulo="Turmas"
+          cor="roxo"
+          valor={panorama.totais.turmas}
+          nota="Cadastradas no sistema"
+          icone={<IconTurma size={18} />}
         />
-        <StatCard
-          rotulo="Alunos matriculados"
-          valor={visao.totais.alunos}
-          apoio="Em todas as turmas"
-          icone={
-            <span style={{ color: "var(--primary)" }}>
-              <IconPessoas size={18} />
-            </span>
-          }
+        <CartaoNumero
+          rotulo="Alunos"
+          cor="azul"
+          valor={panorama.totais.alunos}
+          nota="Matriculados em todas as turmas"
+          icone={<IconPessoas size={18} />}
         />
-        <StatCard
-          variante="brand"
-          rotulo="Média por turma"
-          valor={mediaPorTurma ?? "—"}
-          apoio="Alunos por turma"
-          icone={
-            <span style={{ color: "var(--text-on-brand)" }}>
-              <IconTendencia size={18} />
-            </span>
-          }
+        <CartaoNumero
+          rotulo="Aulas na grade"
+          cor="verde"
+          valor={panorama.totais.aulas_na_grade}
+          nota={`${panorama.totais.materias} ${
+            panorama.totais.materias === 1
+              ? "matéria cadastrada"
+              : "matérias cadastradas"
+          }`}
+          icone={<IconAulas size={18} />}
+        />
+        {/* Quantas aulas a camera ja' acompanhou. E' cobertura do sistema,
+            nao produtividade de ninguem: nao abre por turma nem por professor. */}
+        <CartaoNumero
+          rotulo="Aulas monitoradas"
+          cor="ambar"
+          valor={panorama.totais.sessoes_monitoradas}
+          nota="Desde o início do uso"
+          icone={<IconCamera size={18} />}
         />
       </div>
+
+      {/* O que falta configurar. Vem ANTES do cadastro de proposito: quem abre
+          a tela precisa saber o que exige acao antes de mergulhar nas listas. */}
+      <PainelPendencias
+        pendencias={panorama.pendencias}
+        aoCadastrarAlunos={aoCadastrarAlunosDaTurma}
+      />
 
       {/* Paineis: turmas a esquerda, alunos da turma selecionada a direita. A
           grade de aulas saiu daqui — vive na pagina da turma, junto dos dados
@@ -549,7 +628,7 @@ export function VistaAdministracao({ visaoInicial }: VistaAdministracaoProps) {
         style={{ opacity: navegando ? 0.6 : 1 }}
       >
         <PainelTurmas
-          turmas={visao.turmas}
+          turmas={panorama.turmas}
           selecionadaId={selecionadaId}
           aoSelecionar={selecionarTurma}
           aoNovaTurma={aoNovaTurma}
@@ -594,7 +673,10 @@ export function VistaAdministracao({ visaoInicial }: VistaAdministracaoProps) {
         aberto={modalAluno !== null}
         modo={modalAluno?.modo ?? "criar"}
         turmas={visao.turmas}
-        turmaInicialId={turmaSelecionada?.id ?? null}
+        /* A turma da pendencia vence a selecionada: quando o modal abre por
+           "cadastrar alunos" numa turma vazia, o router ainda nao propagou a
+           nova selecao. Ver `aoCadastrarAlunosDaTurma`. */
+        turmaInicialId={modalAluno?.turmaId ?? turmaSelecionada?.id ?? null}
         aluno={modalAluno?.aluno ?? null}
         aoFechar={() => setModalAluno(null)}
         aoSalvar={aoSalvarAluno}

@@ -178,6 +178,99 @@ export function IconSetaEsquerda({ size = 14, className }: IconProps) {
   );
 }
 
+/** Círculo com "i" — o aviso de procedência ("gerado pela Cupcam…"). */
+export function IconInfo({ size = 13, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <g
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        fill="none"
+      >
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 16v-4M12 8h.01" />
+      </g>
+    </svg>
+  );
+}
+
+/**
+ * Triangulo de atencao — as faixas ambar de aviso.
+ *
+ * Diferente do `IconInfo` (circulo com "i"), que apenas explica: este marca
+ * que ha uma consequencia a tratar. Substitui o emoji `⚠` que as
+ * Configuracoes usavam, e que renderiza diferente em cada sistema.
+ */
+export function IconAlerta({ size = 14, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <g
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      >
+        <path d="M10.3 3.9 2.4 17.5a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />
+        <path d="M12 9.5v4M12 17.2h.01" />
+      </g>
+    </svg>
+  );
+}
+
+/** Estrela de 4 pontas — o selo da Cup AI no botao "Gerar com a Cup AI". */
+export function IconEstrela({ size = 13, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <path
+        d="M12 3l1.9 5.8H20l-4.9 3.6 1.9 5.8-5-3.6-5 3.6 1.9-5.8L4 8.8h6.1z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+    </svg>
+  );
+}
+
+/** Pessoa com um check ao lado — frequencia/presenca da turma. */
+export function IconPresenca({ size = 18, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <g
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        fill="none"
+      >
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="m17 11 2 2 4-4" />
+      </g>
+    </svg>
+  );
+}
+
+/**
+ * Chevron do botao que recolhe a sidebar. Gira 180deg quando ela ja' esta
+ * recolhida, pra apontar sempre pro lado que a acao leva.
+ */
+export function IconRecolherMenu({ size = 16, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <path
+        d="M15 18l-6-6 6-6"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function IconSino({ size = 18, className }: IconProps) {
   return (
     <svg {...base(size, className)}>
@@ -652,6 +745,79 @@ export function IconBaixar({ size = 18, className }: IconProps) {
         stroke="currentColor"
         strokeWidth="1.8"
         strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+/** Clipe de papel — anexo da aula na agenda. */
+export function IconClipe({ size = 18, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <path
+        d="M21 11.5 12.5 20a5 5 0 0 1-7-7l8-8a3.5 3.5 0 0 1 5 5l-8 8a2 2 0 0 1-3-3l7.5-7.5"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** Marcador de lista — a caixinha do lembrete (vazia ou marcada). */
+export function IconCaixa({ size = 18, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <rect
+        x="3.5"
+        y="3.5"
+        width="17"
+        height="17"
+        rx="5"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+    </svg>
+  );
+}
+
+/** Caixinha do lembrete ja marcada. */
+export function IconCaixaMarcada({ size = 18, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <rect x="3.5" y="3.5" width="17" height="17" rx="5" fill="currentColor" />
+      {/* O check e' vazado na cor da PAGINA, nao branco fixo: no tema escuro a
+          caixa e' preenchida com lilas claro e um check branco sumiria nela.
+          --bg acompanha o tema nos dois sentidos. */}
+      <path
+        d="m8 12 2.8 2.8L16 9.5"
+        stroke="var(--bg)"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** Seta pra cima saindo de uma bandeja — enviar arquivo. */
+export function IconSubir({ size = 18, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <path
+        d="M12 16V4M7 9l5-5 5 5"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M20 16v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
     </svg>
   );

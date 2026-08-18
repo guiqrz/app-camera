@@ -45,7 +45,7 @@ export function StatCard({
     >
       <div className="mb-3 flex items-start justify-between gap-2">
         <span
-          className="text-[11px] font-extrabold tracking-wide uppercase"
+          className="text-[11px] font-semibold tracking-wide uppercase"
           style={{ color: brand ? "rgba(255,255,255,0.85)" : "var(--text-muted)" }}
         >
           {rotulo}
@@ -54,7 +54,7 @@ export function StatCard({
       </div>
 
       <div
-        className="text-3xl font-extrabold"
+        className="text-3xl font-semibold"
         style={{ color: brand ? "var(--text-on-brand)" : "var(--text)" }}
       >
         {valor}

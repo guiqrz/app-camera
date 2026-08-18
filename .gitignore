@@ -49,3 +49,11 @@ next-env.d.ts
 # Snapshots das auditorias de UX ($impeccable) — mesmo precedente do
 # .superpowers/ acima. Servem de backlog local, mas nao vao pro repositorio.
 .impeccable/
+
+# Planos de trabalho local (docs/superpowers/plans). Mesmo precedente dos dois
+# acima: e' backlog de sessao, nao documentacao do projeto — esta vive no
+# README.md.
+docs/
+
+# Saida do `next dev` redirecionada a mao durante o desenvolvimento.
+*_run.log

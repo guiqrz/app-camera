@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 
-import { SeletorDataRelatorio } from "@/components/relatorio/seletor-data-relatorio";
-import { SeletorTurmaRelatorio } from "@/components/relatorio/seletor-turma-relatorio";
+import { SeletorTurma } from "@/components/aulas/seletor-turma";
 import { VistaRelatorioGeral } from "@/components/relatorio/vista-relatorio-geral";
 import { AppShell } from "@/components/layout/app-shell";
 import {
@@ -47,20 +46,35 @@ export default async function RelatorioGeralPage({ params }: Props) {
 
   const resumo = consolidarTurma(aulas.aulas, estatisticas);
 
-  // Controles do cabecalho: turma e data (a data leva para Minhas Aulas).
+  // SO' o seletor de turma, como no prototipo. O seletor de DATA saiu em
+  // 14/08 junto com a busca da lista de aulas: ele levava pra `/aulas?data=`,
+  // um filtro que deixou de existir, e a propria tela de Relatorios ja tem
+  // busca e filtro de mes logo abaixo.
+  //
+  // MESMO componente `SeletorTurma` de Minhas Aulas, e nao mais o
+  // `SeletorTurmaRelatorio` proprio: os dois eram visualmente diferentes
+  // (fundo, padding, raio) apesar de ser o MESMO `.escopo` no protototipo —
+  // ele apontou a divergencia em 14/08. `baseRota` custom e sem
+  // `comOpcaoTodas`: Relatorios lista aulas de UMA turma, sem visao geral.
   const controles = (
-    <>
-      <SeletorTurmaRelatorio turmas={turmas} turmaAtualId={id} />
-      <SeletorDataRelatorio turmaId={id} />
-    </>
+    <SeletorTurma
+      turmas={turmas}
+      turmaAtualId={id}
+      baseRota="/relatorios/turma"
+    />
   );
 
   return (
     <AppShell titulo="Relatórios" controles={controles}>
       {/* No celular os controles aparecem no corpo, onde ha espaco. */}
-      <div className="mb-6 flex flex-wrap gap-2 lg:hidden">{controles}</div>
+      <div className="mb-4 flex flex-wrap gap-2 lg:hidden">{controles}</div>
 
-      <VistaRelatorioGeral resumo={resumo} nomeTurma={aulas.turma.nome} turmaId={id} />
+      <VistaRelatorioGeral
+        resumo={resumo}
+        nomeTurma={aulas.turma.nome}
+        turmaId={id}
+        aulas={aulas.aulas}
+      />
     </AppShell>
   );
 }

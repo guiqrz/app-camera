@@ -226,7 +226,7 @@ export function AcoesDaResposta({ texto, criadaEm }: AcoesDaRespostaProps) {
             aria-expanded={menuAberto}
             aria-controls={idMenu}
             disabled={gerando !== null}
-            className="text-text-muted hover:text-text flex items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-bold transition-colors hover:bg-[var(--surface-2)] disabled:cursor-not-allowed disabled:opacity-60"
+            className="text-text-muted hover:text-text flex items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-semibold transition-colors hover:bg-[var(--surface-2)] disabled:cursor-not-allowed disabled:opacity-60"
           >
             <span aria-hidden>
               <IconBaixar size={13} />
@@ -299,7 +299,7 @@ function BotaoDeAcao({ onClick, rotulo, children }: BotaoDeAcaoProps) {
     <button
       type="button"
       onClick={onClick}
-      className="text-text-muted hover:text-text flex items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-bold transition-colors hover:bg-[var(--surface-2)]"
+      className="text-text-muted hover:text-text flex items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-semibold transition-colors hover:bg-[var(--surface-2)]"
     >
       <span aria-hidden>{children}</span>
       {rotulo}

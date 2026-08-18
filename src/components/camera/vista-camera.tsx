@@ -2,17 +2,20 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { CartaoNumero } from "@/components/aulas/cartao-numero";
 import { ControleMicrofone } from "@/components/camera/controle-microfone";
 import { PainelLousa } from "@/components/camera/painel-lousa";
 import { SeletorModo } from "@/components/camera/seletor-modo";
+import { DicaAjuda } from "@/components/ui/dica-ajuda";
 import {
   IconCamera,
+  IconFechar,
   IconPessoas,
   IconQueda,
   IconRaio,
   IconRelogio,
 } from "@/components/ui/icons";
-import { StatCard } from "@/components/ui/stat-card";
+import { duracaoDesde } from "@/lib/format";
 import { MODOS_CAMERA_FALLBACK, MODO_PADRAO } from "@/lib/modos-camera";
 import { lerSempreGravar } from "@/lib/preferencias-audio";
 import type { EstadoCamera, ModoCamera, ModoCameraInfo, Turma } from "@/lib/types";
@@ -301,8 +304,8 @@ export function VistaCamera({ turmas }: VistaCameraProps) {
     <div className="flex flex-col gap-7">
       <div>
         <h1
-          className="text-text text-2xl font-extrabold sm:text-3xl"
-          style={{ fontFamily: "var(--font-geologica)" }}
+          className="text-text text-2xl font-semibold sm:text-3xl"
+          style={{ fontFamily: "var(--font-display)" }}
         >
           Câmera
         </h1>
@@ -391,7 +394,7 @@ function VistaParada({
 }: VistaParadaProps) {
   return (
     <div
-      className="border-border-default bg-surface shadow-card mx-auto flex w-full max-w-lg flex-col items-center gap-5 rounded-2xl border p-10 text-center"
+      className="border-border-default bg-surface shadow-card mx-auto flex w-full max-w-lg flex-col items-center gap-5 rounded-[12px] border p-10 text-center"
     >
       <div
         className="flex h-16 w-16 items-center justify-center rounded-full"
@@ -406,7 +409,7 @@ function VistaParada({
       {iniciando ? (
         <>
           <div>
-            <h2 className="text-text text-lg font-extrabold">Iniciando…</h2>
+            <h2 className="text-text text-lg font-semibold">Iniciando…</h2>
             <p className="text-text-muted mt-1 text-sm leading-relaxed">
               Carregando os modelos de reconhecimento. Isso leva alguns segundos.
             </p>
@@ -428,7 +431,7 @@ function VistaParada({
       ) : (
         <>
           <div>
-            <h2 className="text-text text-lg font-extrabold">Câmera parada</h2>
+            <h2 className="text-text text-lg font-semibold">Câmera parada</h2>
             <p className="text-text-muted mt-1 text-sm leading-relaxed">
               Nenhuma captura em andamento nesta sala.
             </p>
@@ -438,9 +441,7 @@ function VistaParada({
               horario). Escolher uma turma da lista forca aquela aula — util pra
               apresentar sem depender do horario real. So' aparece se ha turmas. */}
           <label className="flex w-full flex-col gap-1.5 text-left">
-            <span className="text-text-muted text-xs font-bold tracking-wide uppercase">
-              Turma a iniciar
-            </span>
+            <span className="bloco-cam-rotulo">Turma a iniciar</span>
             <select
               value={turmaEscolhida}
               onChange={(evento) => aoEscolherTurma(evento.target.value)}
@@ -460,9 +461,7 @@ function VistaParada({
               nao numa preferencia guardada — decisao do usuario em 28/07/2026.
               Toda captura comeca em Aula a menos que ele mude isto agora. */}
           <div className="flex w-full flex-col gap-1.5 text-left">
-            <span className="text-text-muted text-xs font-bold tracking-wide uppercase">
-              Modo inicial
-            </span>
+            <span className="bloco-cam-rotulo">Modo inicial</span>
             <SeletorModo
               modos={modos}
               ativo={modoInicial}
@@ -487,10 +486,15 @@ function VistaParada({
             type="button"
             onClick={aoLigar}
             disabled={ligando}
-            className="w-full rounded-xl px-8 py-3 text-sm font-extrabold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-            style={{ background: "var(--primary)" }}
+            /* `--text-on-brand`, e nao `text-white`: no tema escuro a tinta e'
+               CLARA (#d9c8ee), e texto branco em cima dela fica ilegivel. */
+            className="w-full rounded-[9px] px-8 py-3 text-sm font-semibold transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            style={{
+              background: "var(--primary)",
+              color: "var(--text-on-brand)",
+            }}
           >
-            Ligar
+            {ligando ? "Ligando…" : "Ligar"}
           </button>
         </>
       )}
@@ -556,55 +560,150 @@ function VistaRodando({
   // tinha o modo Aula.
   const medeAtencao = estado.mede_atencao ?? true;
 
+  // Ha quanto tempo a captura esta no ar. `agora` re-renderiza a cada 30s pro
+  // texto nao congelar em "há 24 min" o resto da aula: o polling do estado
+  // atualiza os NUMEROS, mas `iniciada_em` nao muda, entao sem este relogio
+  // proprio a duracao so' avancaria quando outro dado mudasse.
+  const [agora, setAgora] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setAgora(new Date()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+  const duracao = duracaoDesde(estado.iniciada_em, agora);
+
   return (
-    <div className="flex flex-col gap-6">
-      {/* Cabecalho: selo "ao vivo" + turma + botao Desligar */}
-      <div className="border-border-default bg-surface shadow-card flex flex-col gap-4 rounded-2xl border p-5 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <span className="relative flex h-3 w-3" aria-hidden>
-            <span
-              className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-75"
-              style={{ background: "var(--danger)" }}
-            />
-            <span
-              className="relative inline-flex h-3 w-3 rounded-full"
-              style={{ background: "var(--danger)" }}
-            />
-          </span>
-          <div>
-            <p className="text-text text-sm font-extrabold tracking-wide uppercase">
-              Ao vivo{nomeTurma ? ` · ${nomeTurma}` : ""}
-            </p>
-            <p className="text-text-muted text-xs">
-              {temAula
-                ? "Câmera rodando com aula em andamento"
-                : "Câmera rodando — sem turma neste horário"}
-            </p>
-          </div>
+    <div className="flex flex-col gap-4">
+      <p className="text-text-muted m-0 text-[13px]">
+        Acompanhe presença e atenção da turma ao vivo enquanto a captura roda.
+      </p>
+
+      {/* ---- FAIXA "AO VIVO" ---- */}
+      <section className="border-border-default bg-surface shadow-card faixa-vivo rounded-[12px] border">
+        <span className="vivo-ponto" aria-hidden />
+        <div className="vivo-texto">
+          <p className="vivo-titulo text-text">
+            Ao vivo{nomeTurma ? ` · ${nomeTurma}` : ""}
+          </p>
+          <p className="vivo-sub">
+            {temAula
+              ? "Câmera rodando com aula em andamento"
+              : "Câmera rodando — sem turma neste horário"}
+            {/* A duracao so' entra quando ha dado: sem `iniciada_em` (backend
+                antigo, ou sala sem aula) a frase termina antes, em vez de
+                mostrar um tempo inventado. */}
+            {duracao && (
+              <>
+                {" · "}
+                <span className="vivo-duracao">{duracao}</span>
+              </>
+            )}
+          </p>
         </div>
 
         <button
           type="button"
           onClick={aoDesligar}
           disabled={desligando}
-          className="border-border-default text-text rounded-xl border px-6 py-2.5 text-sm font-extrabold transition-colors hover:bg-[var(--surface-2)] disabled:cursor-not-allowed disabled:opacity-60"
+          className="btn-acao"
         >
+          <IconFechar size={14} />
           {desligando ? "Desligando…" : "Desligar"}
         </button>
+      </section>
+
+      {/* ---- ALERTA DE DISPERSAO ----
+          Sobe pro topo (antes ficava depois da lousa): e' o dado mais urgente
+          da tela e precisa saltar aos olhos antes de qualquer controle.
+          Ganhou acao embutida — so' avisar deixava o professor cacando o modo
+          Descanso mais embaixo; agora o proprio alerta pausa a medicao. */}
+      {estado.alerta_atencao && (
+        <div className="alerta-dispersao" role="alert">
+          <IconQueda size={18} />
+          <span className="alerta-dispersao-texto">
+            Mais de {LIMIAR_ALERTA_PCT}% da turma dispersa agora
+          </span>
+          <button
+            type="button"
+            className="alerta-dispersao-acao"
+            onClick={() => aoTrocarModo("descanso")}
+            disabled={modoPendente !== null}
+          >
+            {modoPendente === "descanso" ? "Pausando…" : "Pausar medição"}
+          </button>
+        </div>
+      )}
+
+      {/* ---- NUMEROS AO VIVO ----
+          Sobem pro topo: sao o motivo de abrir a tela durante a aula (checar a
+          turma), nao os controles de configuracao. */}
+      <div className="numeros-cam">
+        <CartaoNumero
+          rotulo="Chamada"
+          cor="roxo"
+          valor={
+            temAula
+              ? `${estado.chamada?.presentes ?? 0}/${estado.chamada?.total ?? 0}`
+              : "—"
+          }
+          nota={temAula ? "Presentes / total da turma" : "Sem aula neste horário"}
+          icone={<IconPessoas size={18} />}
+        />
+        <CartaoNumero
+          rotulo="Dispersão"
+          cor="ambar"
+          // Travessao em vez de "0%": sem medicao, zero seria mentira boa —
+          // o professor leria como "turma toda atenta".
+          valor={medeAtencao ? `${pctDispersao}%` : "—"}
+          nota={
+            medeAtencao
+              ? "Turma olhando fora da aula agora"
+              : "Não medida neste modo"
+          }
+          icone={<IconQueda size={18} />}
+        />
+        <CartaoNumero
+          rotulo="Média de pessoas"
+          cor="azul"
+          valor={mediaPessoas}
+          nota="Detectadas por quadro"
+          icone={<IconPessoas size={18} />}
+        />
+        {/* FPS e MQTT sao diagnostico de captura, nao metrica pedagogica: no
+            mesmo peso visual competiriam com Chamada e Dispersao. */}
+        <CartaoNumero
+          discreto
+          rotulo="FPS"
+          cor="verde"
+          valor={fpsTexto}
+          nota="Quadros por segundo da captura"
+          icone={<IconRaio size={16} />}
+        />
+        <CartaoNumero
+          discreto
+          rotulo="MQTT"
+          cor="verde"
+          valor={estado.mqtt ? "Conectado" : "Sem conexão"}
+          nota="Envio dos sensores"
+          icone={<IconRelogio size={16} />}
+        />
       </div>
 
-      {/* Faixa do modo: proprio bloco, abaixo do cabecalho. Modo e' controle da
-          captura, nao metrica — por isso nao entra na grade de StatCards. */}
-      <div className="border-border-default bg-surface shadow-card flex flex-col gap-3 rounded-2xl border p-5">
-        <div className="flex items-baseline justify-between gap-3">
-          <span className="text-text-muted text-xs font-bold tracking-wide uppercase">
-            Modo da aula
-          </span>
+      {/* ---- MODO DA AULA ---- */}
+      <section className="border-border-default bg-surface shadow-card bloco-cam rounded-[12px] border">
+        <div className="bloco-cam-topo">
+          <span className="bloco-cam-rotulo">Modo da aula</span>
           {!medeAtencao && (
-            <span className="text-xs font-semibold" style={{ color: "var(--warn-fg)" }}>
+            <span className="bloco-cam-aviso">
               Atenção da turma não está sendo medida
             </span>
           )}
+          <span className={medeAtencao ? "bloco-cam-ajuda" : undefined}>
+            <DicaAjuda
+              texto="Define o que a câmera mede e quais capturas ficam disponíveis."
+              rotulo="O que muda entre os modos"
+              lado="esquerda"
+            />
+          </span>
         </div>
         <SeletorModo
           modos={modos}
@@ -612,20 +711,19 @@ function VistaRodando({
           pendente={modoPendente}
           aoEscolher={aoTrocarModo}
         />
-      </div>
+      </section>
 
-      {/* Microfone: bloco proprio, logo abaixo do modo. Fica junto dos controles
-          da captura (e nao na grade de numeros) porque e' uma acao do professor,
-          nao uma metrica da turma. */}
+      {/* ---- MICROFONE ---- */}
       <ControleMicrofone
         gravando={audioGravando}
         pendente={audioPendente}
         aoAlternar={aoAlternarAudio}
       />
 
-      {/* Captura do quadro: SO' no modo Lousa. Guardar imagem e' excecao
-          autorizada apenas nesse modo (CLAUDE.md do backend), entao um botao
-          visivel fora dele prometeria algo que a API recusa com 409.
+      {/* ---- QUADRO DA AULA ----
+          SO' no modo Lousa. Guardar imagem e' excecao autorizada apenas nesse
+          modo (CLAUDE.md do backend), entao um botao visivel fora dele
+          prometeria algo que a API recusa com 409.
 
           Sai da tela na troca de modo junto com a possibilidade de capturar —
           e as fotos ja' guardadas continuam na aula, visiveis no relatorio. */}
@@ -637,79 +735,10 @@ function VistaRodando({
       )}
 
       {aviso && (
-        <p className="text-text-muted -mt-2 text-xs font-semibold" role="status">
+        <p className="text-text-muted text-xs font-semibold" role="status">
           {aviso}
         </p>
       )}
-
-      {/* Faixa de alerta — precisa saltar aos olhos, cor de perigo cheia. */}
-      {estado.alerta_atencao && (
-        <div
-          className="flex items-center gap-3 rounded-2xl px-5 py-4 text-sm font-extrabold"
-          style={{ background: "var(--danger)", color: "#fff" }}
-          role="alert"
-        >
-          <IconQueda size={20} />
-          Mais de {LIMIAR_ALERTA_PCT}% da turma dispersa agora
-        </div>
-      )}
-
-      {/* Numeros ao vivo */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <StatCard
-          variante="brand"
-          rotulo="Chamada"
-          valor={temAula ? `${estado.chamada?.presentes ?? 0}/${estado.chamada?.total ?? 0}` : "—"}
-          apoio={temAula ? "Presentes / total da turma" : "Sem aula neste horário"}
-          icone={<IconPessoas />}
-        />
-        <StatCard
-          rotulo="Dispersão"
-          // Travessao em vez de "0%": sem medicao, zero seria mentira boa —
-          // o professor leria como "turma toda atenta".
-          valor={medeAtencao ? `${pctDispersao}%` : "—"}
-          apoio={
-            medeAtencao
-              ? "Turma olhando fora da aula agora"
-              : "Não medida neste modo"
-          }
-          icone={
-            <span style={{ color: estado.alerta_atencao ? "var(--danger-fg)" : "var(--warn-fg)" }}>
-              <IconQueda />
-            </span>
-          }
-        />
-        <StatCard
-          rotulo="Média de pessoas"
-          valor={mediaPessoas}
-          apoio="Detectadas por quadro"
-          icone={
-            <span style={{ color: "var(--primary)" }}>
-              <IconPessoas />
-            </span>
-          }
-        />
-        <StatCard
-          rotulo="FPS"
-          valor={fpsTexto}
-          apoio="Quadros por segundo da captura"
-          icone={
-            <span style={{ color: "var(--ok-fg)" }}>
-              <IconRaio />
-            </span>
-          }
-        />
-        <StatCard
-          rotulo="MQTT"
-          valor={estado.mqtt ? "Conectado" : "Sem conexão"}
-          apoio="Envio dos sensores"
-          icone={
-            <span style={{ color: estado.mqtt ? "var(--ok-fg)" : "var(--danger-fg)" }}>
-              <IconRelogio />
-            </span>
-          }
-        />
-      </div>
     </div>
   );
 }

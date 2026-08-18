@@ -107,7 +107,7 @@ export const CampoComExemplo = forwardRef<HTMLInputElement, CampoComExemploProps
 
     return (
       <label className="flex flex-col gap-1.5">
-        <span className="text-text-muted text-xs font-bold">{rotulo}</span>
+        <span className="text-text-muted text-xs font-semibold">{rotulo}</span>
         <input
           ref={ref}
           value={valor}
@@ -121,10 +121,18 @@ export const CampoComExemplo = forwardRef<HTMLInputElement, CampoComExemploProps
           // trocar a string inteira so' pra acrescentar um modificador
           // (read-only:opacity-60, por exemplo) derrubaria o estilo base do
           // campo em silencio.
-          className={`text-text w-full rounded-lg bg-transparent px-3 py-2 text-sm outline-none${
+          className={`text-text w-full bg-transparent px-3 py-2 text-sm outline-none${
             className ? ` ${className}` : ""
           }`}
-          style={{ border: "1px solid var(--border)" }}
+          /* `--radius-sm` (9px), nao o `rounded-lg` do Tailwind: neste projeto
+             o `rounded-lg` do Tailwind v4 aponta pro `--radius-lg` do tema
+             (16px, ver o `@theme inline` do globals.css), e nao pros 8px
+             padrao da ferramenta. O campo saia bem mais arredondado que os
+             botoes ao lado (9px). Medido em 16/08. */
+          style={{
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius-sm)",
+          }}
           {...resto}
         />
         {(dica || preenchivel) && (

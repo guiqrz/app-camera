@@ -1,34 +1,37 @@
 "use client";
 
 import { AvatarAluno } from "@/components/chamada/avatar-aluno";
-import { BotaoIcone } from "@/components/ui/botao-icone";
-import { IconCheckSimples, IconFechar } from "@/components/ui/icons";
-import { formatarPct } from "@/lib/format";
+import { IconCheckSimples, IconFechar, IconSetaDireita } from "@/components/ui/icons";
+import { gradientePresenca } from "@/lib/cor-presenca";
 import type { AlunoChamada } from "@/lib/types";
 
 type LinhaAlunoProps = {
   aluno: AlunoChamada;
   aoMarcar: (ra: string, presente: boolean) => void;
   aoAbrirDetalhe: () => void;
+  /** Trava os botoes enquanto a confirmacao em lote esta correndo. */
+  ocupado?: boolean;
 };
-
-/** Cor do pontinho de frequencia, nas mesmas faixas do desenho. */
-function corFrequencia(pct: number | null): string {
-  if (pct === null) return "var(--text-muted)";
-  if (pct >= 80) return "var(--ok)";
-  if (pct >= 60) return "var(--warn)";
-  return "var(--danger)";
-}
 
 /**
  * Uma linha da lista de chamada.
  *
- * No computador e' uma grade de colunas; no celular vira um cartao empilhado
- * com os botoes maiores (dedo, nao mouse). Os botoes Presente/Ausente sao um
- * seletor de dois estados: o ativo fica preenchido, o outro so' contornado.
+ * No computador e' uma grade de 4 colunas; abaixo de 780px vira cartao
+ * empilhado. Os botoes Presente/Ausente sao um seletor de dois estados: o ativo
+ * fica preenchido na cor do significado, o outro so' contornado.
+ *
+ * ⚠️ A coluna da direita e' FREQUENCIA — presenca historica do aluno, que o
+ * projeto permite por pessoa. NUNCA engajamento/atencao, que e' medido so' por
+ * turma e nunca vinculado a um RA.
  */
-export function LinhaAluno({ aluno, aoMarcar, aoAbrirDetalhe }: LinhaAlunoProps) {
+export function LinhaAluno({
+  aluno,
+  aoMarcar,
+  aoAbrirDetalhe,
+  ocupado = false,
+}: LinhaAlunoProps) {
   const presente = aluno.presente === 1;
+  const pct = aluno.frequencia_pct;
 
   // O professor contrariou a camera: confirmou um estado diferente do
   // detectado. A marca deixa visivel onde a Cupcam errou nesta aula.
@@ -36,111 +39,102 @@ export function LinhaAluno({ aluno, aoMarcar, aoAbrirDetalhe }: LinhaAlunoProps)
     aluno.confirmado_professor === 1 &&
     aluno.presente !== aluno.detectado_automaticamente;
 
+  // Tres origens possiveis, nesta ordem de prioridade: o professor corrigiu a
+  // camera > o professor confirmou > a camera detectou sozinha. Sem selo = o
+  // aluno esta ausente e ninguem mexeu nisso ainda.
+  const selo = corrigido
+    ? { tipo: "corrigido", texto: "Corrigido por você" }
+    : aluno.confirmado_professor === 1
+      ? { tipo: "confirmado", texto: "Confirmado por você" }
+      : aluno.detectado_automaticamente === 1
+        ? { tipo: "camera", texto: "Detectado pela câmera" }
+        : null;
+
   return (
-    <li
-      className="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-3 px-5 py-4 sm:grid-cols-[1fr_150px_130px_110px] sm:px-6"
-      style={{ borderTop: "1px solid var(--border)" }}
-    >
-      {/* Aluno */}
-      <div className="flex min-w-0 items-center gap-3">
+    <li className="chamada-linha">
+      <div className="chamada-aluno">
         <AvatarAluno nome={aluno.nome} ra={aluno.ra} />
         <div className="min-w-0">
-          <p className="text-text truncate text-sm font-bold">{aluno.nome}</p>
-          <p className="text-text-muted text-xs">
-            Matrícula {aluno.ra}
-            {aluno.detectado_automaticamente === 1 && (
-              <span
-                className="ml-2 font-semibold"
-                style={{ color: "var(--text-brand)" }}
-              >
-                · Detectado pela Cupcam
-              </span>
-            )}
-            {corrigido && (
-              <span
-                className="ml-2 rounded-full px-2 py-0.5 text-[10px] font-extrabold tracking-wide uppercase"
-                style={{ background: "var(--warn-bg)", color: "var(--warn-fg)" }}
-                title="O professor confirmou um estado diferente do que a câmera detectou"
-              >
-                Corrigido
-              </span>
-            )}
-          </p>
+          <div className="chamada-nome">{aluno.nome}</div>
+          <div className="chamada-ra">Matrícula {aluno.ra}</div>
+          {selo && (
+            <span
+              className="chamada-selo"
+              data-tipo={selo.tipo}
+              title={
+                corrigido
+                  ? "Você confirmou um estado diferente do que a câmera detectou"
+                  : undefined
+              }
+            >
+              {selo.texto}
+            </span>
+          )}
         </div>
       </div>
 
-      {/* Botoes Presente/Ausente. gap-2 (8px): com 36px de lado e area de toque
-          de 44, e' o minimo para um alvo nao invadir o do vizinho — marcar
-          "presente" por engano quando se quis "ausente" e' justamente o erro
-          que a chamada nao pode ter. */}
-      <div className="flex gap-2 justify-self-end sm:justify-self-start">
-        <BotaoStatus
-          ativo={presente}
-          tipo="presente"
-          rotulo={`Marcar ${aluno.nome} como presente`}
-          aoClicar={() => aoMarcar(aluno.ra, true)}
-        />
-        <BotaoStatus
-          ativo={!presente}
-          tipo="ausente"
-          rotulo={`Marcar ${aluno.nome} como ausente`}
-          aoClicar={() => aoMarcar(aluno.ra, false)}
-        />
+      {/* So' o simbolo, sem a palavra (ele pediu em 16/08): numa lista longa o
+          que o olho procura e' o padrao de certos e errados, e duas palavras
+          por linha viravam ruido.
+
+          O texto NAO some do app — ele migra pro `aria-label`, que carrega o
+          nome do aluno junto (numa lista de 30, "Presente" sozinho nao diz a
+          quem se refere), e pro `title`, que devolve a palavra no mouse. O
+          estado tambem nao fica so' na cor: `aria-pressed` diz qual esta
+          valendo, e o simbolo ✓/✕ distingue os dois sem depender de enxergar
+          verde e vermelho (WCAG 1.4.1). */}
+      <div className="chamada-status">
+        <button
+          type="button"
+          data-status="presente"
+          aria-pressed={presente}
+          aria-label={`Marcar ${aluno.nome} como presente`}
+          title="Presente"
+          disabled={ocupado}
+          onClick={() => aoMarcar(aluno.ra, true)}
+          className="chamada-status-botao"
+        >
+          <IconCheckSimples size={16} />
+        </button>
+        <button
+          type="button"
+          data-status="ausente"
+          aria-pressed={!presente}
+          aria-label={`Marcar ${aluno.nome} como ausente`}
+          title="Ausente"
+          disabled={ocupado}
+          onClick={() => aoMarcar(aluno.ra, false)}
+          className="chamada-status-botao"
+        >
+          <IconFechar size={16} />
+        </button>
       </div>
 
-      {/* Frequencia historica (presenca, nunca engajamento) */}
-      <div className="flex items-center gap-2">
-        <span
-          className="h-2 w-2 flex-none rounded-full"
-          style={{ background: corFrequencia(aluno.frequencia_pct) }}
-          aria-hidden
-        />
-        <span className="text-text text-sm font-bold">
-          {formatarPct(aluno.frequencia_pct) ?? "Sem histórico"}
-        </span>
-        <span className="text-text-muted text-xs sm:hidden">de frequência</span>
+      {/* Frequencia: barrinha + numero. `null` e' "sem historico", que e' outra
+          afirmacao que "0%" — o aluno pode ser novo na turma. */}
+      <div className="chamada-freq">
+        {pct === null ? (
+          <span className="chamada-freq-vazio">Sem histórico</span>
+        ) : (
+          <>
+            <span className="chamada-freq-trilho" aria-hidden>
+              <span
+                className="chamada-freq-barra"
+                style={{
+                  width: `${Math.min(100, Math.max(0, pct))}%`,
+                  background: gradientePresenca(pct),
+                }}
+              />
+            </span>
+            <span className="chamada-freq-valor">{Math.round(pct)}%</span>
+          </>
+        )}
       </div>
 
-      <button
-        type="button"
-        onClick={aoAbrirDetalhe}
-        className="bg-surface-2 justify-self-end rounded-lg px-3.5 py-2 text-xs font-bold whitespace-nowrap"
-        style={{ color: "var(--text-brand)" }}
-      >
-        Ver detalhes
+      <button type="button" onClick={aoAbrirDetalhe} className="btn-acao">
+        Detalhes
+        <IconSetaDireita size={13} />
       </button>
     </li>
-  );
-}
-
-function BotaoStatus({
-  ativo,
-  tipo,
-  rotulo,
-  aoClicar,
-}: {
-  ativo: boolean;
-  tipo: "presente" | "ausente";
-  rotulo: string;
-  aoClicar: () => void;
-}) {
-  const cor = tipo === "presente" ? "var(--ok)" : "var(--danger)";
-
-  /* 36px nos dois tamanhos de tela. Antes o botao encolhia para 32px no
-     computador (`sm:h-8 sm:w-8`), o que contrariava o proposito descrito no
-     JSDoc acima — e nenhum dos dois valores alcancava o piso de 44px. Agora o
-     tamanho visual fica constante e a area de toque, invisivel, vai a 44. */
-  return (
-    <BotaoIcone
-      rotulo={rotulo}
-      aoClicar={aoClicar}
-      pressionado={ativo}
-      tamanho={36}
-      fundo={ativo ? cor : "transparent"}
-      cor={ativo ? "#fff" : cor}
-      borda={ativo ? undefined : `1.5px solid ${cor}`}
-    >
-      {tipo === "presente" ? <IconCheckSimples /> : <IconFechar size={14} />}
-    </BotaoIcone>
   );
 }

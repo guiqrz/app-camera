@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { IconLousa } from "@/components/ui/icons";
+import { IconInfo } from "@/components/ui/icons";
 import { dataDoTimestamp, formatarDataExtensa, horaDoTimestamp } from "@/lib/format";
 import type { Lousa } from "@/lib/types";
 
@@ -60,42 +60,22 @@ export function SecaoLousas({ sessaoId }: SecaoLousasProps) {
 
   if (carregando || lousas.length === 0) return null;
 
+  // SEM card nem título próprios: quem desenha os dois é o `BlocoColapsavel`
+  // em volta. A seção antiga trazia a própria `<section>` com "Quadros da
+  // aula", o que empilhava dois cards e dois títulos.
   return (
-    <div className="border-border-default bg-surface shadow-card flex flex-col gap-4 rounded-2xl border p-5">
-      <div className="flex items-center gap-2.5">
-        <span aria-hidden style={{ color: "var(--primary)" }}>
-          <IconLousa size={20} />
+    <div className="flex flex-col gap-4">
+      <p className="text-text-muted m-0 flex items-start gap-[7px] text-[11.5px] leading-[1.45]">
+        <span className="mt-px flex-none opacity-70" aria-hidden>
+          <IconInfo size={13} />
         </span>
-        <h2 className="text-text text-lg font-extrabold">
-          {lousas.length === 1 ? "Quadro da aula" : "Quadros da aula"}
-        </h2>
-      </div>
+        Texto lido do quadro pela Cupcam. O que ela não conseguiu ler aparece
+        marcado.
+      </p>
 
-      <ul className="grid gap-4 md:grid-cols-2">
-        {lousas.map((lousa, indice) => (
-          <li key={lousa.id} className="flex flex-col gap-2">
-            <div className="flex items-baseline justify-between gap-2">
-              <span className="text-text text-xs font-extrabold">
-                Captura {indice + 1}
-              </span>
-              <span className="text-text-muted text-[11px]">
-                {horaDoTimestamp(lousa.capturada_em)}
-              </span>
-            </div>
-
-            {/* eslint-disable-next-line @next/next/no-img-element --
-                next/image exigiria configurar o host e otimizaria no servidor;
-                aqui a imagem vem da nossa propria ponte e ja' e' pequena. */}
-            <img
-              src={`/api/lousas/${lousa.sessao_id}/${lousa.id}/imagem`}
-              alt={`Foto do quadro, captura ${indice + 1}`}
-              className="border-border-default w-full rounded-xl border"
-            />
-
-            <TextoDoQuadro lousa={lousa} />
-          </li>
-        ))}
-      </ul>
+      {lousas.map((lousa, indice) => (
+        <ParDaLousa key={lousa.id} lousa={lousa} indice={indice} />
+      ))}
 
       {/* Prazo visivel, pelo mesmo motivo da transcricao: os 60 dias sao o
           contrato de privacidade da imagem, nao um detalhe interno. */}
@@ -103,6 +83,44 @@ export function SecaoLousas({ sessaoId }: SecaoLousasProps) {
         As fotos do quadro são apagadas em{" "}
         {formatarDataExtensa(dataDoPrazo(lousas))}.
       </p>
+    </div>
+  );
+}
+
+/**
+ * Uma captura: FOTO e TEXTO lado a lado (`.lousa-par`, 5fr/7fr).
+ *
+ * A foto é a FONTE do texto, então divide o espaço com ele em vez de ficar
+ * escondida embaixo. A imagem precisa de largura pra ser legível; o texto
+ * precisa de mais — daí a proporção. Empilha em 1 coluna abaixo de 900px.
+ */
+function ParDaLousa({ lousa, indice }: { lousa: Lousa; indice: number }) {
+  return (
+    <div className="grid items-start gap-[15px] min-[900px]:grid-cols-[5fr_7fr]">
+      <figure className="m-0 flex flex-col gap-[7px]">
+        {/* eslint-disable-next-line @next/next/no-img-element --
+            next/image exigiria configurar o host e otimizaria no servidor;
+            aqui a imagem vem da nossa propria ponte e ja' e' pequena. */}
+        <img
+          src={`/api/lousas/${lousa.sessao_id}/${lousa.id}/imagem`}
+          alt={`Foto do quadro, captura ${indice + 1}`}
+          className="border-border-default w-full rounded-[9px] border"
+        />
+        <figcaption className="text-text-muted text-[11px]">
+          Registrada automaticamente durante o modo Lousa ·{" "}
+          {horaDoTimestamp(lousa.capturada_em)}
+        </figcaption>
+      </figure>
+
+      <div>
+        <p
+          className="text-text-muted mb-[5px] text-[10.5px] font-semibold uppercase"
+          style={{ letterSpacing: "0.06em" }}
+        >
+          Transcrição da lousa
+        </p>
+        <TextoDoQuadro lousa={lousa} />
+      </div>
     </div>
   );
 }
@@ -125,10 +143,16 @@ function TextoDoQuadro({ lousa }: { lousa: Lousa }) {
     );
   }
 
+  // `max-height` + rolagem: um quadro cheio de conteúdo esticaria o card e
+  // empurraria a tela inteira pra baixo. `whitespace-pre-wrap` preserva as
+  // quebras que o modelo usou pra reproduzir o layout do quadro.
   return (
-    <p className="text-text bg-surface-soft rounded-xl p-3 text-xs leading-relaxed whitespace-pre-wrap">
+    <div
+      className="border-border-default text-text-body max-h-[300px] overflow-y-auto rounded-[9px] border px-[15px] py-[13px] text-[12.5px] leading-[1.55] whitespace-pre-wrap"
+      style={{ background: "var(--surface-2)" }}
+    >
       {lousa.texto}
-    </p>
+    </div>
   );
 }
 

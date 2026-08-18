@@ -2,14 +2,16 @@
 
 import { BotaoIcone } from "@/components/ui/botao-icone";
 import { IconLapis, IconLixeira, IconMais, IconTurma } from "@/components/ui/icons";
-import type { TurmaAdmin } from "@/lib/types";
+import { formatarPct } from "@/lib/format";
+import type { TurmaPanorama } from "@/lib/types";
 
 type PainelTurmasProps = {
-  turmas: TurmaAdmin[];
+  /** Turmas já em ordem alfabética, como o backend devolve. Ver o aviso abaixo. */
+  turmas: TurmaPanorama[];
   selecionadaId: number | null;
   aoSelecionar: (turmaId: number) => void;
   aoNovaTurma: () => void;
-  aoExcluirTurma: (turma: TurmaAdmin) => void;
+  aoExcluirTurma: (turma: TurmaPanorama) => void;
 };
 
 /**
@@ -22,6 +24,14 @@ type PainelTurmasProps = {
  * (`/coordenacao/turmas/{id}`), onde a turma aparece junto da grade semanal de
  * aulas. Como link de verdade, ganha de graca o "abrir em nova aba" e o
  * prefetch do Next — que um botao com router.push nao daria.
+ *
+ * ⚠️ A ORDEM E' ALFABETICA E NAO PODE VIRAR ORDENACAO POR DESEMPENHO.
+ * A lista mostra `frequencia_media_pct` por turma (decisao explicita do
+ * usuario em 16/08/2026), mas ordenar por ela transformaria a tela num ranking
+ * de turmas e, como cada turma tem um professor atras, num ranking de
+ * professores — proibido pelo CLAUDE.md. Pelo mesmo motivo a porcentagem nao
+ * recebe cor semaforica nem seta de tendencia: cor e seta sao o que transforma
+ * um numero em juizo. Ha teste travando a ordem no backend.
  */
 export function PainelTurmas({
   turmas,
@@ -31,77 +41,75 @@ export function PainelTurmas({
   aoExcluirTurma,
 }: PainelTurmasProps) {
   return (
-    <div
-      className="flex flex-col rounded-2xl"
-      style={{
-        background: "var(--surface)",
-        border: "1px solid var(--border)",
-        boxShadow: "var(--shadow-card)",
-      }}
-    >
-      <div className="flex items-center justify-between gap-2 px-5 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
-        <h2 className="text-text text-base font-extrabold">Turmas</h2>
-        <button
-          type="button"
-          onClick={aoNovaTurma}
-          className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-extrabold text-white"
-          style={{ background: "var(--primary)" }}
-        >
+    <section className="coord-painel">
+      <div className="coord-painel-topo">
+        <h2 className="coord-painel-titulo">Turmas</h2>
+        <button type="button" onClick={aoNovaTurma} className="btn-acao vidro centrado">
           <IconMais size={14} />
           Nova turma
         </button>
       </div>
 
       {turmas.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 px-6 py-10 text-center">
-          <span className="text-text-muted" aria-hidden>
-            <IconTurma size={28} />
+        <div className="coord-vazio">
+          <span className="coord-vazio-icone" aria-hidden>
+            <IconTurma size={26} />
           </span>
-          <p className="text-text text-sm font-bold">Nenhuma turma cadastrada ainda.</p>
-          <p className="text-text-muted text-xs">
+          <p className="coord-vazio-titulo">Nenhuma turma cadastrada ainda.</p>
+          <p className="coord-vazio-apoio">
             Crie uma turma para começar a cadastrar alunos.
           </p>
         </div>
       ) : (
-        <ul className="flex flex-col gap-2 p-3">
+        <ul className="coord-turmas">
           {turmas.map((turma) => {
             const selecionada = turma.id === selecionadaId;
             return (
               <li
                 key={turma.id}
-                className="flex items-stretch gap-1 rounded-xl transition-colors"
-                style={{
-                  background: selecionada ? "var(--violet-100)" : "transparent",
-                  border: selecionada
-                    ? "1.5px solid var(--primary)"
-                    : "1.5px solid transparent",
-                }}
+                className="coord-turma"
+                data-selecionada={selecionada ? "sim" : "nao"}
               >
                 {/* Selecionar a turma — botao principal, ocupa a linha toda. */}
                 <button
                   type="button"
                   onClick={() => aoSelecionar(turma.id)}
                   aria-current={selecionada ? "true" : undefined}
-                  className="flex min-w-0 flex-1 flex-col gap-1 rounded-l-xl px-4 py-3 text-left"
+                  className="coord-turma-botao"
                 >
-                  <span
-                    className="truncate text-sm font-extrabold"
-                    style={{ color: selecionada ? "var(--text-brand)" : "var(--text)" }}
-                  >
-                    {turma.nome}
-                  </span>
-                  {/* Turma e' so' identidade: nome + sala. Dia e horario agora
-                      vivem nas aulas dela, no painel "Aulas da turma". */}
-                  <span className="text-text-muted truncate text-xs">{turma.sala_id}</span>
-                  <span className="text-text-muted text-xs font-semibold">
-                    {turma.total_alunos}{" "}
-                    {turma.total_alunos === 1 ? "aluno matriculado" : "alunos matriculados"}
+                  <span className="coord-turma-nome">{turma.nome}</span>
+                  {/* Turma e' so' identidade: nome + sala. Dia e horario vivem
+                      nas aulas dela, na pagina da turma. */}
+                  <span className="coord-turma-sala">{turma.sala_id}</span>
+
+                  {/* Os tres numeros que dizem se a turma esta PRONTA pra ser
+                      monitorada: quem esta nela, quando ela acontece, e se a
+                      camera ja' rodou. Zero em qualquer um vira pendencia la'
+                      em cima — aqui e' so' o retrato. */}
+                  <span className="coord-turma-dados">
+                    <Dado
+                      valor={turma.total_alunos}
+                      rotulo={turma.total_alunos === 1 ? "aluno" : "alunos"}
+                      alerta={turma.total_alunos === 0}
+                    />
+                    <Dado
+                      valor={turma.aulas_na_grade}
+                      rotulo={turma.aulas_na_grade === 1 ? "aula" : "aulas"}
+                      alerta={turma.aulas_na_grade === 0}
+                    />
+                    {/* Frequencia SEM cor e SEM seta, de proposito — ver o
+                        aviso no JSDoc do componente. "—" quando nunca houve
+                        chamada: 0% afirmaria que a turma inteira faltou. */}
+                    <Dado
+                      valor={formatarPct(turma.frequencia_media_pct) ?? "—"}
+                      rotulo="presença"
+                    />
                   </span>
                 </button>
 
                 {/* Acoes da turma — fora do botao de selecao (link ou botao
-                    dentro de botao e' HTML invalido). */}
-                {/* gap-3 (12px) e nao gap-0.5: os botoes medem 32px e a area de
+                    dentro de botao e' HTML invalido).
+                    gap-3 (12px) e nao gap-0.5: os botoes medem 32px e a area de
                     toque vai a 44, entao precisam de 12px entre si para uma nao
                     cobrir a outra. */}
                 <div className="flex flex-none items-center gap-3 pr-2">
@@ -128,6 +136,30 @@ export function PainelTurmas({
           })}
         </ul>
       )}
-    </div>
+    </section>
+  );
+}
+
+/**
+ * Um número da linha da turma.
+ *
+ * `alerta` marca o zero que impede a turma de funcionar (sem aluno, sem
+ * grade) — é o mesmo fato que virou pendência no topo, sinalizado aqui de
+ * leve pra quem está varrendo a lista. Só zero de CADASTRO recebe a marca;
+ * frequência nunca, mesmo baixa.
+ */
+function Dado({
+  valor,
+  rotulo,
+  alerta = false,
+}: {
+  valor: number | string;
+  rotulo: string;
+  alerta?: boolean;
+}) {
+  return (
+    <span className="coord-dado" data-alerta={alerta ? "sim" : undefined}>
+      <strong className="coord-dado-valor">{valor}</strong> {rotulo}
+    </span>
   );
 }

@@ -7,7 +7,7 @@ export function AvisoSemTurmas() {
   return (
     <AppShell titulo="Minhas aulas">
       <div className="border-border-default mx-auto max-w-lg rounded-2xl border border-dashed p-10 text-center">
-        <h1 className="text-text text-xl font-extrabold">Nenhuma turma cadastrada</h1>
+        <h1 className="text-text text-xl font-semibold">Nenhuma turma cadastrada</h1>
         <p className="text-text-body mt-3 text-sm leading-relaxed">
           O CUPCAM ainda não tem turmas no banco de dados. Cadastre uma turma
           para que as aulas monitoradas apareçam aqui.
@@ -16,7 +16,7 @@ export function AvisoSemTurmas() {
             tinha que descobrir sozinho que turma se cadastra em Coordenacao. */}
         <Link
           href="/coordenacao"
-          className="mt-6 inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-extrabold text-white transition-colors"
+          className="mt-6 inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-colors"
           style={{ background: "var(--primary)" }}
         >
           Cadastrar turma

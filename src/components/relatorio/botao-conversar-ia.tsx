@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { IconIA } from "@/components/ui/icons";
+import { IconEstrela } from "@/components/ui/icons";
 import type { Transcricao } from "@/lib/types";
 
 type BotaoConversarIaProps = {
@@ -46,14 +46,36 @@ export function BotaoConversarIa({ sessaoId }: BotaoConversarIaProps) {
 
   if (!disponivel) return null;
 
+  // A MESMA pílula de vidro do "Gerar com a Cup AI" da tela Minhas Aulas — ele
+  // pediu explicitamente o mesmo botão nos dois lugares. O fundo escuro de
+  // antes (`rgba(0,0,0,.18)`) existia pro card roxo de gradiente, que saiu.
+  //
+  // A moldura acesa vem de um gradiente que cobre a área toda e é recortado
+  // pela máscara: `padding: 1px` + `mask-composite: exclude` deixam visível só
+  // a faixa da borda.
   return (
     <Link
       href={`/ia?sessao=${sessaoId}`}
-      className="mt-4 flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-[13px] font-extrabold transition-opacity hover:opacity-90"
-      style={{ background: "rgba(0,0,0,0.18)" }}
+      className="text-text-brand relative isolate ml-auto flex flex-none items-center gap-[7px] rounded-full px-[21px] py-[11px] text-[12.5px] font-semibold no-underline transition-transform hover:-translate-y-px"
+      style={{
+        background: "var(--vidro-botao)",
+        backdropFilter: "blur(28px) saturate(175%)",
+      }}
     >
-      <IconIA size={15} />
-      Conversar sobre esta aula
+      <span
+        className="pointer-events-none absolute inset-0 rounded-full p-px"
+        style={{
+          background: "var(--moldura-botao)",
+          WebkitMask:
+            "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+          mask: "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+          WebkitMaskComposite: "xor",
+          maskComposite: "exclude",
+        }}
+        aria-hidden
+      />
+      <IconEstrela size={15} className="opacity-90" />
+      Falar com a Cup AI sobre esta aula
     </Link>
   );
 }

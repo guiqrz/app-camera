@@ -66,7 +66,7 @@ export function SeletorModo({
          deixava o ultimo sozinho numa linha, parecendo item de outra
          categoria. Em 2x2 eles ficam equilibrados, e no desktop cabem os 4
          lado a lado — que e' o que deixa o professor comparar de relance. */
-      className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+      className="modos-grade"
     >
       {modos.map((modo) => {
         const selecionado = modo.id === ativo;
@@ -83,19 +83,19 @@ export function SeletorModo({
           // pilha, senao ele cobriria o "?" e engoliria o clique da ajuda.
           <div
             key={modo.id}
-            className="relative flex flex-col gap-1.5 rounded-2xl border p-4 transition-colors"
-            style={{
-              // Ativo pega a cor do proprio modo; inativo fica na borda neutra
-              // do tema.
-              borderColor: selecionado ? (aparencia?.texto ?? "var(--primary)") : "var(--border)",
-              background: selecionado ? (aparencia?.fundo ?? "var(--surface-soft)") : "var(--surface)",
-              // Anel interno engrossa a borda do ativo sem mexer no layout
-              // (border-width maior deslocaria o conteudo em 1px).
-              boxShadow: selecionado
-                ? `inset 0 0 0 1px ${aparencia?.texto ?? "var(--primary)"}`
-                : "none",
-              opacity: desabilitado ? 0.6 : 1,
-            }}
+            className="modo-cartao"
+            data-ativo={selecionado ? "sim" : "nao"}
+            /* Cor vai em VARIAVEL, e nao direto em `borderColor`: propriedade
+               inline vence qualquer regra de folha de estilo, e o `:hover` do
+               `.modo-cartao` ficaria morto — o cartao nunca acenderia ao passar
+               o mouse. Com a variavel, o CSS decide QUANDO usar cada uma. */
+            style={
+              {
+                "--modo-cor": aparencia?.texto ?? "var(--primary)",
+                "--modo-fundo": aparencia?.fundo ?? "var(--surface-soft)",
+                opacity: desabilitado ? 0.6 : 1,
+              } as React.CSSProperties
+            }
           >
             <button
               type="button"
@@ -104,7 +104,9 @@ export function SeletorModo({
               aria-label={`${modo.rotulo}. ${modo.resumo}`}
               disabled={desabilitado}
               onClick={() => aoEscolher(modo.id)}
-              className="focus-visible:ring-primary absolute inset-0 z-0 rounded-2xl focus-visible:ring-2 focus-visible:outline-none disabled:cursor-not-allowed"
+              /* `rounded-[var(--radius-sm)]` acompanha o raio do cartao: com o
+                 raio antigo (2xl) o anel de foco sobrava nas quinas. */
+              className="focus-visible:ring-primary absolute inset-0 z-0 cursor-pointer rounded-[var(--radius-sm)] focus-visible:ring-2 focus-visible:outline-none disabled:cursor-not-allowed"
             />
 
             {/* Icone e "?" dividem a primeira linha; o rotulo desce pra linha de
@@ -115,10 +117,10 @@ export function SeletorModo({
                 `truncate`, que exibia "Des…" — perder o nome do modo e' pior que
                 o problema que resolvia. Duas linhas cabem em qualquer largura, e
                 sobra espaco pra um rotulo maior no futuro. */}
-            <div className="pointer-events-none relative z-10 -mb-0.5 flex items-start justify-between gap-1">
+            <div className="modo-topo pointer-events-none relative z-10">
               {/* Icone colorido mesmo inativo: e' o que deixa o professor decorar
                   "roxo = Aula" antes mesmo de selecionar. */}
-              <span aria-hidden style={{ color: aparencia?.texto ?? "var(--text)" }}>
+              <span aria-hidden style={{ color: "var(--modo-cor)" }}>
                 {ICONES[modo.id]}
               </span>
 
@@ -139,8 +141,8 @@ export function SeletorModo({
             <span className="pointer-events-none relative z-10 flex flex-wrap items-baseline gap-x-1.5">
               <span
                 aria-hidden
-                className="text-sm font-extrabold"
-                style={{ color: aparencia?.texto ?? "var(--text)" }}
+                className="modo-nome"
+                style={{ color: "var(--modo-cor)" }}
               >
                 {modo.rotulo}
               </span>
@@ -158,7 +160,7 @@ export function SeletorModo({
 
             {/* Daqui pra baixo e' texto decorativo: o <button> ja' anuncia rotulo
                 e resumo pelo aria-label, entao o leitor de tela nao repete. */}
-            <span aria-hidden className="text-text-muted pointer-events-none relative z-10 text-xs leading-relaxed">
+            <span aria-hidden className="modo-resumo pointer-events-none relative z-10">
               {modo.resumo}
             </span>
 
@@ -167,15 +169,15 @@ export function SeletorModo({
             {selecionado && (
               <span
                 aria-hidden
-                className="pointer-events-none relative z-10 text-[11px] font-extrabold tracking-wide uppercase"
-                style={{ color: aparencia?.texto ?? "var(--primary)" }}
+                className="modo-selo pointer-events-none relative z-10"
+                style={{ color: "var(--modo-cor)" }}
               >
                 Ativo
               </span>
             )}
             {aguardando && (
               <span
-                className="pointer-events-none relative z-10 text-[11px] font-extrabold tracking-wide uppercase"
+                className="modo-selo pointer-events-none relative z-10"
                 style={{ color: "var(--warn-fg)" }}
               >
                 Aplicando…

@@ -174,3 +174,49 @@ export function horaDoTimestamp(timestamp: string): string {
 export function formatarPct(valor: number | null): string | null {
   return valor === null ? null : `${Math.round(valor)}%`;
 }
+
+/**
+ * Ha quanto tempo a captura esta no ar, a partir de `sessoes.iniciada_em`.
+ *
+ * O timestamp vem do backend como "AAAA-MM-DD HH:MM:SS" em horario LOCAL da
+ * maquina que roda a camera (o SQLite grava com `datetime('now','localtime')`).
+ * Por isso ele e' montado campo a campo com `new Date(ano, mes, ...)`, que
+ * interpreta como local: passar a string crua pro construtor faria o navegador
+ * ler "AAAA-MM-DDTHH:MM:SS" como UTC em alguns motores, e a duracao sairia
+ * deslocada pelo fuso — 3 horas de erro no Brasil.
+ *
+ * Devolve null quando nao da' pra afirmar: sem timestamp, timestamp corrompido,
+ * ou relogio adiantado (inicio no futuro). Null e' a tela nao mostrar duracao
+ * nenhuma, que e' melhor que mostrar "ha -3 h".
+ */
+export function duracaoDesde(
+  iniciadaEm: string | null | undefined,
+  agora: Date = new Date(),
+): string | null {
+  if (!iniciadaEm) return null;
+
+  const [data, hora] = iniciadaEm.split(" ");
+  if (!data || !hora) return null;
+
+  const [ano, mes, dia] = data.split("-").map(Number);
+  const [h, m, s] = hora.split(":").map(Number);
+  if ([ano, mes, dia, h, m].some((n) => !Number.isFinite(n))) return null;
+
+  const inicio = new Date(ano, mes - 1, dia, h, m, s || 0);
+  if (Number.isNaN(inicio.getTime())) return null;
+
+  const minutos = Math.floor((agora.getTime() - inicio.getTime()) / 60000);
+  // Relogio adiantado ou estado de outra maquina: nao inventa "ha 0 min".
+  if (minutos < 0) return null;
+  if (minutos < 1) return "agora há pouco";
+  if (minutos < 60) return `há ${minutos} min`;
+
+  const horas = Math.floor(minutos / 60);
+  const resto = minutos % 60;
+  if (horas < 24) {
+    return resto === 0 ? `há ${horas} h` : `há ${horas} h ${resto} min`;
+  }
+
+  const dias = Math.floor(horas / 24);
+  return dias === 1 ? "há 1 dia" : `há ${dias} dias`;
+}

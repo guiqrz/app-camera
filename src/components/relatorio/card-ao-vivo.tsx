@@ -97,7 +97,7 @@ export function CardAoVivo({ turmaId }: CardAoVivoProps) {
           />
         </span>
         <div>
-          <p className="text-text text-sm font-extrabold tracking-wide uppercase">
+          <p className="text-text text-sm font-semibold tracking-wide uppercase">
             Ao vivo · {estado.turma.nome}
           </p>
           <p className="text-text-muted text-xs">Aula acontecendo agora</p>
@@ -106,7 +106,7 @@ export function CardAoVivo({ turmaId }: CardAoVivoProps) {
 
       {estado.alerta_atencao && (
         <div
-          className="flex items-center gap-3 rounded-2xl px-5 py-4 text-sm font-extrabold"
+          className="flex items-center gap-3 rounded-2xl px-5 py-4 text-sm font-semibold"
           style={{ background: "var(--danger)", color: "#fff" }}
           role="alert"
         >
@@ -145,7 +145,7 @@ export function CardAoVivo({ turmaId }: CardAoVivoProps) {
             que esta acontecendo. */}
         <Link
           href={`/chamada/${estado.sessao_id}?turma=${turmaId}`}
-          className="flex flex-none items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-extrabold text-white transition-colors"
+          className="flex flex-none items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold text-white transition-colors"
           style={{ background: "var(--primary)" }}
         >
           Abrir chamada

@@ -28,9 +28,12 @@ import type {
   ContinuidadeDaTurma,
   ConteudoDaAula,
   Conversa,
+  DiaDaSemana,
   DiarioDaAula,
   EstadoCamera,
   EstatisticasDaTurma,
+  Lembrete,
+  LembreteEditado,
   Lousa,
   Materia,
   ModoCamera,
@@ -42,7 +45,9 @@ import type {
   RespostaDoAssistente,
   Transcricao,
   Turma,
+  PanoramaCoordenacao,
   VisaoAdmin,
+  VisaoGeral,
 } from "./types";
 
 /** Erro de comunicacao com a API, com o status HTTP preservado. */
@@ -92,7 +97,7 @@ export function lerConfiguracao(): { baseUrl: string; apiKey: string } {
 type OpcoesRequisicao = {
   /** Segundos ate revalidar o cache. 0 desliga o cache (dado ao vivo). */
   revalidate?: number;
-  method?: "GET" | "POST" | "PUT" | "DELETE";
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   /** FormData vai crua (multipart); qualquer outra coisa vira JSON. */
   body?: unknown;
 };
@@ -104,8 +109,14 @@ async function requisitar<T>(
   const { baseUrl, apiKey } = lerConfiguracao();
 
   const eFormData = body instanceof FormData;
-  // Escrita (POST/PUT/DELETE) nunca e' cacheada; leitura revalida no intervalo pedido.
-  const eEscrita = method === "POST" || method === "PUT" || method === "DELETE";
+  // Escrita nunca e' cacheada; leitura revalida no intervalo pedido. PATCH
+  // precisa estar nesta lista: fora dela ele cairia no ramo de leitura e o
+  // Next tentaria cachear uma escrita.
+  const eEscrita =
+    method === "POST" ||
+    method === "PUT" ||
+    method === "PATCH" ||
+    method === "DELETE";
 
   let resposta: Response;
   try {
@@ -160,6 +171,98 @@ async function requisitar<T>(
 export function listarTurmas(): Promise<Turma[]> {
   // Turmas mudam raramente; cache mais longo evita ida a rede a cada tela.
   return requisitar<Turma[]>("/turmas", { revalidate: 300 });
+}
+
+/**
+ * Tela "Minhas Aulas", estado "Todas as turmas" — rota gorda.
+ *
+ * Devolve numeros + agenda da semana + lembretes numa requisicao so'.
+ *
+ * Sem cache: o professor marca um lembrete como feito e precisa ver o proprio
+ * clique refletido ao voltar pra tela. Cachear aqui traria de volta o lembrete
+ * que ele acabou de riscar.
+ */
+export function buscarVisaoGeral(): Promise<VisaoGeral> {
+  return requisitar<VisaoGeral>("/visao-geral", { revalidate: 0 });
+}
+
+/**
+ * Agenda semanal de UMA turma — o mesmo bloco "Sua semana" no estado turma.
+ *
+ * Turma sem grade devolve os 7 dias vazios, nunca 404: a turma pode existir
+ * antes de a grade ser montada.
+ */
+export function buscarSemanaDaTurma(turmaId: number): Promise<DiaDaSemana[]> {
+  return requisitar<DiaDaSemana[]>(`/turmas/${turmaId}/semana`, {
+    revalidate: 0,
+  });
+}
+
+/* --- Lembretes ---------------------------------------------------------- */
+
+export function listarLembretes(): Promise<Lembrete[]> {
+  return requisitar<Lembrete[]>("/lembretes", { revalidate: 0 });
+}
+
+export function criarLembrete(corpo: {
+  texto: string;
+  data: string | null;
+}): Promise<{ id: number }> {
+  return requisitar<{ id: number }>("/lembretes", {
+    method: "POST",
+    body: corpo,
+  });
+}
+
+/**
+ * Altera SO' os campos presentes em `corpo` (semantica de PATCH).
+ *
+ * O `body` e' repassado como veio: omitir `data` mantem o prazo, mandar
+ * `data: null` o APAGA. Nao normalize o objeto aqui (nada de `data: corpo.data
+ * ?? null`) — isso apagaria o prazo de todo lembrete marcado como feito.
+ */
+export function editarLembrete(
+  id: number,
+  corpo: LembreteEditado,
+): Promise<{ id: number }> {
+  return requisitar<{ id: number }>(`/lembretes/${id}`, {
+    method: "PATCH",
+    body: corpo,
+  });
+}
+
+export function removerLembrete(id: number): Promise<{ id: number }> {
+  return requisitar<{ id: number }>(`/lembretes/${id}`, { method: "DELETE" });
+}
+
+/* --- Plano e anexo da aula ---------------------------------------------- */
+
+/** Grava o plano da aula. Texto vazio LIMPA o plano (nao ha DELETE de plano). */
+export function definirPlanoDaAula(
+  aulaId: number,
+  texto: string,
+): Promise<{ id: number }> {
+  return requisitar<{ id: number }>(`/admin/aulas/${aulaId}/plano`, {
+    method: "PUT",
+    body: { texto },
+  });
+}
+
+/** Guarda (ou SUBSTITUI) o anexo da aula — um anexo por aula. */
+export function salvarAnexoDaAula(
+  aulaId: number,
+  arquivo: FormData,
+): Promise<{ id: number; nome: string; tamanho: number }> {
+  return requisitar(`/admin/aulas/${aulaId}/anexo`, {
+    method: "PUT",
+    body: arquivo,
+  });
+}
+
+export function removerAnexoDaAula(aulaId: number): Promise<{ id: number }> {
+  return requisitar<{ id: number }>(`/admin/aulas/${aulaId}/anexo`, {
+    method: "DELETE",
+  });
 }
 
 /**
@@ -226,6 +329,20 @@ export function confirmarPresenca(
  */
 export function buscarVisaoAdmin(): Promise<VisaoAdmin> {
   return requisitar<VisaoAdmin>("/admin/visao", { revalidate: 0 });
+}
+
+/**
+ * Tela "Coordenacao" — panorama de cadastro da escola.
+ *
+ * Complementa `buscarVisaoAdmin`: aquela traz o cadastro editavel (com RA e
+ * nome, que a tela edita), esta traz os agregados por turma e a lista do que
+ * falta configurar. Sao rotas separadas de proposito — o panorama nao expoe
+ * aluno nenhum.
+ *
+ * Sem cache pelo mesmo motivo da visao: cadastrou, tem que aparecer.
+ */
+export function buscarPanoramaCoordenacao(): Promise<PanoramaCoordenacao> {
+  return requisitar<PanoramaCoordenacao>("/admin/panorama", { revalidate: 0 });
 }
 
 /** Cria uma turma nova. */
@@ -611,8 +728,17 @@ export function buscarConteudoDaAula(sessaoId: number): Promise<ConteudoDaAula> 
  * Onde a turma parou: historico do conteudo dado + um paragrafo da IA.
  *
  * Esta chamada CUSTA uma requisicao ao modelo no backend, ao contrario de
- * buscarConteudoDaAula — por isso `revalidate: 0` aqui nao e' "de graca" como
- * la'. Chamar so' quando a tela da turma abre, nunca em polling.
+ * buscarConteudoDaAula. O backend passou a guardar o paragrafo em cache
+ * (invalidado quando o material da turma muda), entao o custo caiu — mas ela
+ * segue sendo a chamada mais cara da tela. Nunca usar em polling.
+ *
+ * POR QUE 60 s E NAO 0: a tela foi medida em 1625 ms, e 99,4% disso era a
+ * chamada ao modelo. Como a pagina busca tudo em paralelo, ela inteira
+ * esperava por esta. Sessenta segundos absorvem a navegacao repetida (voltar
+ * pra turma, trocar de aba) sem segurar conteudo novo: quando o professor
+ * registra uma aula, o texto aparece no minuto seguinte, e o historico
+ * embaixo — que vem de `buscarAulasDaTurma`, com cache proprio — nao depende
+ * deste valor.
  *
  * Nao lanca por falha de IA: o backend devolve 200 com `paragrafo: null` e
  * `erro_ia` preenchido, porque o historico e' o dado que o professor foi ver.
@@ -622,7 +748,7 @@ export function buscarContinuidadeDaTurma(
   turmaId: number,
 ): Promise<ContinuidadeDaTurma> {
   return requisitar<ContinuidadeDaTurma>(`/turmas/${turmaId}/continuidade`, {
-    revalidate: 0,
+    revalidate: 60,
   });
 }
 

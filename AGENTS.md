@@ -34,6 +34,35 @@ no banco e não deve passar a existir.
 
 ## 🎨 Design
 
+### 🔴 O artifact é a fonte de verdade — idêntico, não "parecido"
+
+O redesign vive neste artifact:
+**https://claude.ai/code/artifact/50d3dfe5-8669-4cc7-be6f-e17dffa8643a**
+
+A tela no app tem que ficar **idêntica** a ele: texto, botão, card, gráfico,
+espaçamento, cor — tudo. Não é inspiração nem ponto de partida.
+
+**O ciclo obrigatório, para cada tela:**
+
+1. **Leia o código-fonte do artifact ANTES de escrever qualquer código.**
+   `WebFetch` com a URL acima salva os ~807 KB de HTML em disco e devolve o
+   caminho — o retorno da ferramenta mostra só o runtime, o código real está no
+   arquivo. Screenshot trava (`backdrop-filter` congela o renderizador) e o
+   `javascript_tool` não alcança o DOM (iframe cross-origin).
+2. Altere o app.
+3. **Compare com o artifact medindo**, não no olho: `getComputedStyle` no app
+   contra os valores do CSS-fonte.
+4. Divergiu? Corrija e **volte ao passo 3**. Repita até bater.
+5. Só então volte para o usuário.
+
+Nunca adapte o layout antigo aos estilos novos — isso já foi feito e foi
+rejeitado. Quando o artifact tem outra estrutura, **reconstrua**.
+
+⚠️ O CSS do artifact tem `#tela-relatorios` injetado **dentro de comentários**:
+é marcador de escopo, não CSS válido. Não copie.
+
+### Tokens
+
 - Use **sempre** os tokens semânticos (`--surface`, `--text`, `--primary`).
   Nunca as escalas cruas (`--violet-500`) direto na interface — só os
   semânticos respeitam tema claro/escuro.

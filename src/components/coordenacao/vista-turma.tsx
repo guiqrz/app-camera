@@ -1,11 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { GradeSemanal } from "@/components/coordenacao/grade-semanal";
 import { CampoComExemplo } from "@/components/ui/campo-com-exemplo";
-import { IconRelogio, IconSetaDireita } from "@/components/ui/icons";
+import { IconRelogio } from "@/components/ui/icons";
 import type { Aula, Materia, NovaAula, NovaTurma, TurmaAdmin } from "@/lib/types";
 import { deduzirTurno, TURNOS, turnoPorId, TURNO_PADRAO } from "@/lib/turnos";
 
@@ -235,57 +234,26 @@ export function VistaTurma({ turmaInicial }: VistaTurmaProps) {
   );
 
   return (
-    <div className="flex flex-col gap-7">
-      <div className="flex flex-col gap-3">
-        {/* O caminho de volta agora e' a trilha do cabecalho (ver AppShell). */}
-        <div>
-          <h1
-            className="text-text text-2xl font-extrabold sm:text-3xl"
-            style={{ fontFamily: "var(--font-geologica)" }}
-          >
-            {turma.nome}
-          </h1>
-          <p className="text-text-body mt-1.5 text-sm">
-            Sala {turma.sala_id} · {turma.total_alunos}{" "}
-            {turma.total_alunos === 1 ? "aluno matriculado" : "alunos matriculados"}
-          </p>
-        </div>
+    <div className="flex flex-col gap-4">
+      {/* Identificacao da turma.
+          O titulo da pagina ja' e' o `h1` do cabecalho (AppShell), entao aqui
+          nao ha' um segundo `h1`: dois `h1` na mesma pagina confundem leitor
+          de tela sobre qual e' o titulo de verdade.
 
-        {/* Atalhos para o que o coordenador faz DEPOIS de mexer na turma: sem
-            eles, ver as aulas desta turma exigia voltar ao menu e reselecionar
-            a turma na outra tela. */}
-        <div className="mt-1 flex flex-wrap gap-2">
-          {(
-            [
-              ["Ver aulas", `/aulas/${turma.id}`],
-              ["Relatório da turma", `/relatorios/turma/${turma.id}`],
-              ["Fazer chamada", `/chamada/turma/${turma.id}`],
-            ] as const
-          ).map(([rotulo, href]) => (
-            <Link
-              key={href}
-              href={href}
-              className="text-text-brand border-border-default hover:bg-surface-2 inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-bold transition-colors"
-            >
-              {rotulo}
-              <IconSetaDireita size={12} />
-            </Link>
-          ))}
-        </div>
+          Os 3 atalhos que ficavam a direita ("Ver aulas", "Relatorio da
+          turma", "Fazer chamada") sairam a pedido dele em 16/08. Eram
+          navegacao pra outras telas competindo com o topo da pagina — o menu
+          lateral ja' leva a todas elas. */}
+      <div className="turma-cabecalho">
+        <p className="turma-identificacao">
+          Sala {turma.sala_id} · {turma.total_alunos}{" "}
+          {turma.total_alunos === 1 ? "aluno matriculado" : "alunos matriculados"}
+        </p>
       </div>
 
       {/* Dados da turma. */}
-      <form
-        onSubmit={aoSalvarTurma}
-        noValidate
-        className="flex flex-col gap-4 rounded-2xl p-5"
-        style={{
-          background: "var(--surface)",
-          border: "1px solid var(--border)",
-          boxShadow: "var(--shadow-card)",
-        }}
-      >
-        <h2 className="text-text text-base font-extrabold">Dados da turma</h2>
+      <form onSubmit={aoSalvarTurma} noValidate className="coord-painel turma-form">
+        <h2 className="coord-painel-titulo">Dados da turma</h2>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <CampoComExemplo
@@ -324,22 +292,24 @@ export function VistaTurma({ turmaInicial }: VistaTurmaProps) {
           {turmaSalva && (
             <span
               role="status"
-              className="text-xs font-bold"
+              className="text-xs font-semibold"
               style={{ color: "var(--ok-fg)" }}
             >
               Alterações salvas.
             </span>
           )}
-          <button
-            type="submit"
-            disabled={salvandoTurma}
-            className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-extrabold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
-            style={{ background: "var(--primary)" }}
-          >
+          {/* `.forte` (tinta cheia), nao `.vidro`: e' a acao que GRAVA, e a
+              unica desta faixa — merece o peso. Os atalhos do topo e o "Ver
+              turma" da grade sao navegacao, e por isso ficam de vidro. */}
+          <button type="submit" disabled={salvandoTurma} className="btn-acao forte centrado">
             {salvandoTurma && (
               <span
                 aria-hidden
-                className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white"
+                className="h-3.5 w-3.5 animate-spin rounded-full border-2"
+                style={{
+                  borderColor: "color-mix(in srgb, currentColor 35%, transparent)",
+                  borderTopColor: "currentColor",
+                }}
               />
             )}
             {salvandoTurma ? "Salvando..." : "Salvar alterações"}
@@ -349,48 +319,39 @@ export function VistaTurma({ turmaInicial }: VistaTurmaProps) {
 
       {/* Horario de referencia: recomendacao, nunca limite. Alimenta tambem o
           exemplo que a tecla Tab preenche nos campos de horario da grade. */}
-      <div
-        className="flex flex-col gap-3 rounded-2xl px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
-        style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}
-      >
-        <div className="flex items-start gap-2.5">
-          <span className="mt-0.5 flex-none" style={{ color: "var(--text-brand)" }} aria-hidden>
-            <IconRelogio size={17} />
-          </span>
-          <div>
-            <p className="text-text text-sm font-bold">
-              Turno da {turno.nome.toLowerCase()}: as aulas vão de {turno.inicio} às{" "}
-              {turno.fim}.
-            </p>
-            <p className="text-text-muted text-xs">
-              É só uma referência — você pode cadastrar qualquer horário.
-            </p>
-          </div>
+      <div className="turma-turno">
+        <span className="turma-turno-icone" aria-hidden>
+          <IconRelogio size={16} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="turma-turno-titulo">
+            Turno da {turno.nome.toLowerCase()}: as aulas vão de {turno.inicio} às{" "}
+            {turno.fim}.
+          </p>
+          <p className="turma-turno-apoio">
+            É só uma referência — você pode cadastrar qualquer horário.
+          </p>
         </div>
 
         {/* Seletor de turno: a deducao pelas aulas acerta na maioria dos casos,
             mas turma nova nao tem aula nenhuma pra deduzir, e o coordenador
-            precisa poder corrigir sem depender do palpite. */}
-        <div className="flex flex-none items-center gap-1.5">
-          {TURNOS.map((opcao) => {
-            const ativo = opcao.id === turno.id;
-            return (
-              <button
-                key={opcao.id}
-                type="button"
-                onClick={() => setTurnoEscolhido(opcao.id)}
-                aria-pressed={ativo}
-                className="rounded-lg px-3 py-1.5 text-xs font-extrabold transition-colors"
-                style={{
-                  background: ativo ? "var(--primary)" : "transparent",
-                  color: ativo ? "#fff" : "var(--text-muted)",
-                  border: ativo ? "1.5px solid var(--primary)" : "1.5px solid var(--border)",
-                }}
-              >
-                {opcao.nome}
-              </button>
-            );
-          })}
+            precisa poder corrigir sem depender do palpite.
+
+            Mesmas pilulas dos filtros da Chamada (`.chamada-filtro`): sao a
+            mesma interacao — um grupo onde exatamente um esta valendo — e nao
+            havia motivo pra inventar um segundo desenho pra isso. */}
+        <div className="chamada-filtros" role="group" aria-label="Turno de referência">
+          {TURNOS.map((opcao) => (
+            <button
+              key={opcao.id}
+              type="button"
+              onClick={() => setTurnoEscolhido(opcao.id)}
+              aria-pressed={opcao.id === turno.id}
+              className="chamada-filtro"
+            >
+              {opcao.nome}
+            </button>
+          ))}
         </div>
       </div>
 

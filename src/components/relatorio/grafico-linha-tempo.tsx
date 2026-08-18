@@ -61,7 +61,11 @@ export function GraficoLinhaTempo({ pontos, periodos = [] }: GraficoProps) {
   const T = 12;
   const B = 28; // margem inferior (rotulos do eixo X)
   const W = 600;
-  const H = 240;
+  // 200, nao 240: bate a proporcao do artifact (viewBox 600x200). O SVG
+  // escala pro tamanho REAL do container (ver `h-full` abaixo); com viewBox
+  // mais raso, cada unidade vira mais pixel na tela — fonte e ponto de 10-11
+  // "unidades" saem visualmente maiores sem precisar mexer no font-size.
+  const H = 200;
   const larguraUtil = W - L - R;
   const alturaUtil = H - T - B;
 
@@ -70,6 +74,21 @@ export function GraficoLinhaTempo({ pontos, periodos = [] }: GraficoProps) {
   // inicial no segmento) e o React reclamava em toda aula de leitura unica. O
   // caso de um ponto ja' e' tratado onde importa, no desenho do caminho.
   const dados = pontos;
+
+  /* ⚠️ O TOPO DO EIXO ACOMPANHA O DADO — não é 100% fixo.
+     Era isto o "bugado" que ele apontou em 14/08: numa aula cujo máximo é
+     25%, o eixo indo até 100% espremia a curva inteira no quinto de baixo e
+     ela parecia uma linha reta rente ao chão. A variação de 1% para 25% —
+     que é a informação da tela — sumia.
+
+     O teto vira o próximo múltiplo de 10 acima do pico, com piso em 10: o
+     eixo continua legível ("0/10/20/30%") em vez de terminar num número
+     quebrado, e uma aula de 90% ainda escala até 100 normalmente.
+
+     A escala é DECLARADA nos rótulos do eixo, então ninguém lê 25% como se
+     fosse o teto absoluto. */
+  const picoMedido = Math.max(...dados.map((p) => p.atencao_pct), 0);
+  const topoDoEixo = Math.max(10, Math.ceil(picoMedido / 10) * 10);
 
   // O eixo X vai ate o fim do ultimo VAO, nao ate o ultimo ponto medido: a aula
   // que termina em Descanso tem seu ultimo ponto ANTES do vao, e escalar so' pelos
@@ -82,7 +101,7 @@ export function GraficoLinhaTempo({ pontos, periodos = [] }: GraficoProps) {
     ) || 1;
 
   const x = (minuto: number) => L + (minuto / ultimoMinuto) * larguraUtil;
-  const y = (pct: number) => T + (1 - pct / 100) * alturaUtil;
+  const y = (pct: number) => T + (1 - pct / topoDoEixo) * alturaUtil;
 
   // Periodo de duracao zero nao tem area pra pintar (o proprio backend nao gera
   // periodo repetido, mas dois comandos no mesmo minuto cairiam aqui).
@@ -144,19 +163,32 @@ export function GraficoLinhaTempo({ pontos, periodos = [] }: GraficoProps) {
       ` L ${coordenadas[coordenadas.length - 1].px.toFixed(1)} ${(H - B).toFixed(1)} Z`;
     // Chave estavel: cada trecho comeca num x proprio, entao o primeiro ponto
     // identifica o segmento mesmo se a segmentacao mudar.
-    return { linha, area, chave: coordenadas[0].px };
+    return { linha, area, chave: coordenadas[0].px, pontos: coordenadas };
   });
 
-  const linhasGrade = [0, 25, 50, 75, 100];
+  // 4 linhas espaçadas no eixo real (0 / 1/3 / 2/3 / topo), como o protótipo
+  // ("0 / 10 / 20 / 30%"). Fixar 0/25/50/75/100 desenharia grade fora da
+  // escala assim que o topo deixasse de ser 100.
+  const linhasGrade = [0, 1, 2, 3].map((i) =>
+    Math.round((topoDoEixo / 3) * i),
+  );
 
   // Rotulos do eixo X sem aglomerar: no maximo ~6, espacados por igual.
   const passo = Math.max(1, Math.ceil(dados.length / 6));
   const marcasX = dados.filter((_, i) => i % passo === 0 || i === dados.length - 1);
 
   return (
-    <svg
+    <div className="flex h-full min-h-72 flex-col">
+      <svg
       viewBox={`0 0 ${W} ${H}`}
-      className="h-56 w-full"
+      // Antes `h-72` FIXO (288px). Ele apontou em 15/08 que o card ficava
+      // mais baixo que a Chamada ao lado, com fonte/ícone "compactos" — o
+      // bloco pai agora estica (`items-stretch` na grade + `flex-1` no
+      // `BlocoColapsavel`), entao o SVG tambem precisa crescer com ele em
+      // vez de travar num numero fixo. `min-h-72` so' evita que aulas com
+      // pouco conteudo ao lado (a Chamada com poucos alunos) espremam o
+      // grafico abaixo do tamanho legivel.
+      className="w-full flex-1"
       role="img"
       aria-label={
         `Gráfico da atenção da turma ao longo de ${pontos.length} minutos de aula.` +
@@ -178,12 +210,18 @@ export function GraficoLinhaTempo({ pontos, periodos = [] }: GraficoProps) {
         const cabeRotulo = faixa.largura >= 46;
         return (
           <g key={`${faixa.modo}-${faixa.minuto_inicio}`}>
+            {/* Borda TRACEJADA, como no protótipo: ela diz "aqui não há
+                medição" em vez de parecer mais um bloco de dado pintado. */}
             <rect
               x={faixa.px}
               y={T}
               width={faixa.largura}
               height={alturaUtil}
-              fill={aparencia?.fundo ?? "var(--border)"}
+              rx={7}
+              fill={aparencia?.fundo ?? "var(--surface-2)"}
+              stroke="var(--text-muted)"
+              strokeOpacity={0.45}
+              strokeDasharray="4 3"
             />
             {cabeRotulo && (
               <text
@@ -238,10 +276,14 @@ export function GraficoLinhaTempo({ pontos, periodos = [] }: GraficoProps) {
         </text>
       ))}
 
+      {/* Área FORTE (0.42), não os 0.28 de antes: com o valor baixo ela sumia
+          e a curva ficava boiando sem base. A parada intermediária em 70%
+          evita que o meio do preenchimento apague cedo demais. */}
       <defs>
         <linearGradient id="preenchimento-atencao" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.25" />
-          <stop offset="100%" stopColor="var(--primary)" stopOpacity="0" />
+          <stop offset="0%" stopColor="var(--graf-linha)" stopOpacity="0.42" />
+          <stop offset="70%" stopColor="var(--graf-linha)" stopOpacity="0.1" />
+          <stop offset="100%" stopColor="var(--graf-linha)" stopOpacity="0" />
         </linearGradient>
       </defs>
 
@@ -253,14 +295,49 @@ export function GraficoLinhaTempo({ pontos, periodos = [] }: GraficoProps) {
           <path
             d={caminho.linha}
             fill="none"
-            stroke="var(--primary)"
-            strokeWidth={2.5}
+            stroke="var(--graf-linha)"
+            strokeWidth={3}
             strokeLinejoin="round"
             strokeLinecap="round"
             vectorEffect="non-scaling-stroke"
           />
+          {/* Pontos nos minutos medidos, como na referência: eles mostram
+              ONDE houve leitura, o que a linha sozinha não diz. */}
+          {caminho.pontos.map((p) => (
+            <circle
+              key={p.px}
+              cx={p.px}
+              cy={p.py}
+              r={4.5}
+              fill="var(--graf-linha)"
+            />
+          ))}
         </g>
       ))}
-    </svg>
+      </svg>
+
+      {/* Legenda: o que a linha significa e o que a faixa significa. Sem ela a
+          faixa tracejada vira "buraco no gráfico" em vez de "não foi medido". */}
+      <p className="text-text-muted mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11.5px]">
+        <span className="inline-flex items-center gap-[6px]">
+          <span
+            className="inline-block h-[3px] w-[14px] rounded-full"
+            style={{ background: "var(--graf-linha)" }}
+            aria-hidden
+          />
+          % da turma atenta
+        </span>
+        {faixas.length > 0 && (
+          <span className="inline-flex items-center gap-[6px]">
+            <span
+              className="inline-block h-[10px] w-[14px] rounded-[3px] border border-dashed"
+              style={{ borderColor: "var(--text-muted)", opacity: 0.6 }}
+              aria-hidden
+            />
+            atenção não medida
+          </span>
+        )}
+      </p>
+    </div>
   );
 }

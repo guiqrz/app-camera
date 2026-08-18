@@ -3,7 +3,7 @@
 import type { ComponentType, ReactNode } from "react";
 import { useEffect, useState } from "react";
 
-import { Secao, Linha } from "@/components/configuracoes/secao";
+import { GrupoTitulo, Linha, Linhas, Secao } from "@/components/configuracoes/secao";
 import {
   IconBalanca,
   IconCadeado,
@@ -54,11 +54,11 @@ type TopicoProps = {
  */
 function Topico({ Icone, titulo, resumo, children }: TopicoProps) {
   return (
-    <details className="group border-b border-border-default last:border-b-0">
-      <summary className="flex cursor-pointer list-none items-start gap-3.5 py-4 [&::-webkit-details-marker]:hidden">
+    <details className="cfg-topico">
+      <summary className="flex items-start gap-3.5 py-4">
         <Icone
           size={19}
-          className="mt-0.5 flex-none text-text-muted transition-colors group-open:text-primary"
+          className="cfg-topico-icone mt-0.5 flex-none text-text-muted transition-colors"
         />
         <span className="min-w-0 flex-1">
           <span className="block text-[0.94rem] font-medium text-text">
@@ -68,9 +68,11 @@ function Topico({ Icone, titulo, resumo, children }: TopicoProps) {
             {resumo}
           </span>
         </span>
-        {/* Chevron em CSS puro: gira ao abrir, sem virar mais um SVG. */}
+        {/* Chevron em CSS puro: gira ao abrir, sem virar mais um SVG. A
+            rotacao vive no globals.css (`.cfg-topico-seta`) — as variantes
+            `group-open:` do Tailwind nao geravam regra nenhuma. */}
         <span
-          className="mt-1.5 h-2 w-2 flex-none rotate-45 border-r-2 border-b-2 border-text-muted transition-transform group-open:-rotate-[135deg]"
+          className="cfg-topico-seta mt-1.5 h-2 w-2 flex-none border-r-2 border-b-2 border-text-muted"
           aria-hidden
         />
       </summary>
@@ -147,7 +149,7 @@ function SwitchSempreGravar() {
           proxima vez), entao precisa deixar essa diferenca clara em vez de
           copiar o texto de um controle que fala de agora. */}
       <span
-        className="text-sm font-extrabold"
+        className="text-sm font-semibold"
         style={{ color: ativo ? "var(--danger-fg)" : "var(--text)" }}
       >
         {ativo ? "Sempre gravar" : "Não gravar"}
@@ -171,23 +173,31 @@ function SwitchSempreGravar() {
 export function PainelPrivacidade() {
   return (
     <div>
+      <GrupoTitulo>Preferência</GrupoTitulo>
+
       <Secao
         titulo="Gravação de áudio das aulas"
         descricao="Vale só neste navegador."
       >
-        <Linha
-          rotulo="Sempre iniciar a câmera gravando áudio"
-          apoio={
-            "O microfone já vem marcado na tela de Câmera. Você ainda pode " +
-            "desmarcar antes de ligar. O áudio é apagado assim que a " +
-            "transcrição fica pronta, e a transcrição expira em 60 dias."
-          }
-        >
-          <SwitchSempreGravar />
-        </Linha>
+        <Linhas>
+          <Linha
+            rotulo="Sempre iniciar a câmera gravando áudio"
+            apoio={
+              "O microfone já vem marcado na tela de Câmera. Você ainda pode " +
+              "desmarcar antes de ligar. O áudio é apagado assim que a " +
+              "transcrição fica pronta, e a transcrição expira em 60 dias."
+            }
+          >
+            <SwitchSempreGravar />
+          </Linha>
+        </Linhas>
       </Secao>
 
-      <div className="rounded border border-border-default bg-surface px-5 py-1">
+      {/* O que o sistema faz — texto, sem controle nenhum de proposito. */}
+      <GrupoTitulo>Como o CUPCAM trata os dados</GrupoTitulo>
+
+      <div className="cfg-painel">
+        <div className="cfg-topicos">
         <Topico
           Icone={IconCamera}
           titulo="O vídeo da aula não é gravado"
@@ -340,6 +350,7 @@ export function PainelPrivacidade() {
             resposta não for um sim claro, não entra.
           </p>
         </Topico>
+        </div>
       </div>
     </div>
   );

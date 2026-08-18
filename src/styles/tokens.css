@@ -63,16 +63,24 @@
     #00c1d7 100%
   );
 
-  /* ---- Cores de estado (do Chamada.dc.html) ----
-     Verde/amarelo/vermelho das faixas de engajamento e presenca.
-     Fixas nos dois temas: significado semaforico nao muda com o tema. */
-  --ok: #1a9d5c;
-  --ok-bg: #e6f7ee;
-  --ok-fg: #1a9d5c;
-  --warn: #f2a93b;
-  --warn-bg: #fdf4e3;
-  --warn-fg: #a9741c;
-  --danger: #e0483f;
-  --danger-bg: #fdeceb;
-  --danger-fg: #c53a32;
+  /* ---- Cores de estado ----
+     Verde/amarelo/vermelho das faixas de engajamento e presenca, no tom CHEIO
+     (preenchimento de barra e ponto, nunca texto sobre superficie).
+
+     ESTES SAO OS VALORES DO TEMA CLARO. O tema escuro CLAREIA os tres em
+     semantic.css: o significado semaforico nao muda com o tema, mas a
+     legibilidade sim — #128751 numa barrinha de 6px sobre o fundo #191228
+     some (medido em 16/08). `--danger` ja' era sobrescrito la' desde o
+     redesign; `--ok`/`--warn` entraram em 16/08, pelo mesmo motivo.
+
+     Os pares -bg/-fg NAO ficam aqui — eles precisam mudar por tema (fundo
+     translucido no claro, escuro no escuro) e por isso vivem em semantic.css.
+     Fundo claro de estado sobre superficie escura ofusca.
+
+     Tons realinhados a paleta do redesign em 13/08/2026: os antigos
+     (#1a9d5c / #f2a93b) foram calibrados contra fundo branco e ficavam
+     berrantes sobre o lilas #eddef7. */
+  --ok: #128751;
+  --warn: #a26c16;
+  --danger: #d64545;
 }

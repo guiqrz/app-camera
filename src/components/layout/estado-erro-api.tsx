@@ -41,7 +41,7 @@ export function EstadoErroApi({
         </svg>
       </div>
 
-      <h1 className="text-text text-xl font-extrabold">
+      <h1 className="text-text text-xl font-semibold">
         {pareceApiForaDoAr
           ? "Não foi possível falar com o CUPCAM"
           : "Algo deu errado"}
@@ -66,7 +66,7 @@ export function EstadoErroApi({
       <button
         type="button"
         onClick={reset}
-        className="rounded-xl px-6 py-3 text-sm font-extrabold text-white transition-opacity hover:opacity-90"
+        className="rounded-xl px-6 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
         style={{ background: "var(--primary)" }}
       >
         Tentar novamente

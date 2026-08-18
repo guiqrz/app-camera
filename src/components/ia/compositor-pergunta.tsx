@@ -68,6 +68,13 @@ type CompositorPerguntaProps = {
   /** `true` quando o seletor de aula esta aberto, para o aria-expanded. */
   seletorAulaAberto?: boolean;
   linhas?: number;
+  /**
+   * Acesso ao `<textarea>` para quem precisa mexer no foco ou no cursor — os
+   * cartoes de sugestao preenchem o campo e param o cursor no meio do texto.
+   * Um ref, e nao `document.getElementById`: a tela da conversa e a abertura
+   * usam o mesmo compositor, e um id fixo colidiria se as duas coexistissem.
+   */
+  campoRef?: React.RefObject<HTMLTextAreaElement | null>;
 };
 
 /**
@@ -95,6 +102,7 @@ export function CompositorPergunta({
   formatosAceitos,
   seletorAulaAberto,
   linhas = 2,
+  campoRef,
 }: CompositorPerguntaProps) {
   const campoDeArquivo = useRef<HTMLInputElement>(null);
   const [arrastando, setArrastando] = useState(false);
@@ -178,7 +186,7 @@ export function CompositorPergunta({
           aceita o arquivo, e a borda tracejada sozinha e' pista fraca. */}
       {arrastando && (
         <p
-          className="text-text-on-brand px-4 py-2 text-center text-xs font-bold"
+          className="text-text-on-brand px-4 py-2 text-center text-xs font-semibold"
           style={{ background: "var(--primary)" }}
           role="status"
         >
@@ -195,6 +203,7 @@ export function CompositorPergunta({
             de varias linhas, e obrigar o clique tiraria a mao do teclado a
             cada pergunta. */}
         <textarea
+          ref={campoRef}
           // Ver globals.css: o anel de foco fica na caixa, nao no campo.
           data-campo-sem-anel
           value={valor}
@@ -221,7 +230,7 @@ export function CompositorPergunta({
               onClick={aoAnexarAula}
               disabled={ocupado}
               aria-expanded={seletorAulaAberto}
-              className="border-border-default text-text-body hover:bg-surface-2 flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+              className="border-border-default text-text-body hover:bg-surface-2 flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60"
             >
               <IconCalendario size={14} />
               Anexar aula
@@ -234,7 +243,7 @@ export function CompositorPergunta({
                 type="button"
                 onClick={() => campoDeArquivo.current?.click()}
                 disabled={ocupado}
-                className="border-border-default text-text-body hover:bg-surface-2 flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+                className="border-border-default text-text-body hover:bg-surface-2 flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <IconFoto size={14} />
                 Anexar arquivo

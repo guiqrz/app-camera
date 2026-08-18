@@ -59,6 +59,19 @@ export type AulaCard = {
   status: StatusEngajamento | null;
   /** Primeira recomendacao gravada para a sessao. Nulo se nao houver. */
   resumo: string | null;
+  /**
+   * TITULO da aula — o 1o topico registrado em `conteudos_aula`.
+   *
+   * Nulo quando a aula nao tem conteudo registrado, que e' o caso dominante no
+   * banco real. Nesse caso a tela escreve "Aula sem registro": derivar um
+   * titulo da data faria toda aula sem conteudo parecer registrada.
+   */
+  titulo: string | null;
+  /**
+   * Resumo do CONTEUDO (o que foi ensinado), diferente de `resumo`, que e' a
+   * primeira recomendacao da IA.
+   */
+  conteudo_resumo: string | null;
   em_andamento: boolean;
 };
 
@@ -162,8 +175,21 @@ export type PeriodoSemMedicao = {
 /** GET /sessoes/{sessao_id}/relatorio — a rota mais completa. */
 export type RelatorioDaSessao = {
   sessao: SessaoResumo & { em_andamento: boolean };
-  /** Media de "atento" na aula, 0-100. Nulo sem leitura. */
+  /** Media de "atento" na aula, 0-100. Nulo sem leitura.
+      Conta SO' as leituras em que alguem foi detectado: sala vazia nao entra
+      no divisor (era o bug que subestimava o numero em ~44%). */
   engajamento_medio_pct: number | null;
+  /** O quanto o numero acima se sustenta — a tela mostra ao lado dele. */
+  leitura: {
+    /** Fracao do tempo com alguem na sala pra medir. Nulo sem leitura alguma
+        (cobertura desconhecida != cobertura zero). */
+    cobertura_pct: number | null;
+    /** Fracao do tempo observado em que a camera viu alguem e NAO soube
+        classificar. Nao entra no engajamento. */
+    incerteza_pct: number | null;
+    leituras_uteis: number;
+    leituras_totais: number;
+  };
   /** Diferenca em pontos percentuais contra a media das aulas anteriores.
       Positivo = melhor que o historico. Nulo se nao ha com o que comparar.
       Atencao: e' "vs media historica", NAO "vs ontem". */
@@ -197,6 +223,27 @@ export type EstatisticasDaTurma = {
   /** "AAAA-MM-DD HH:MM:SS". Nulos se a turma nunca teve sessao. */
   primeira_sessao: string | null;
   ultima_sessao: string | null;
+  /**
+   * Presenca COLETIVA da turma (0-100): presencas sobre registros de chamada.
+   *
+   * E' frequencia, nunca engajamento — o projeto proibe medida de atencao por
+   * pessoa, e este numero e' agregado, sem RA. `null` quando a turma nunca teve
+   * chamada: 0 diria "todo mundo faltou".
+   */
+  frequencia_media_pct: number | null;
+  /** As contagens cruas, pra escrever "25 presencas em 58". */
+  presencas_registradas: number;
+  chamadas_registradas: number;
+  /**
+   * A mesma frequencia por sessao, em ordem cronologica — as barrinhas do
+   * card. Sessao sem chamada nao entra: barra a zero leria como "ninguem veio"
+   * onde nada foi medido.
+   */
+  frequencia_por_aula: {
+    sessao_id: number;
+    data: string;
+    frequencia_pct: number;
+  }[];
 };
 
 /** Resposta de POST /sessoes/{id}/chamada/{ra}/confirmar */
@@ -235,6 +282,66 @@ export type VisaoAdmin = {
   totais: {
     turmas: number;
     alunos: number;
+  };
+};
+
+/**
+ * Uma turma no panorama da Coordenacao (GET /admin/panorama).
+ *
+ * ⚠️ `frequencia_media_pct` e' presenca AGREGADA da turma — nunca engajamento,
+ * nunca por aluno. E a lista NAO pode ser ordenada por ele: a ordem e'
+ * alfabetica, vinda do backend, porque ordenar por frequencia transformaria a
+ * tela num ranking de turmas e, por tabela, de professores. Ver o docstring de
+ * `montar_panorama_coordenacao` no backend.
+ *
+ * `null` em `frequencia_media_pct` e' "nunca houve chamada", que e' diferente
+ * de 0% ("mediu-se e ninguem veio").
+ */
+export type TurmaPanorama = {
+  id: number;
+  nome: string;
+  sala_id: string;
+  total_alunos: number;
+  aulas_na_grade: number;
+  sessoes_monitoradas: number;
+  ultima_sessao: string | null;
+  frequencia_media_pct: number | null;
+};
+
+/**
+ * Uma pendencia de CONFIGURACAO da escola.
+ *
+ * Sempre "falta cadastrar/configurar isto", nunca "esta turma vai mal" — a
+ * segunda leitura seria juizo sobre o professor, proibido pelo CLAUDE.md.
+ *
+ * As de turma (`turma_sem_aluno`, `turma_sem_grade`) carregam a turma porque a
+ * tela oferece a acao que resolve; as agregadas trazem so' `total`, de
+ * proposito: nomear turmas nelas viraria uma lista de "turmas mal
+ * configuradas".
+ */
+export type PendenciaCoordenacao =
+  | {
+      tipo: "turma_sem_aluno";
+      turma_id: number;
+      turma_nome: string;
+      sessoes_monitoradas: number;
+    }
+  | { tipo: "turma_sem_grade"; turma_id: number; turma_nome: string }
+  | { tipo: "aulas_sem_materia"; total: number }
+  | { tipo: "alunos_sem_reconhecimento"; total: number }
+  | { tipo: "sessoes_em_aberto"; total: number };
+
+/** GET /admin/panorama — estado de cadastro da escola pra tela de Coordenacao. */
+export type PanoramaCoordenacao = {
+  turmas: TurmaPanorama[];
+  pendencias: PendenciaCoordenacao[];
+  totais: {
+    turmas: number;
+    alunos: number;
+    materias: number;
+    aulas_na_grade: number;
+    sessoes_monitoradas: number;
+    sessoes_em_aberto: number;
   };
 };
 
@@ -281,6 +388,9 @@ export type NovaMateria = { nome: string; cor: CorMateria | null };
 export type Aula = {
   id: number;
   turma_id: number;
+  /** Nome da turma. Necessario na agenda de TODAS as turmas, onde cada bloco
+   *  precisa dizer de quem ele e'. */
+  turma_nome: string;
   /** 0 = domingo ... 6 = sabado. */
   dia_semana: number;
   dia_semana_nome: string;
@@ -290,6 +400,99 @@ export type Aula = {
   materia_nome: string | null;
   /** Cor da materia da aula. Nula sem materia, ou com materia sem cor. */
   materia_cor: CorMateria | null;
+  /**
+   * Texto livre que o professor escreve pra si mesmo ("comecar pelo
+   * experimento"). String VAZIA quando nao ha plano, nunca nula — o backend
+   * grava "" por padrao, e quem le nunca precisa distinguir os dois casos.
+   */
+  plano: string;
+  /** Nome do arquivo anexado. Nulo quando a aula nao tem anexo. */
+  anexo_nome: string | null;
+  anexo_tipo: string | null;
+  anexo_tamanho: number | null;
+  /** Atalho para `anexo_nome !== null`, ja pronto pela API. */
+  tem_anexo: boolean;
+};
+
+/**
+ * Um dia da grade semanal (GET /visao-geral e /turmas/{id}/semana).
+ *
+ * A API devolve SEMPRE os 7 dias, domingo a sabado, mesmo os vazios: dia que
+ * some faria a grade encolher e as colunas desalinharem entre semanas.
+ *
+ * Nao ha data de calendario aqui — a tabela `aulas` e' uma GRADE que se repete
+ * toda semana, entao ela guarda o dia (0-6), nao a data. Mapear dia -> "Seg 10"
+ * e' decisao de apresentacao, e quem sabe qual semana esta na tela e' a tela.
+ */
+export type DiaDaSemana = {
+  /** 0 = domingo ... 6 = sabado. */
+  dia_semana: number;
+  dia_semana_nome: string;
+  aulas: Aula[];
+};
+
+/** Quantas aulas cada materia teve (as fatias do donut da visao geral). */
+export type AulasPorMateria = {
+  /**
+   * Nome da materia, ou "sem materia" para as sessoes sem aula da grade
+   * vinculada (camera ligada na mao). Elas NAO sao descartadas: no banco real
+   * sao a maioria, e omiti-las faria as fatias somarem menos que o total.
+   */
+  materia: string;
+  total: number;
+};
+
+/** GET /visao-geral — o estado "Todas as turmas" da tela Minhas Aulas. */
+export type VisaoGeral = {
+  /** Sessoes que aconteceram, incluindo as que nunca foram encerradas. */
+  total_aulas: number;
+  total_alunos: number;
+  total_turmas: number;
+  /** Nao conta a fatia "sem materia" — ela nao e' uma materia. */
+  total_materias: number;
+  aulas_por_materia: AulasPorMateria[];
+  /**
+   * Soma das sessoes ENCERRADAS, em horas com 1 decimal.
+   *
+   * Sessao orfa (que nunca fechou) fica de FORA: conta-la "ate agora" faria uma
+   * sessao esquecida de tres dias atras somar 72 horas.
+   */
+  horas_em_sala: number;
+  /** Quantas sessoes ficaram sem encerrar — a tela usa isto pra dizer que o
+   *  numero acima exclui algo, em vez de mentir por omissao. */
+  sessoes_em_aberto: number;
+  semana: DiaDaSemana[];
+  lembretes: Lembrete[];
+};
+
+/**
+ * Recado do professor pra si mesmo na tela Minhas Aulas.
+ *
+ * Sem turma, sem prioridade e sem categoria DE PROPOSITO (ver o comentario da
+ * tabela em banco.py) — a ausencia e' o desenho, nao falta de implementacao.
+ */
+export type Lembrete = {
+  id: number;
+  texto: string;
+  /** "AAAA-MM-DD". Nula quando o lembrete nao tem prazo — o caso comum. */
+  data: string | null;
+  feito: boolean;
+  /** ISO com segundos, do backend. */
+  criado_em: string;
+};
+
+/**
+ * Corpo do PATCH de lembrete — altera SO' os campos enviados.
+ *
+ * ATENCAO: `data` distingue tres coisas. Campo AUSENTE mantem a data atual;
+ * `data: null` APAGA o prazo; uma string troca. Por isso os campos sao
+ * opcionais em vez de anulaveis com valor padrao — marcar como feito manda
+ * so' `{feito: true}` e nao pode limpar o prazo por acidente.
+ */
+export type LembreteEditado = {
+  texto?: string;
+  data?: string | null;
+  feito?: boolean;
 };
 
 /** Corpo de POST/PUT de aula. */
@@ -352,6 +555,19 @@ export type EstadoCamera =
       atualizado_em: string;
       turma: { id: number; nome: string } | null;
       sessao_id: number | null;
+      /**
+       * Quando a SESSAO comecou ("AAAA-MM-DD HH:MM:SS"), pra tela dizer ha
+       * quanto tempo a captura esta no ar.
+       *
+       * Nao confundir com `atualizado_em`, que e' o instante do ultimo ciclo e
+       * muda a cada segundo. Sem este campo a unica alternativa seria o app
+       * cronometrar do momento em que ABRIU a tela — o que mentiria toda vez
+       * que o professor entrasse com a aula ja em andamento.
+       *
+       * Opcional (estado escrito por backend anterior a esta versao nao traz) e
+       * null quando nao ha sessao. Nos dois casos a tela nao mostra duracao.
+       */
+      iniciada_em?: string | null;
       chamada: { presentes: number; total: number };
       pct_desatento: number;
       media_pessoas: number;

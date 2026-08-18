@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 
-import { IconSeta } from "@/components/ui/icons";
+import { BlocoColapsavel } from "@/components/relatorio/bloco-colapsavel";
+import { IconSeta, IconSetaDireita } from "@/components/ui/icons";
 import {
   formatarDataExtensa,
   formatarDiaSemana,
@@ -32,15 +32,13 @@ type ListaAulasChamadaProps = {
  * que existe, sem placeholder no lugar do dado ausente.
  */
 export function ListaAulasChamada({ aulas, turmaId }: ListaAulasChamadaProps) {
-  const [anterioresAbertas, setAnterioresAbertas] = useState(false);
-
   if (aulas.length === 0) {
     return (
-      <div className="border-border-default mx-auto max-w-lg rounded-2xl border border-dashed p-10 text-center">
-        <h2 className="text-text text-lg font-extrabold">
+      <div className="border-border-default bg-surface bloco-cam mx-auto max-w-lg rounded-[12px] border text-center">
+        <h2 className="text-text m-0 text-[16px] font-semibold">
           Nenhuma aula registrada
         </h2>
-        <p className="text-text-body mt-3 text-sm leading-relaxed">
+        <p className="lousa-vazia">
           Quando a Cupcam monitorar uma aula desta turma, ela aparece aqui para
           a chamada.
         </p>
@@ -61,33 +59,34 @@ export function ListaAulasChamada({ aulas, turmaId }: ListaAulasChamadaProps) {
     <div className="flex flex-col gap-4">
       {/* Cartao grande: a aula da vez. */}
       <div
-        className="rounded-2xl p-6 sm:p-7"
+        className="bloco-cam rounded-[12px]"
         style={{
           background: "var(--surface)",
-          border: "1.5px solid var(--primary)",
-          boxShadow: "var(--shadow-raise)",
+          border: "1px solid var(--primary)",
+          boxShadow: "var(--shadow-card)",
+          backdropFilter: "var(--blur-card)",
         }}
       >
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <p
-              className="text-[11px] font-extrabold tracking-wide uppercase"
+              className="bloco-cam-rotulo m-0"
               style={{ color: "var(--text-brand)" }}
             >
               {destaque.em_andamento ? "Aula em andamento" : "Última aula"}
             </p>
-            <p className="text-text mt-1.5 text-lg font-extrabold sm:text-xl">
+            <p className="text-text mt-1.5 text-[17px] font-semibold">
               {formatarDiaSemana(destaque.dia_semana)},{" "}
               {formatarDataExtensa(destaque.data)}
             </p>
             {/* O selo "Ao vivo" fica nesta linha mesmo quando nao ha horario —
                 por isso o <p> continua renderizando com a legenda vazia. */}
             {(apoioDestaque || destaque.em_andamento) && (
-              <p className="text-text-muted mt-0.5 text-sm">
+              <p className="text-text-muted mt-0.5 text-[12.5px]">
                 {apoioDestaque}
                 {destaque.em_andamento && (
                   <span
-                    className={`rounded-full px-2.5 py-0.5 text-[11px] font-extrabold tracking-wide uppercase ${
+                    className={`rounded-full px-2.5 py-0.5 text-[10.5px] font-semibold tracking-wide uppercase ${
                       apoioDestaque ? "ml-2" : ""
                     }`}
                     style={{ background: "var(--ok-bg)", color: "var(--ok-fg)" }}
@@ -99,54 +98,32 @@ export function ListaAulasChamada({ aulas, turmaId }: ListaAulasChamadaProps) {
             )}
           </div>
 
+          {/* `centrado`, e nao o `self-center` do Tailwind: `.btn-acao` ja'
+              declara `align-self`, as duas regras teriam a mesma
+              especificidade e quem vencesse dependeria da ordem das folhas
+              (medido em 16/08: `self-center` perdeu, o botao ficou 5px acima
+              do texto). */}
           <Link
             href={`/chamada/${destaque.sessao_id}?turma=${turmaId}`}
-            className="rounded-xl px-6 py-3 text-sm font-extrabold text-white"
-            style={{
-              background: "var(--primary)",
-              boxShadow: "var(--shadow-raise)",
-            }}
+            className="btn-acao vidro centrado no-underline"
           >
             Fazer chamada
+            <IconSetaDireita size={13} />
           </Link>
         </div>
       </div>
 
-      {/* Cartao recolhivel: as aulas anteriores. */}
+      {/* Aulas anteriores: o mesmo bloco recolhivel do resto do app, em vez de
+          um cabecalho proprio — o `BlocoColapsavel` ja' traz o botao de
+          verdade, o aria-expanded e a seta que gira. Nasce FECHADO: quem entra
+          aqui quase sempre quer a aula da vez, la' em cima. */}
       {anteriores.length > 0 && (
-        <div
-          className="overflow-hidden rounded-2xl"
-          style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            boxShadow: "var(--shadow-card)",
-          }}
+        <BlocoColapsavel
+          titulo="Aulas anteriores"
+          conta={anteriores.length}
+          abertoInicial={false}
         >
-          <button
-            type="button"
-            onClick={() => setAnterioresAbertas((aberto) => !aberto)}
-            aria-expanded={anterioresAbertas}
-            className="flex w-full items-center justify-between gap-3 px-6 py-5 text-left"
-          >
-            <span className="text-text text-base font-extrabold">
-              Aulas anteriores
-              <span className="text-text-muted ml-2 text-sm font-semibold">
-                ({anteriores.length})
-              </span>
-            </span>
-            <span
-              className="text-text-muted flex-none transition-transform duration-200"
-              style={{
-                transform: anterioresAbertas ? "rotate(180deg)" : "none",
-              }}
-              aria-hidden
-            >
-              <IconSeta />
-            </span>
-          </button>
-
-          {anterioresAbertas && (
-            <ul>
+          <ul className="-mx-[17px] -mb-[16px]">
               {anteriores.map((aula) => {
                 const apoio = [
                   formatarIntervalo(aula.hora_inicio, aula.hora_fim),
@@ -171,7 +148,7 @@ export function ListaAulasChamada({ aulas, turmaId }: ListaAulasChamadaProps) {
                     className="hover:bg-surface-2 flex min-w-0 flex-1 items-center gap-4 px-6 py-4 transition-colors"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="text-text text-sm font-bold">{rotuloAula}</p>
+                      <p className="text-text text-sm font-semibold">{rotuloAula}</p>
                       {apoio && (
                         <p className="text-text-muted mt-0.5 text-[13px]">{apoio}</p>
                       )}
@@ -187,7 +164,7 @@ export function ListaAulasChamada({ aulas, turmaId }: ListaAulasChamadaProps) {
 
                   <Link
                     href={`/relatorios/sessao/${aula.sessao_id}?turma=${turmaId}`}
-                    className="text-text-brand hover:bg-surface-2 flex-none rounded-lg px-3 py-2 text-xs font-bold transition-colors"
+                    className="text-text-brand hover:bg-surface-2 flex-none rounded-lg px-3 py-2 text-xs font-semibold transition-colors"
                   >
                     Ver análise
                     <span className="sr-only"> da aula de {rotuloAula}</span>
@@ -195,9 +172,8 @@ export function ListaAulasChamada({ aulas, turmaId }: ListaAulasChamadaProps) {
                 </li>
                 );
               })}
-            </ul>
-          )}
-        </div>
+          </ul>
+        </BlocoColapsavel>
       )}
     </div>
   );

@@ -18,13 +18,13 @@ export default function TurmaNaoEncontrada() {
         <span className="text-text-muted" aria-hidden>
           <IconTurma size={32} />
         </span>
-        <h1 className="text-text text-lg font-extrabold">Turma não encontrada.</h1>
+        <h1 className="text-text text-lg font-semibold">Turma não encontrada.</h1>
         <p className="text-text-muted max-w-sm text-sm">
           Ela pode ter sido excluída, ou o endereço está errado.
         </p>
         <Link
           href="/coordenacao"
-          className="mt-2 rounded-lg px-4 py-2.5 text-sm font-extrabold text-white"
+          className="mt-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white"
           style={{ background: "var(--primary)" }}
         >
           Voltar para Coordenação

@@ -78,7 +78,7 @@ export function BolhaMensagem({ mensagem, conversaId }: BolhaMensagemProps) {
         </span>
 
         <div className="min-w-0 flex-1">
-          <p className="text-text-muted mb-1.5 text-xs font-extrabold">Cup AI</p>
+          <p className="text-text-muted mb-1.5 text-xs font-semibold">Cup AI</p>
           <div className="text-text-body text-sm leading-[1.75]">
             <TextoFormatado texto={mensagem.texto} />
           </div>
@@ -141,7 +141,7 @@ export function BolhaMensagem({ mensagem, conversaId }: BolhaMensagemProps) {
                   />
                 ) : (
                   <span
-                    className="grid h-8 w-8 flex-none place-items-center rounded-lg text-[9px] font-black"
+                    className="grid h-8 w-8 flex-none place-items-center rounded-lg text-[9px] font-semibold"
                     style={
                       extensao === "PDF"
                         ? { background: "var(--danger-bg)", color: "var(--danger-fg)" }
@@ -154,7 +154,7 @@ export function BolhaMensagem({ mensagem, conversaId }: BolhaMensagemProps) {
                 )}
 
                 <span className="min-w-0">
-                  <span className="text-text block max-w-[190px] truncate text-xs font-bold">
+                  <span className="text-text block max-w-[190px] truncate text-xs font-semibold">
                     {rotulo}
                   </span>
                   <span className="text-text-muted text-[10.5px]">

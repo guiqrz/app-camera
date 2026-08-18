@@ -49,7 +49,7 @@ export function GraficoTendencia({ serie, turmaId }: GraficoTendenciaProps) {
               title={`${formatarDataCurta(ponto.data)}: ${ponto.engajamento}% — ver relatório`}
             >
               <span
-                className="text-center text-xs font-bold"
+                className="text-center text-xs font-semibold"
                 style={{ color: aparencia.texto }}
               >
                 {ponto.engajamento}%
