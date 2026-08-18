@@ -1,6 +1,7 @@
 import { BlocoChamada } from "@/components/relatorio/bloco-chamada";
 import { BlocoColapsavel } from "@/components/relatorio/bloco-colapsavel";
 import { BotaoCopiarDiario } from "@/components/relatorio/botao-copiar-diario";
+import { ConfiancaDaLeitura } from "@/components/relatorio/confianca-da-leitura";
 import { ConteudoDaAula } from "@/components/relatorio/conteudo-da-aula";
 import { FeedInsights } from "@/components/relatorio/feed-insights";
 import { GraficoLinhaTempo } from "@/components/relatorio/grafico-linha-tempo";
@@ -142,7 +143,7 @@ export function VistaRelatorio({ relatorio, chamada }: VistaRelatorioProps) {
         <NumeroDaAula
           rotulo="Engajamento médio"
           valor={engajamento ?? "—"}
-          apoio="Conta só quem a câmera classificou como atento."
+          apoio="Conta só quem a câmera classificou como atento, no tempo em que havia alguém em cena."
           tag={
             variacao && relatorio.variacao_vs_historico_pct !== null
               ? {
@@ -206,6 +207,12 @@ export function VistaRelatorio({ relatorio, chamada }: VistaRelatorioProps) {
           icone={<IconRelogio size={16} />}
         />
       </div>
+
+      {/* Logo ABAIXO dos numeros, nao dentro deles: o card de engajamento ja
+          gasta o rodape com a tag de variacao (regra "tag XOR apoio" do
+          `NumeroDaAula`), e a ressalva vale pra fileira toda. Some sozinha
+          quando a leitura foi boa. */}
+      <ConfiancaDaLeitura leitura={relatorio.leitura} />
 
       {/* A GRADE DE 12 COLUNAS.
           12 divide por 2, 3, 4 e 6 — os arranjos 8+4, 6+6 e 4+4+4 saem todos

@@ -175,8 +175,21 @@ export type PeriodoSemMedicao = {
 /** GET /sessoes/{sessao_id}/relatorio — a rota mais completa. */
 export type RelatorioDaSessao = {
   sessao: SessaoResumo & { em_andamento: boolean };
-  /** Media de "atento" na aula, 0-100. Nulo sem leitura. */
+  /** Media de "atento" na aula, 0-100. Nulo sem leitura.
+      Conta SO' as leituras em que alguem foi detectado: sala vazia nao entra
+      no divisor (era o bug que subestimava o numero em ~44%). */
   engajamento_medio_pct: number | null;
+  /** O quanto o numero acima se sustenta — a tela mostra ao lado dele. */
+  leitura: {
+    /** Fracao do tempo com alguem na sala pra medir. Nulo sem leitura alguma
+        (cobertura desconhecida != cobertura zero). */
+    cobertura_pct: number | null;
+    /** Fracao do tempo observado em que a camera viu alguem e NAO soube
+        classificar. Nao entra no engajamento. */
+    incerteza_pct: number | null;
+    leituras_uteis: number;
+    leituras_totais: number;
+  };
   /** Diferenca em pontos percentuais contra a media das aulas anteriores.
       Positivo = melhor que o historico. Nulo se nao ha com o que comparar.
       Atencao: e' "vs media historica", NAO "vs ontem". */
