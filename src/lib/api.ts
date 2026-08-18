@@ -728,8 +728,17 @@ export function buscarConteudoDaAula(sessaoId: number): Promise<ConteudoDaAula> 
  * Onde a turma parou: historico do conteudo dado + um paragrafo da IA.
  *
  * Esta chamada CUSTA uma requisicao ao modelo no backend, ao contrario de
- * buscarConteudoDaAula — por isso `revalidate: 0` aqui nao e' "de graca" como
- * la'. Chamar so' quando a tela da turma abre, nunca em polling.
+ * buscarConteudoDaAula. O backend passou a guardar o paragrafo em cache
+ * (invalidado quando o material da turma muda), entao o custo caiu — mas ela
+ * segue sendo a chamada mais cara da tela. Nunca usar em polling.
+ *
+ * POR QUE 60 s E NAO 0: a tela foi medida em 1625 ms, e 99,4% disso era a
+ * chamada ao modelo. Como a pagina busca tudo em paralelo, ela inteira
+ * esperava por esta. Sessenta segundos absorvem a navegacao repetida (voltar
+ * pra turma, trocar de aba) sem segurar conteudo novo: quando o professor
+ * registra uma aula, o texto aparece no minuto seguinte, e o historico
+ * embaixo — que vem de `buscarAulasDaTurma`, com cache proprio — nao depende
+ * deste valor.
  *
  * Nao lanca por falha de IA: o backend devolve 200 com `paragrafo: null` e
  * `erro_ia` preenchido, porque o historico e' o dado que o professor foi ver.
@@ -739,7 +748,7 @@ export function buscarContinuidadeDaTurma(
   turmaId: number,
 ): Promise<ContinuidadeDaTurma> {
   return requisitar<ContinuidadeDaTurma>(`/turmas/${turmaId}/continuidade`, {
-    revalidate: 0,
+    revalidate: 60,
   });
 }
 
