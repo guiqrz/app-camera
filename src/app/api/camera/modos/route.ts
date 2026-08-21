@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { statusSeguro } from "@/app/api/admin/_lib/status-seguro";
-import { ApiError, listarModosCamera } from "@/lib/api";
+import { ApiError, ConfiguracaoAusenteError, listarModosCamera } from "@/lib/api";
 
 /**
  * Ponte de leitura "modos disponiveis" da tela "Camera".
@@ -23,6 +23,17 @@ export async function GET() {
   try {
     return NextResponse.json(await listarModosCamera());
   } catch (causa) {
+    // Notebook fora do ar ou variavel faltando: a tela ja tem
+    // MODOS_CAMERA_FALLBACK e segue com a lista embutida, entao aqui basta nao
+    // deixar a excecao subir. Sem mensagem propria — quem explica o notebook
+    // desligado e' /api/camera/estado, e dois avisos pro mesmo fato so'
+    // poluiriam a tela.
+    if (causa instanceof ConfiguracaoAusenteError) {
+      return NextResponse.json(
+        { erro: "Não foi possível carregar os modos da câmera." },
+        { status: 503 },
+      );
+    }
     if (causa instanceof ApiError) {
       return NextResponse.json(
         { erro: "Não foi possível carregar os modos da câmera." },

@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 
-import { statusSeguro } from "@/app/api/admin/_lib/status-seguro";
-import { ApiError, desligarCamera } from "@/lib/api";
+import {
+  mensagemDeCameraOffline,
+  statusSeguro,
+} from "@/app/api/admin/_lib/status-seguro";
+import { ApiError, ConfiguracaoAusenteError, desligarCamera } from "@/lib/api";
 
 /**
  * Ponte de escrita "Desligar camera" da tela "Camera".
@@ -18,11 +21,21 @@ export async function POST() {
   try {
     return NextResponse.json(await desligarCamera());
   } catch (causa) {
+    if (causa instanceof ConfiguracaoAusenteError) {
+      return NextResponse.json(
+        { erro: "O endereço do computador da sala não está configurado no site." },
+        { status: 503 },
+      );
+    }
     if (causa instanceof ApiError) {
       // Desligar e' idempotente no backend (nunca da 409) — ramo generico
-      // cobre tudo.
+      // cobre tudo, menos o notebook fora do ar, que tem mensagem propria.
       return NextResponse.json(
-        { erro: "Não foi possível desligar a câmera." },
+        {
+          erro:
+            mensagemDeCameraOffline(causa) ??
+            "Não foi possível desligar a câmera.",
+        },
         { status: statusSeguro(causa) },
       );
     }

@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 
-import { statusSeguro } from "@/app/api/admin/_lib/status-seguro";
-import { ApiError, ligarCamera } from "@/lib/api";
+import {
+  mensagemDeCameraOffline,
+  statusSeguro,
+} from "@/app/api/admin/_lib/status-seguro";
+import { ApiError, ConfiguracaoAusenteError, ligarCamera } from "@/lib/api";
 import { ehModoCamera } from "@/lib/modos-camera";
 import type { ModoCamera } from "@/lib/types";
 
@@ -53,7 +56,20 @@ export async function POST(requisicao: Request) {
   try {
     return NextResponse.json(await ligarCamera(turmaId, modo, audio));
   } catch (causa) {
+    if (causa instanceof ConfiguracaoAusenteError) {
+      return NextResponse.json(
+        { erro: "O endereço do computador da sala não está configurado no site." },
+        { status: 503 },
+      );
+    }
     if (causa instanceof ApiError) {
+      // Notebook desligado: a causa mais provavel de "Ligar" falhar agora que a
+      // API principal vive na nuvem. Vem antes do ramo generico pra o professor
+      // saber que precisa ir ate' a maquina da sala, e nao tentar de novo aqui.
+      const offline = mensagemDeCameraOffline(causa);
+      if (offline) {
+        return NextResponse.json({ erro: offline }, { status: 503 });
+      }
       if (causa.status === 409) {
         // Ja existe captura em andamento — mensagem especifica pro usuario
         // entender que nao precisa (nem pode) ligar de novo.

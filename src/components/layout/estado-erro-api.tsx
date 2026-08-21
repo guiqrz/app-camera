@@ -1,11 +1,17 @@
 "use client";
 
 /**
- * Tela de falha reutilizavel para qualquer pagina que dependa da API.
+ * Tela de falha reutilizavel para qualquer pagina que dependa da API da NUVEM.
  *
- * A causa mais comum nao e' um defeito do site, e sim a API fora do ar
- * (notebook desligado, tunel caido, chave errada). A mensagem explica isso em
- * linguagem comum, em vez de exibir a excecao crua.
+ * A causa mais comum nao e' um defeito do site, e sim a API fora do ar. Desde
+ * 20/08/2026 isso mudou de significado: a API saiu do notebook e foi pra nuvem,
+ * entao "fora do ar" aqui e' o servico hospedado, e nao mais a maquina da
+ * escola. O plano gratuito hiberna depois de 15 min sem uso, e a primeira visita
+ * do dia acorda o servico em 30-60s — que e' de longe o caso mais provavel de
+ * quem chega nesta tela.
+ *
+ * A tela de Camera NAO usa esta: la', o que cai e' o computador da sala, e a
+ * mensagem certa e' outra (ver VistaDesconectada em components/camera).
  */
 export function EstadoErroApi({
   error,
@@ -14,8 +20,11 @@ export function EstadoErroApi({
   error: Error;
   reset: () => void;
 }) {
+  // Casa com o prefixo das duas mensagens de rede de lib/api.ts ("...com a API
+  // do CUPCAM na nuvem" e "...com o computador da sala"), sem depender do texto
+  // completo de nenhuma delas.
   const pareceApiForaDoAr =
-    error.message.includes("Nao foi possivel falar com a API") ||
+    error.message.includes("Nao foi possivel falar com") ||
     error.message.includes("fetch failed");
 
   return (
@@ -49,12 +58,16 @@ export function EstadoErroApi({
 
       {pareceApiForaDoAr ? (
         <div className="text-text-body flex flex-col gap-3 text-sm leading-relaxed">
-          <p>O site não conseguiu alcançar o sistema que fica na escola. Verifique:</p>
-          <ul className="text-text-muted mx-auto w-fit list-disc space-y-1 pl-5 text-left">
-            <li>o notebook da sala está ligado;</li>
-            <li>a API do CUPCAM está rodando;</li>
-            <li>o túnel (cloudflared) continua aberto.</li>
-          </ul>
+          <p>
+            O site não conseguiu alcançar o servidor do CUPCAM. Na maioria das
+            vezes ele está apenas <strong>acordando</strong>: o serviço hiberna
+            depois de 15 minutos sem uso, e a primeira visita do dia leva de 30 a
+            60 segundos.
+          </p>
+          <p className="text-text-muted text-xs">
+            Espere alguns segundos e tente de novo. Se continuar assim depois de
+            duas tentativas, o servidor pode estar fora do ar.
+          </p>
         </div>
       ) : (
         <p className="text-text-body text-sm leading-relaxed">

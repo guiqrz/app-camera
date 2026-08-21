@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 
-import { statusSeguro } from "@/app/api/admin/_lib/status-seguro";
-import { ApiError, trocarModoCamera } from "@/lib/api";
+import {
+  mensagemDeCameraOffline,
+  statusSeguro,
+} from "@/app/api/admin/_lib/status-seguro";
+import { ApiError, ConfiguracaoAusenteError, trocarModoCamera } from "@/lib/api";
 import { ehModoCamera } from "@/lib/modos-camera";
 import type { ModoCamera } from "@/lib/types";
 
@@ -40,9 +43,19 @@ export async function POST(requisicao: Request) {
   try {
     return NextResponse.json(await trocarModoCamera(modo));
   } catch (causa) {
+    if (causa instanceof ConfiguracaoAusenteError) {
+      return NextResponse.json(
+        { erro: "O endereço do computador da sala não está configurado no site." },
+        { status: 503 },
+      );
+    }
     if (causa instanceof ApiError) {
       return NextResponse.json(
-        { erro: "Não foi possível trocar o modo da câmera." },
+        {
+          erro:
+            mensagemDeCameraOffline(causa) ??
+            "Não foi possível trocar o modo da câmera.",
+        },
         { status: statusSeguro(causa) },
       );
     }

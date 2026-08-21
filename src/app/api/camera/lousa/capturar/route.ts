@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 
-import { statusSeguro } from "@/app/api/admin/_lib/status-seguro";
-import { ApiError, capturarLousa } from "@/lib/api";
+import {
+  mensagemDeCameraOffline,
+  statusSeguro,
+} from "@/app/api/admin/_lib/status-seguro";
+import { ApiError, ConfiguracaoAusenteError, capturarLousa } from "@/lib/api";
 
 /**
  * Ponte do botao "Capturar quadro" (e do "Ler de novo") da tela "Camera".
@@ -19,6 +22,12 @@ export async function POST() {
   try {
     return NextResponse.json(await capturarLousa(), { status: 202 });
   } catch (causa) {
+    if (causa instanceof ConfiguracaoAusenteError) {
+      return NextResponse.json(
+        { erro: "O endereço do computador da sala não está configurado no site." },
+        { status: 503 },
+      );
+    }
     if (causa instanceof ApiError) {
       // 409 e' resposta esperada, nao falha: a camera esta parada ou fora do
       // modo Lousa. O motivo vem do backend porque so' ele sabe qual dos dois
@@ -34,7 +43,11 @@ export async function POST() {
         );
       }
       return NextResponse.json(
-        { erro: "Não foi possível capturar o quadro." },
+        {
+          erro:
+            mensagemDeCameraOffline(causa) ??
+            "Não foi possível capturar o quadro.",
+        },
         { status: statusSeguro(causa) },
       );
     }

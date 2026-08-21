@@ -1,7 +1,15 @@
 import { NextResponse } from "next/server";
 
-import { statusSeguro } from "@/app/api/admin/_lib/status-seguro";
-import { ApiError, lerAudioCamera, trocarAudioCamera } from "@/lib/api";
+import {
+  mensagemDeCameraOffline,
+  statusSeguro,
+} from "@/app/api/admin/_lib/status-seguro";
+import {
+  ApiError,
+  ConfiguracaoAusenteError,
+  lerAudioCamera,
+  trocarAudioCamera,
+} from "@/lib/api";
 
 /**
  * Ponte "microfone da aula" da tela "Camera".
@@ -20,10 +28,14 @@ export async function GET() {
   try {
     return NextResponse.json(await lerAudioCamera());
   } catch (causa) {
+    // Backend fora nao pode virar "gravando" na tela: em caso de duvida a
+    // resposta segura e' DESLIGADO. Mostrar o aviso de gravacao por causa de
+    // um erro de rede seria mentir sobre o que esta acontecendo na sala — vale
+    // igual pro notebook desconectado e pra variavel faltando.
+    if (causa instanceof ConfiguracaoAusenteError) {
+      return NextResponse.json({ ativo: false }, { status: 503 });
+    }
     if (causa instanceof ApiError) {
-      // Backend fora nao pode virar "gravando" na tela: em caso de duvida a
-      // resposta segura e' DESLIGADO. Mostrar o aviso de gravacao por causa de
-      // um erro de rede seria mentir sobre o que esta acontecendo na sala.
       return NextResponse.json({ ativo: false }, { status: statusSeguro(causa) });
     }
     throw causa;
@@ -54,9 +66,19 @@ export async function POST(requisicao: Request) {
   try {
     return NextResponse.json(await trocarAudioCamera(ativo));
   } catch (causa) {
+    if (causa instanceof ConfiguracaoAusenteError) {
+      return NextResponse.json(
+        { erro: "O endereço do computador da sala não está configurado no site." },
+        { status: 503 },
+      );
+    }
     if (causa instanceof ApiError) {
       return NextResponse.json(
-        { erro: "Não foi possível mudar o microfone." },
+        {
+          erro:
+            mensagemDeCameraOffline(causa) ??
+            "Não foi possível mudar o microfone.",
+        },
         { status: statusSeguro(causa) },
       );
     }

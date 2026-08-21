@@ -68,6 +68,11 @@ export function VistaCamera({ turmas }: VistaCameraProps) {
   const [ligando, setLigando] = useState(false);
   const [desligando, setDesligando] = useState(false);
   const [avisoRede, setAvisoRede] = useState<string | null>(null);
+  // O computador da sala nao esta conectado (desligado, ou sem o tunel aberto).
+  // Estado proprio, e nao um aviso, porque muda o que a tela OFERECE: sem o
+  // notebook no ar, nenhum botao desta tela tem quem o atenda. Ver a rota
+  // /api/camera/estado, que marca `cameraOffline`.
+  const [offline, setOffline] = useState(false);
   const [avisoAcao, setAvisoAcao] = useState<string | null>(null);
   // "" = automatico por horario; senao, o id (como string) da turma escolhida.
   const [turmaEscolhida, setTurmaEscolhida] = useState<string>("");
@@ -96,17 +101,37 @@ export function VistaCamera({ turmas }: VistaCameraProps) {
       if (r.ok) {
         setEstado((await r.json()) as EstadoCamera);
         setAvisoRede(null);
+        setOffline(false);
         primeiraLeituraFeita.current = true;
       } else {
-        const corpo = (await r.json().catch(() => null)) as { erro?: string } | null;
+        const corpo = (await r.json().catch(() => null)) as {
+          erro?: string;
+          cameraOffline?: boolean;
+        } | null;
+
+        // O computador da sala nao respondeu. Nao passa pelo filtro de
+        // `primeiraLeituraFeita`, ao contrario dos outros avisos: este e'
+        // justamente o caso em que NUNCA houve leitura boa — o notebook esta
+        // desligado desde antes de a tela abrir. Era esse o silencio de
+        // 20/08/2026: a tela dizia "Câmera parada" e o botao Ligar nao fazia
+        // nada, sem nenhuma explicacao na frente do professor.
+        if (corpo?.cameraOffline) {
+          setOffline(true);
+          setAvisoRede(null);
+          setEstado(null);
+          return;
+        }
+
+        setOffline(false);
         // So mostra aviso de rede apos' uma leitura bem-sucedida ja' ter acontecido.
         if (primeiraLeituraFeita.current) {
           setAvisoRede(corpo?.erro ?? "Não foi possível falar com a câmera.");
         }
       }
     } catch {
-      // Rede fora, notebook desligado, etc — mensagem estavel, tela nao quebra.
-      // So mostra se ja' houve uma leitura bem-sucedida antes.
+      // O fetch pro NOSSO proprio /api nem completou (site recarregando, aba
+      // suspensa). Diferente de `cameraOffline`, que e' uma resposta HTTP real
+      // dizendo que o notebook nao respondeu — aqui nao sabemos de nada.
       if (primeiraLeituraFeita.current) {
         setAvisoRede("Não foi possível falar com a câmera. Verifique se o notebook da sala está ligado.");
       }
@@ -328,7 +353,9 @@ export function VistaCamera({ turmas }: VistaCameraProps) {
         </div>
       )}
 
-      {estado?.rodando ? (
+      {offline ? (
+        <VistaDesconectada />
+      ) : estado?.rodando ? (
         <VistaRodando
           estado={estado}
           desligando={desligando}
@@ -508,6 +535,73 @@ function VistaParada({
           {aviso}
         </p>
       )}
+    </div>
+  );
+}
+
+/**
+ * Estado 0 — o computador da sala nao esta conectado.
+ *
+ * Por que uma vista INTEIRA, e nao um aviso por cima da tela parada: sem o
+ * notebook no ar, nenhum controle desta tela tem quem o atenda. Mostrar o
+ * seletor de turma, os quatro modos e um botao "Ligar" seria oferecer escolhas
+ * que nao levam a nada — que era exatamente o sintoma de 20/08/2026, quando a
+ * API saiu do notebook e foi pro Render: a tela dizia "Câmera parada", o
+ * professor clicava Ligar e nada acontecia na sala.
+ *
+ * O resto do site continua funcionando normalmente aqui: turmas, chamada,
+ * relatorios e Cup AI vem da nuvem, e nao dependem desta maquina. Por isso o
+ * texto fala do "computador da sala", e nao de "sistema fora do ar".
+ */
+function VistaDesconectada() {
+  return (
+    <div className="border-border-default bg-surface shadow-card mx-auto flex w-full max-w-lg flex-col items-center gap-5 rounded-[12px] border p-10 text-center">
+      <div
+        className="flex h-16 w-16 items-center justify-center rounded-full"
+        style={{ background: "var(--warn-bg)" }}
+        aria-hidden
+      >
+        <span style={{ color: "var(--warn-fg)" }}>
+          <IconCamera size={30} />
+        </span>
+      </div>
+
+      <div>
+        <h2 className="text-text text-lg font-semibold">
+          Computador da sala desconectado
+        </h2>
+        <p className="text-text-muted mt-1 text-sm leading-relaxed">
+          A captura roda no computador da sala, e ele não está respondendo. Ligue
+          o CUPCAM nessa máquina para iniciar uma aula.
+        </p>
+      </div>
+
+      {/* O aviso de que o RESTO segue funcionando e' o ponto principal desta
+          tela: sem ele, "desconectado" se parece com "o sistema caiu". */}
+      <p
+        className="rounded-xl border px-4 py-3 text-left text-xs leading-relaxed font-semibold"
+        style={{
+          background: "var(--surface-2)",
+          borderColor: "var(--border)",
+          color: "var(--text-muted)",
+        }}
+        role="status"
+      >
+        As outras telas continuam funcionando normalmente — chamada, relatórios e
+        Cup AI não dependem do computador da sala.
+      </p>
+
+      {/* Botao presente e DESABILITADO, em vez de escondido: some-lo faria
+          parecer que a tela mudou de funcao. Assim o professor ve que ligar e'
+          possivel aqui, so' nao agora. */}
+      <button
+        type="button"
+        disabled
+        className="w-full cursor-not-allowed rounded-[9px] px-8 py-3 text-sm font-semibold opacity-60"
+        style={{ background: "var(--primary)", color: "var(--text-on-brand)" }}
+      >
+        Ligar
+      </button>
     </div>
   );
 }

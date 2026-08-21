@@ -20,5 +20,23 @@ const STATUS_PERMITIDOS = new Set([404, 409, 413, 422]);
  */
 export function statusSeguro(causa: ApiError): number {
   if (STATUS_PERMITIDOS.has(causa.status)) return causa.status;
+  // O computador da sala nao respondeu: 503 (temporariamente indisponivel), e
+  // nao 502. Nao e' infraestrutura quebrada — fora do horario de aula, um
+  // notebook desligado e' o estado esperado. O status distinto deixa a tela de
+  // Camera reconhecer o caso sem depender do texto da mensagem.
+  if (causa.isCameraOffline) return 503;
   return 502;
+}
+
+/**
+ * Mensagem pro professor quando o computador da sala nao respondeu, ou `null`
+ * quando a falha e' outra (o chamador segue com a mensagem dele).
+ *
+ * Existe pra que as sete rotas de camera digam a MESMA coisa nesse caso: a
+ * causa e' sempre a mesma maquina desligada, e a acao tambem — ligar o CUPCAM
+ * na sala. Sem isso, cada rota inventaria a propria frase pro mesmo problema.
+ */
+export function mensagemDeCameraOffline(causa: ApiError): string | null {
+  if (!causa.isCameraOffline) return null;
+  return "O computador da sala não está conectado. Ligue o CUPCAM nessa máquina.";
 }
