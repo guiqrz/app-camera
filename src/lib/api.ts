@@ -1,11 +1,23 @@
 /**
- * Cliente HTTP da API do CUPCAM.
+ * Cliente HTTP das APIs do CUPCAM.
+ *
+ * DUAS APIS, e saber qual e' qual importa (20/08/2026):
+ *
+ *   nuvem   Render. Le o banco no Turso e atende quase tudo — turmas, chamada,
+ *           relatorios, Cup AI. No ar sem depender de ninguem.
+ *   camera  o notebook da sala, exposto por tunel (ngrok). Atende SO' as rotas
+ *           de captura, que ligam um processo e leem um arquivo locais. Fora do
+ *           horario de aula ela simplesmente nao responde, e isso e' normal.
+ *
+ * Cada funcao daqui declara seu destino; ver o tipo `DestinoApi` abaixo.
  *
  * SEGURANCA — leia antes de mexer:
  *
- * A API fica exposta na internet publica (tunel cloudflared) e serve nome e
- * RA de alunos. A unica coisa que impede qualquer pessoa com a URL de ler
- * esse dado pessoal e' a chave em CUPCAM_API_KEY.
+ * As duas ficam expostas na internet publica e servem nome e RA de alunos. A
+ * unica coisa que impede qualquer pessoa com a URL de ler esse dado pessoal sao
+ * as chaves — CUPCAM_API_KEY pra nuvem, CUPCAM_CAMERA_API_KEY pro notebook.
+ * Elas sao DIFERENTES de proposito: a do notebook viaja por um tunel que sobe e
+ * desce todo dia, e um vazamento dela nao pode abrir o banco da escola.
  *
  * Por isso este modulo importa "server-only": se algum componente de
  * navegador ("use client") importar este arquivo, o build QUEBRA de proposito,
@@ -63,6 +75,11 @@ export class ApiError extends Error {
      * pro navegador; quando a resposta nao era JSON, fica undefined.
      */
     readonly detalhe?: unknown,
+    /**
+     * Qual das duas APIs falhou. Default "nuvem" mantem o comportamento de
+     * todos os chamadores que existiam antes de haver duas.
+     */
+    readonly destino: DestinoApi = "nuvem",
   ) {
     super(message);
     this.name = "ApiError";
@@ -72,22 +89,88 @@ export class ApiError extends Error {
   get isNotFound(): boolean {
     return this.status === 404;
   }
+
+  /**
+   * O computador da sala nao respondeu.
+   *
+   * status 0 (a requisicao nem chegou) vindo do destino "camera". A tela de
+   * Camera trata isso como um ESTADO proprio — "notebook desligado" —, e nao
+   * como erro: fora do horario de aula e' o normal, e o resto do site segue
+   * funcionando porque vem da nuvem.
+   */
+  get isCameraOffline(): boolean {
+    return this.status === 0 && this.destino === "camera";
+  }
 }
 
-export function lerConfiguracao(): { baseUrl: string; apiKey: string } {
-  const baseUrl = process.env.CUPCAM_API_URL;
-  const apiKey = process.env.CUPCAM_API_KEY;
+/**
+ * Qual das duas APIs do CUPCAM atende a chamada.
+ *
+ * Desde 20/08/2026 existem DUAS, no ar ao mesmo tempo:
+ *
+ *   "nuvem"   Render. Le o banco no Turso e atende 50 das 61 rotas — turmas,
+ *             chamada, relatorios, Cup AI. Fica de pe sozinha, sem o notebook.
+ *
+ *   "camera"  o proprio notebook da sala, exposto por tunel. Atende SO' as
+ *             rotas de captura. Elas nao "usam" as bibliotecas de visao: elas
+ *             disparam um processo e leem um arquivo NA MAQUINA ONDE RODAM.
+ *             Chamadas na nuvem, ligariam uma camera no servidor do Render,
+ *             que nao tem webcam nenhuma — era esse o sintoma de 20/08.
+ *
+ * O destino e' escolhido por chamada, nunca adivinhado: `requisitar` recebe
+ * "camera" so' nas funcoes da secao Camera, la' embaixo.
+ */
+export type DestinoApi = "nuvem" | "camera";
+
+/**
+ * Erro de configuracao ausente — a variavel de ambiente nao foi preenchida.
+ *
+ * Separado de `ApiError` (que e' falha de REDE ou resposta ruim) porque as
+ * duas pedem coisas diferentes de quem le: esta pede preencher a Vercel,
+ * aquela pede ligar o notebook. A tela de Camera distingue as duas.
+ */
+export class ConfiguracaoAusenteError extends Error {
+  constructor(
+    message: string,
+    readonly destino: DestinoApi,
+  ) {
+    super(message);
+    this.name = "ConfiguracaoAusenteError";
+  }
+}
+
+export function lerConfiguracao(destino: DestinoApi = "nuvem"): {
+  baseUrl: string;
+  apiKey: string;
+} {
+  // A camera tem par PROPRIO de variaveis. Chave separada de proposito: a do
+  // notebook viaja por um tunel publico que sobe e desce todo dia de aula; se
+  // ela fosse a mesma da nuvem, um vazamento no tunel abriria o banco inteiro
+  // da escola. Ver config.chaves_aceitas() no backend.
+  const daCamera = destino === "camera";
+  const baseUrl = daCamera
+    ? process.env.CUPCAM_CAMERA_URL
+    : process.env.CUPCAM_API_URL;
+  const apiKey = daCamera
+    ? process.env.CUPCAM_CAMERA_API_KEY
+    : process.env.CUPCAM_API_KEY;
 
   // Falha cedo e com mensagem clara: sem isso o sintoma seria um 401
   // generico em toda tela, dificil de rastrear ate a variavel faltando.
   if (!baseUrl) {
-    throw new Error(
-      "CUPCAM_API_URL nao esta definida. Copie .env.example para .env.local.",
+    throw new ConfiguracaoAusenteError(
+      daCamera
+        ? "CUPCAM_CAMERA_URL nao esta definida. E' a URL do tunel do notebook da sala."
+        : "CUPCAM_API_URL nao esta definida. Copie .env.example para .env.local.",
+      destino,
     );
   }
   if (!apiKey) {
-    throw new Error(
-      "CUPCAM_API_KEY nao esta definida. Copie .env.example para .env.local.",
+    throw new ConfiguracaoAusenteError(
+      daCamera
+        ? "CUPCAM_CAMERA_API_KEY nao esta definida. E' a chave do notebook, diferente da chave da nuvem."
+        : "CUPCAM_API_KEY nao esta definida. Copie .env.example para .env.local.",
+      destino,
     );
   }
 
@@ -100,13 +183,51 @@ type OpcoesRequisicao = {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   /** FormData vai crua (multipart); qualquer outra coisa vira JSON. */
   body?: unknown;
+  /** Qual API atende. Padrao "nuvem"; so' a secao Camera passa "camera". */
+  destino?: DestinoApi;
+  /** Teto em ms. Padrao por destino (ver TEMPO_LIMITE_MS). */
+  tempoLimiteMs?: number;
+};
+
+/**
+ * Teto de espera por destino, em milissegundos.
+ *
+ * POR QUE EXISTE (21/08/2026): antes disto nenhuma requisicao tinha timeout, e
+ * o efeito foi medido no site no ar — /configuracoes, que le o estado da
+ * camera, passava de 150s e nao renderizava; / e /coordenacao chegaram a 73s e
+ * 49s. Sem teto, uma ponta que nao responde nao produz erro: produz uma pagina
+ * que nunca termina de carregar, que era a "lentidao extrema" relatada.
+ *
+ * Os dois numeros sao diferentes de proposito:
+ *
+ *   camera  4s. O notebook fica DESLIGADO a maior parte do tempo, e esse e' o
+ *           estado normal fora da aula. Esperar mais nao aumenta a chance de
+ *           resposta — so' atrasa a tela que ja' tem tudo o que precisa da
+ *           nuvem. Ele esta na mesma rede local ou a um tunel de distancia:
+ *           quando responde, responde em menos de 1s.
+ *
+ *   nuvem   20s. O plano gratuito do Render hiberna depois de 15 min sem uso e
+ *           leva 30-60s pra acordar, mas a pagina nao pode ficar refem disso:
+ *           20s da' folga pra uma resposta normal (medida em 0,4s ja' acordado)
+ *           e ainda entrega a tela de erro antes de o professor desistir. O
+ *           retry de quem chega na tela acorda o servico.
+ */
+const TEMPO_LIMITE_MS: Record<DestinoApi, number> = {
+  camera: 4_000,
+  nuvem: 20_000,
 };
 
 async function requisitar<T>(
   rota: string,
-  { revalidate = 30, method = "GET", body }: OpcoesRequisicao = {},
+  {
+    revalidate = 30,
+    method = "GET",
+    body,
+    destino = "nuvem",
+    tempoLimiteMs,
+  }: OpcoesRequisicao = {},
 ): Promise<T> {
-  const { baseUrl, apiKey } = lerConfiguracao();
+  const { baseUrl, apiKey } = lerConfiguracao(destino);
 
   const eFormData = body instanceof FormData;
   // Escrita nunca e' cacheada; leitura revalida no intervalo pedido. PATCH
@@ -131,13 +252,26 @@ async function requisitar<T>(
       body: body ? (eFormData ? body : JSON.stringify(body)) : undefined,
       next: eEscrita ? undefined : { revalidate },
       cache: eEscrita ? "no-store" : undefined,
+      // AbortSignal.timeout aborta o fetch e cai no catch abaixo como qualquer
+      // falha de rede — que e' o tratamento certo: uma ponta que nao respondeu
+      // no prazo e uma ponta fora do ar sao a mesma coisa pra quem le a tela.
+      signal: AbortSignal.timeout(tempoLimiteMs ?? TEMPO_LIMITE_MS[destino]),
     });
   } catch {
-    // Rede fora do ar, tunel caido ou notebook desligado.
+    // status 0 = a requisicao nem chegou a ter resposta. O que isso SIGNIFICA
+    // depende do destino, e a diferenca importa pro professor:
+    //   camera: o notebook da sala esta desligado ou sem tunel — normal fora do
+    //           horario de aula, e ele mesmo resolve ligando a maquina.
+    //   nuvem:  o Render esta fora do ar ou hibernando. Nao ha o que ele faca
+    //           alem de esperar (o plano gratuito dorme depois de 15 min).
     throw new ApiError(
-      "Nao foi possivel falar com a API do CUPCAM. O notebook e o tunel estao ligados?",
+      destino === "camera"
+        ? "Nao foi possivel falar com o computador da sala. Ele esta ligado, com o CUPCAM e o tunel abertos?"
+        : "Nao foi possivel falar com a API do CUPCAM na nuvem.",
       0,
       rota,
+      undefined,
+      destino,
     );
   }
 
@@ -157,6 +291,11 @@ async function requisitar<T>(
       resposta.status,
       rota,
       detalhe,
+      // Sem isto o erro cairia no default "nuvem" mesmo vindo do notebook.
+      // Hoje nenhum ramo se decide por `destino` com status != 0, entao nao ha
+      // sintoma — mas um campo que mente sobre a origem e' uma armadilha pro
+      // proximo `if`, e o preco de acertar e' esta linha.
+      destino,
     );
   }
 
@@ -178,12 +317,24 @@ export function listarTurmas(): Promise<Turma[]> {
  *
  * Devolve numeros + agenda da semana + lembretes numa requisicao so'.
  *
- * Sem cache: o professor marca um lembrete como feito e precisa ver o proprio
- * clique refletido ao voltar pra tela. Cachear aqui traria de volta o lembrete
- * que ele acabou de riscar.
+ * Cache de 10s, e nao zero (21/08/2026).
+ *
+ * O zero existia por um motivo real: o professor risca um lembrete e precisa
+ * ver o proprio clique ao voltar pra tela. Mas quem garante isso e' o
+ * `useState` de SecaoLembretes, que atualiza a lista no CLIENTE assim que ele
+ * clica — o servidor nem entra na conta nesse instante.
+ *
+ * O preco do zero era alto: esta e' a rota mais pesada do app (5 consultas SQL)
+ * e, com o banco na nuvem, cada visita pagava ~5s medidos. A tela /aulas e' a
+ * porta de entrada do site, entao era o primeiro que o professor sentia.
+ *
+ * 10s e' o meio termo medido: cobre o vai-e-volta entre telas (o caso que
+ * doia) e e' curto demais pra alguem voltar depois de mexer noutra aba e ver
+ * numero velho. Os outros quatro blocos — totais, agenda, materias, alunos —
+ * mudam em escala de dias, entao 10s neles e' conservador.
  */
 export function buscarVisaoGeral(): Promise<VisaoGeral> {
-  return requisitar<VisaoGeral>("/visao-geral", { revalidate: 0 });
+  return requisitar<VisaoGeral>("/visao-geral", { revalidate: 10 });
 }
 
 /**
@@ -464,12 +615,29 @@ export function excluirAula(id: number): Promise<{ id: number }> {
 }
 
 /* ------------------------------------------------------------------ */
-/* Camera                                                              */
+/* Camera — TODAS falam com o NOTEBOOK, nunca com a nuvem              */
 /* ------------------------------------------------------------------ */
+/*
+ * Por que esta secao inteira leva `destino: "camera"`:
+ *
+ * Estas rotas parecem chamadas HTTP comuns, mas nenhuma delas e' uma leitura de
+ * banco. Elas disparam um processo (`cupcam.main`) e leem um arquivo
+ * (`estado_camera.json`) NA MAQUINA ONDE A API ESTA RODANDO. Apontadas pra
+ * nuvem, elas tentariam ligar uma webcam dentro do container do Render e ler um
+ * arquivo que so' existe no notebook — que era exatamente o sintoma de
+ * 20/08/2026: o botao "Ligar" respondia 200 e nada acontecia na sala.
+ *
+ * A excecao que confirma a regra: `listarLousas` NAO esta aqui. Ela le as
+ * imagens ja gravadas no banco, entao e' nuvem como qualquer relatorio. So'
+ * `capturarLousa`, que PEDE uma foto nova a camera viva, e' do notebook.
+ */
 
 /** Estado ao vivo da captura. Sempre responde, mesmo com a camera parada. */
 export function lerEstadoCamera(): Promise<EstadoCamera> {
-  return requisitar<EstadoCamera>("/camera/estado", { revalidate: 0 });
+  return requisitar<EstadoCamera>("/camera/estado", {
+    revalidate: 0,
+    destino: "camera",
+  });
 }
 
 /**
@@ -498,12 +666,16 @@ export function ligarCamera(
     method: "POST",
     // Sem nada escolhido, manda POST sem corpo: e' o caminho automatico.
     body: Object.keys(corpo).length > 0 ? corpo : undefined,
+    destino: "camera",
   });
 }
 
 /** Para a captura. Idempotente no backend. */
 export function desligarCamera(): Promise<{ parado: boolean }> {
-  return requisitar<{ parado: boolean }>("/camera/desligar", { method: "POST" });
+  return requisitar<{ parado: boolean }>("/camera/desligar", {
+    method: "POST",
+    destino: "camera",
+  });
 }
 
 /**
@@ -518,7 +690,15 @@ export function listarModosCamera(): Promise<{
   padrao: ModoCamera;
   modos: ModoCameraInfo[];
 }> {
-  return requisitar<{ padrao: ModoCamera; modos: ModoCameraInfo[] }>("/camera/modos");
+  // Esta e' a unica da secao que NAO toca hardware — le texto estatico de
+  // cupcam/modos.py, e a nuvem responderia igual. Vai pro notebook mesmo assim,
+  // de proposito: com ela na nuvem, um notebook desligado produziria uma tela
+  // incoerente, que lista os quatro modos como se pudesse escolher e falha no
+  // clique. Ligada ao mesmo destino, a tela inteira tem um estado so'.
+  return requisitar<{ padrao: ModoCamera; modos: ModoCameraInfo[] }>(
+    "/camera/modos",
+    { destino: "camera" },
+  );
 }
 
 /**
@@ -535,6 +715,7 @@ export function trocarModoCamera(modo: ModoCamera): Promise<{
   return requisitar<{ modo: ModoCamera; aplicando: boolean }>("/camera/modo", {
     method: "POST",
     body: { modo },
+    destino: "camera",
   });
 }
 
@@ -546,7 +727,10 @@ export function trocarModoCamera(modo: ModoCamera): Promise<{
  * pro aviso "gravando", justamente pra nunca dizer que grava antes de gravar.
  */
 export function lerAudioCamera(): Promise<{ ativo: boolean }> {
-  return requisitar<{ ativo: boolean }>("/camera/audio", { revalidate: 0 });
+  return requisitar<{ ativo: boolean }>("/camera/audio", {
+    revalidate: 0,
+    destino: "camera",
+  });
 }
 
 /**
@@ -559,6 +743,7 @@ export function trocarAudioCamera(ativo: boolean): Promise<{ ativo: boolean }> {
   return requisitar<{ ativo: boolean }>("/camera/audio", {
     method: "POST",
     body: { ativo },
+    destino: "camera",
   });
 }
 
@@ -577,9 +762,13 @@ export function trocarAudioCamera(ativo: boolean): Promise<{ ativo: boolean }> {
  * guardar imagem so' e' autorizado nesse modo.
  */
 export function capturarLousa(): Promise<{ pedido: string; capturando: boolean }> {
+  // No NOTEBOOK: a rota le o estado da camera viva pra recusar (409) fora do
+  // modo Lousa, e o pedido que ela escreve so' e' lido pelo processo da captura,
+  // que roda ali. Nao confundir com `listarLousas`, logo abaixo, que le imagens
+  // ja gravadas no banco e por isso e' nuvem.
   return requisitar<{ pedido: string; capturando: boolean }>(
     "/camera/lousa/capturar",
-    { method: "POST" },
+    { method: "POST", destino: "camera" },
   );
 }
 
@@ -830,7 +1019,7 @@ export async function exportarMaterial(
     });
   } catch {
     throw new ApiError(
-      "Nao foi possivel falar com a API do CUPCAM. O notebook e o tunel estao ligados?",
+      "Nao foi possivel falar com a API do CUPCAM na nuvem.",
       0,
       "/ia/exportar",
     );

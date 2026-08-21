@@ -63,18 +63,32 @@ export default async function ConfiguracoesPage() {
   let turmas: Turma[] = [];
   let estadoCamera: EstadoCamera | null = null;
 
-  try {
-    turmas = await listarTurmas();
-  } catch (causa) {
-    if (!(causa instanceof ApiError)) throw causa;
+  // As duas leituras correm JUNTAS, e nao em fila. Elas falam com maquinas
+  // diferentes (nuvem e notebook) e nenhuma depende do resultado da outra —
+  // encadea-las com await somava as duas esperas por nada. Com o notebook
+  // desligado, que e' o normal fora da aula, a soma era o que fazia esta tela
+  // passar de 150s antes do timeout existir.
+  //
+  // allSettled, e nao all: um destino fora nao pode derrubar o outro. A camera
+  // ausente e' esperada, e a tela sabe mostrar `estadoCamera` nulo.
+  const [resultadoTurmas, resultadoCamera] = await Promise.allSettled([
+    listarTurmas(),
+    lerEstadoCamera(),
+  ]);
+
+  if (resultadoTurmas.status === "fulfilled") {
+    turmas = resultadoTurmas.value;
+  } else if (!(resultadoTurmas.reason instanceof ApiError)) {
+    throw resultadoTurmas.reason;
   }
 
-  try {
-    estadoCamera = await lerEstadoCamera();
-  } catch (causa) {
-    if (!(causa instanceof ApiError)) throw causa;
+  if (resultadoCamera.status === "fulfilled") {
+    estadoCamera = resultadoCamera.value;
+  } else if (!(resultadoCamera.reason instanceof ApiError)) {
+    throw resultadoCamera.reason;
   }
 
+  // Esta depende de `turmas`, entao fica fora do paralelo acima de proposito.
   const alcanceAutomatico = await contarAlcanceAutomatico(
     turmas,
     SALA_DA_CAMERA,
