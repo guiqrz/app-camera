@@ -1,0 +1,68 @@
+# Mantem a API da nuvem acordada.
+#
+# POR QUE ISTO EXISTE (22/08/2026)
+#
+# A API roda no plano gratuito do Render (ver `plan: free` em render.yaml no
+# repo do backend). Esse plano DESLIGA o servico depois de 15 minutos sem
+# nenhuma requisicao, e a proxima visita paga o religamento inteiro.
+#
+# Medido no site em producao antes deste arquivo existir:
+#
+#   1a visita (API dormindo)   20,4 s  e devolvia ERRO 500
+#   visitas seguintes           0,5 s  e 200 OK
+#
+# O erro 500 nao era bug do app: o teto de espera da nuvem e' 20 s
+# (TEMPO_LIMITE_MS em src/lib/api.ts) e o Render nao acordava a tempo. Ou seja,
+# quem abrisse o site depois de 15 min parado esperava 20 s para ver um erro.
+#
+# Um ping a cada 10 minutos mantem a contagem de inatividade sempre abaixo dos
+# 15, e o professor nunca cai na visita fria.
+name: Manter API acordada
+
+on:
+  schedule:
+    # A cada 10 minutos. O limite do Render e' 15; a folga cobre os atrasos do
+    # agendador do GitHub, que na pratica nao dispara no minuto exato.
+    - cron: "*/10 * * * *"
+  # Permite disparar na mao pela aba Actions, util pra acordar a API antes de
+  # uma aula sem esperar o proximo ciclo.
+  workflow_dispatch:
+
+# Sem permissao nenhuma: o job so' faz uma requisicao HTTP de saida.
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    # O job inteiro e' uma requisicao; se travar, nao faz sentido segurar um
+    # runner por 6 minutos (o padrao do GitHub).
+    timeout-minutes: 5
+    steps:
+      - name: Acordar a API pela rota de saude do app
+        run: |
+          # A rota /api/saude do proprio app chama GET /turmas na API da nuvem,
+          # entao um unico pedido exercita o caminho completo — front, chave e
+          # banco. Ver src/app/api/saude/route.ts.
+          #
+          # --max-time 90: quando a API REALMENTE dormiu, o religamento do
+          # Render passa dos 20 s do app. Aqui queremos esperar ate o fim, para
+          # que a proxima visita de gente ja' encontre tudo de pe.
+          #
+          # Sem --fail de proposito: a rota devolve 503 quando a API esta fora,
+          # e isso NAO e' motivo para marcar o workflow como quebrado — o ping
+          # ja' cumpriu o papel de bater na porta. So' falha de verdade se o
+          # curl nem conseguir falar com o servidor.
+          codigo=$(curl --silent --show-error --location \
+                        --max-time 90 \
+                        --output /dev/null \
+                        --write-out '%{http_code}' \
+                        https://cupcam-app.vercel.app/api/saude)
+
+          echo "Resposta da rota de saude: HTTP $codigo"
+
+          # 000 = a requisicao nem chegou (DNS, rede, timeout do curl). Ai sim
+          # ha algo errado que merece aparecer vermelho no painel do Actions.
+          if [ "$codigo" = "000" ]; then
+            echo "::error::Nao foi possivel falar com o app. Site fora do ar?"
+            exit 1
+          fi
