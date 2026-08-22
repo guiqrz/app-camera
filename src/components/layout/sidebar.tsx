@@ -162,10 +162,14 @@ export function Sidebar({ aberto, aoFechar }: SidebarProps) {
              saturado que o original: medido no pixel, o canal verde caiu de
              189 para 172 no tema claro.
 
-             125% sobre a faixa crua devolve o tom que 155% dava sobre a faixa
-             filtrada. O blur fica: a sidebar e' `sticky`, nao rola, entao nao
-             paga o custo por frame que motivou a mudanca. */
-          backdropFilter: "saturate(125%) blur(10px)",
+             Reduzido de novo, de 125% para 105%, ainda em 22/08: a 125% o
+             canal azul batia no TETO de 255 dentro da sidebar (medido no
+             pixel), e cor saturada no maximo e' justamente o que le como
+             "efeito forte demais". A 105% ela para em 249, com folga.
+
+             O blur fica: a sidebar e' `sticky`, nao rola, entao nao paga o
+             custo por frame que motivou a mudanca toda. */
+          backdropFilter: "saturate(105%) blur(10px)",
         }}
         aria-label="Menu principal"
       >

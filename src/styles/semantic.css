@@ -117,11 +117,28 @@
   --atm-rosa: rgba(235, 170, 205, 0.12);
   --atm-branco: rgba(255, 255, 255, 0.5);
   --ponto-azul: rgba(60, 150, 220, 0.1);
+  /* Alphas baixados de .46/.38/.44 para .36/.30/.34 em 22/08/2026.
+
+     Esta faixa nunca foi vista crua: ate 22/08 o painel de tela cheia passava
+     na frente dela com `backdrop-filter`, e esse vidro funcionava como um VEU
+     que lavava o violeta. O painel saiu por travar o scroll (86,9 ms/frame), e
+     a faixa passou a chegar inteira ao olho — no tema claro isso leu como um
+     roxo chapado e forte, com a sidebar parecendo um bloco solido.
+
+     Medido num corte horizontal do pixel: dentro da sidebar a cor era
+     rgb(216,188,250) e virou rgb(214,174,255) — o verde caiu 14 pontos e o
+     azul BATEU NO TETO de 255, que e' o que da a impressao de cor forcada.
+
+     Os alphas novos saíram de uma varredura de .20 a .46 comparando com o
+     build anterior: .36 leva o erro medio de 7,2 para 3,7 pontos de 255.
+
+     So' o tema CLARO mudou. No escuro a faixa e' outra (linha ~349) e a
+     medicao ja' estava dentro de 2,5 pontos — mexer la' so' estragaria. */
   --faixa-sidebar: linear-gradient(
     180deg,
-    rgba(158, 92, 232, 0.46) 0%,
-    rgba(126, 74, 205, 0.38) 40%,
-    rgba(150, 88, 224, 0.44) 100%
+    rgba(158, 92, 232, 0.36) 0%,
+    rgba(126, 74, 205, 0.3) 40%,
+    rgba(150, 88, 224, 0.34) 100%
   );
 
   /* VIDRO FORTE — a faixa "Você parou aqui", o card com MENOS véu da tela.
@@ -273,21 +290,25 @@
 
   --blur-card: blur(26px) saturate(140%);
   --blur-painel: blur(30px) saturate(125%);
-  /* 0.11 e nao 0.055 (22/08/2026): metade do brilho desta camada vinha do
+  /* 0.12 e nao 0.055 (22/08/2026): metade do brilho desta camada vinha do
      `backdrop-filter: blur(30px)` que o painel de tela cheia tinha, e que
      saiu por travar o scroll (86,9 ms/frame). O blur nao so' borrava — ele
      ESPALHAVA as manchas claras da atmosfera por baixo do painel inteiro,
      levantando o tom medio. Sem ele, a mesma cor a 5,5% deixou o tema escuro
      17,8% mais escuro (medido no pixel, comparando com o build anterior).
 
-     O valor saiu de uma varredura de 0.09 a 0.12 comparando o RGB medio de
-     areas VAZIAS (sem texto) com o do build antigo, nos dois temas. Com 0.09
-     e o `saturate` da sidebar em 1.25 (ver sidebar.tsx), o erro no escuro fica
-     em 2,5 pontos de 255 na sidebar e 2,7 no miolo — invisivel a olho.
+     O valor foi calibrado por varredura contra o build anterior, medindo um
+     corte de pixels dentro da sidebar. Ele anda JUNTO com o `saturate` da
+     sidebar (ver sidebar.tsx): quando aquele caiu de 125% para 105% — para o
+     canal azul parar de bater no teto de 255 no tema claro — o escuro perdeu
+     brilho de novo, e este subiu de 0.09 para 0.12 para compensar. Mexer num
+     sem remedir o outro desregula o tema escuro.
+
+     Com 0.12, o erro no escuro fica em 1,3 ponto de 255. Invisivel a olho.
 
      So' o ESCURO precisou deste ajuste: no claro a atmosfera ja' e' clara e o
-     blur tinha pouco tom a espalhar, entao la a diferenca ficou em 1,2%. */
-  --painel: rgba(196, 165, 255, 0.09);
+     blur tinha pouco tom a espalhar. */
+  --painel: rgba(196, 165, 255, 0.12);
   --painel-solido: #241d2e;
 
   /* No escuro o pastel da materia ja e' escuro: o veu ESCURECE em vez de
@@ -465,7 +486,11 @@
 
     --blur-card: blur(26px) saturate(140%);
     --blur-painel: blur(30px) saturate(125%);
-    --painel: rgba(196, 165, 255, 0.055);
+    /* Igual ao bloco [data-theme="dark"] acima — ver a nota la' sobre o
+       porque de 0.12. Este bloco atende o tema "Sistema", que segue o
+       aparelho: os dois precisam do mesmo valor, senao o app muda de cor
+       conforme a origem da escolha do tema. */
+    --painel: rgba(196, 165, 255, 0.12);
     --painel-solido: #241d2e;
 
     /* No escuro o pastel da materia ja e' escuro: o veu ESCURECE em vez de
