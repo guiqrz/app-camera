@@ -351,8 +351,18 @@ export function buscarSemanaDaTurma(turmaId: number): Promise<DiaDaSemana[]> {
 
 /* --- Lembretes ---------------------------------------------------------- */
 
+/**
+ * Cache de 15 s na carga da pagina (22/08/2026): a lista custa ~0,52 s
+ * medidos contra a nuvem e e' buscada junto de /aulas, somando no tempo de
+ * abertura da tela.
+ *
+ * Nao atrasa nada do que o professor faz: o painel de lembretes atualiza a
+ * propria lista em memoria ao criar, marcar e apagar (`setLembretes` em
+ * `painel-lembretes.tsx`), sem reler do servidor. Este valor cobre so' o
+ * retrato inicial.
+ */
 export function listarLembretes(): Promise<Lembrete[]> {
-  return requisitar<Lembrete[]>("/lembretes", { revalidate: 0 });
+  return requisitar<Lembrete[]>("/lembretes", { revalidate: 15 });
 }
 
 export function criarLembrete(corpo: {
@@ -475,11 +485,24 @@ export function confirmarPresenca(
 /**
  * Tela "Administracao" — turmas, alunos e totais.
  *
- * Sem cache: quem administra precisa ver o dado fresco assim que cadastra
- * ou move alguem, sem esperar a janela de revalidacao.
+ * Cache de 15 s na CARGA INICIAL da pagina (22/08/2026). Antes era 0, e a
+ * tela pagava ~1,3 s de API a cada visita, mesmo abrindo e fechando em
+ * seguida (medido em producao: 1,24 / 1,40 / 1,25 s em tres visitas
+ * seguidas, sem nenhuma queda).
+ *
+ * Cachear NAO atrasa o que o administrador acabou de cadastrar, porque a
+ * tela nunca depende deste caminho para se atualizar: depois de qualquer
+ * escrita ela chama `recarregar()`, que busca /api/admin/visao com
+ * `cache: "no-store"` e passa por fora de qualquer cache (ver
+ * `vista-administracao.tsx`). Este valor cobre so' o primeiro retrato, o
+ * que aparece enquanto a pagina abre.
+ *
+ * 15 s e' curto de proposito: e' a janela em que duas visitas seguidas — o
+ * ir-e-voltar entre telas — reusam o mesmo retrato, sem segurar dado velho
+ * o bastante para alguem notar.
  */
 export function buscarVisaoAdmin(): Promise<VisaoAdmin> {
-  return requisitar<VisaoAdmin>("/admin/visao", { revalidate: 0 });
+  return requisitar<VisaoAdmin>("/admin/visao", { revalidate: 15 });
 }
 
 /**
@@ -490,10 +513,12 @@ export function buscarVisaoAdmin(): Promise<VisaoAdmin> {
  * falta configurar. Sao rotas separadas de proposito — o panorama nao expoe
  * aluno nenhum.
  *
- * Sem cache pelo mesmo motivo da visao: cadastrou, tem que aparecer.
+ * Cache de 15 s na carga inicial, pelo mesmo motivo (e com a mesma rede de
+ * seguranca) de `buscarVisaoAdmin` — ver a nota la'. Esta rota e' a mais cara
+ * das duas: 0,91 s medidos contra a API na nuvem.
  */
 export function buscarPanoramaCoordenacao(): Promise<PanoramaCoordenacao> {
-  return requisitar<PanoramaCoordenacao>("/admin/panorama", { revalidate: 0 });
+  return requisitar<PanoramaCoordenacao>("/admin/panorama", { revalidate: 15 });
 }
 
 /** Cria uma turma nova. */
