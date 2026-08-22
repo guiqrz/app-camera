@@ -37,24 +37,39 @@ export function AppShell({
 }: AppShellProps) {
   const [menuAberto, setMenuAberto] = useState(false);
 
-  // O PAINEL — a camada que faltava, e o motivo da faixa violeta aparecer
-  // como uma barra chapada na lateral.
+  // O PAINEL — a camada que filtra a atmosfera, e o motivo da faixa violeta
+  // aparecer como uma barra chapada na lateral quando ela falta.
   //
-  // No prototipo o `.app` NAO e' so' um container de layout: ele e' vidro em
-  // tela cheia (`background: var(--painel)` + `blur(30px)`) por cima da
-  // atmosfera. E' esse vidro que FILTRA a faixa da esquerda — sem ele a faixa
-  // fica crua, com a cor inteira batendo direto no olho.
+  // No prototipo o `.app` e' vidro em tela cheia por cima da atmosfera: e' ele
+  // que FILTRA a faixa da esquerda — sem esse tratamento a faixa fica crua,
+  // com a cor inteira batendo direto no olho.
   //
-  // A sidebar mora DENTRO do painel e tem o proprio `saturate(155%)`, que
-  // repuxa a cor ja' filtrada. Sao as duas camadas juntas que dao o efeito:
-  // sozinha, a sidebar transparente so' revela a faixa sem tratamento.
+  // ⚠️ NAO devolva `backdropFilter` aqui (medido em 22/08/2026).
+  //
+  // `backdrop-filter` custa DUAS passadas de renderizacao por frame, e este
+  // elemento cobre a tela inteira (1.615.545 px medidos em 1440x900). Como ele
+  // ROLA, o navegador refazia as duas passadas sobre a pagina toda a cada
+  // frame de scroll:
+  //
+  //   /configuracoes    86,9 ms/frame, 59 de 59 frames acima de 20 ms
+  //   sem este blur     22,1 ms/frame
+  //   estado atual      16,7 ms/frame, 1 de 59  (60 fps no limite do monitor)
+  //
+  // O efeito NAO foi perdido: o blur mudou de lugar. Ele agora mora na
+  // propria `.atmosfera` (ver globals.css), que e' `fixed` — o navegador
+  // rasteriza uma vez e reusa enquanto a pagina rola. Mesmo resultado visual,
+  // custo pago uma vez em vez de sessenta vezes por segundo.
+  //
+  // Tentativas que NAO resolvem, ja' medidas: `will-change: backdrop-filter`
+  // + `translateZ(0)` (84,9 ms) e `contain: paint` no miolo (87,5 ms). O
+  // problema e' a area filtrada, e nenhuma das duas a reduz.
+  //
+  // A sidebar mantem o vidro dela de proposito: e' `sticky`, nao rola, entao
+  // nao paga por frame.
   return (
     <div
       className="relative z-[1] flex min-h-screen"
-      style={{
-        background: "var(--painel)",
-        backdropFilter: "var(--blur-painel)",
-      }}
+      style={{ background: "var(--painel)" }}
     >
       <Sidebar aberto={menuAberto} aoFechar={() => setMenuAberto(false)} />
 

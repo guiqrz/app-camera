@@ -108,7 +108,12 @@ h4 {
    pointer-events:none garante que ela nunca roube clique. */
 .atmosfera {
   position: fixed;
-  inset: 0;
+  /* Folga negativa por causa do `filter: blur()` abaixo: o blur mistura cada
+     pixel com os vizinhos, e nas BORDAS os vizinhos sao o vazio de fora do
+     elemento. Com `inset: 0` isso desbota uma moldura de ~18px em toda a volta
+     da tela. Estendendo a atmosfera para fora da area visivel, a zona
+     desbotada cai fora do que o olho ve. */
+  inset: -40px;
   /* z-index 0, e nao -10: em -10 ela fica atras do `body`, que tem fundo
      OPACO. A faixa da esquerda entao chega ao olho crua, sem o painel de
      vidro por cima — era a barra violeta chapada que ele viu em 14/08.
@@ -116,6 +121,27 @@ h4 {
      passa POR CIMA dela e filtra a faixa, que e' o que o prototipo faz. */
   z-index: 0;
   pointer-events: none;
+  /* O amaciamento da atmosfera mora AQUI, e nao mais no painel de tela cheia
+     do AppShell (22/08/2026).
+
+     Antes o `.app` cobria a tela com `backdrop-filter: blur(30px)`. Como o
+     `.app` ROLA, o navegador refazia as duas passadas de render do
+     backdrop-filter sobre a pagina inteira a cada frame — 86,9 ms/frame
+     medidos em /configuracoes, contra os 16,7 ms de um quadro a 60 fps.
+
+     `filter` na propria atmosfera entrega o mesmo veu por outro preco: ela e'
+     `fixed`, entao o navegador rasteriza este resultado UMA vez e reusa
+     enquanto a pagina rola.
+
+     `filter` e nao `backdrop-filter`: nao ha nada atras da atmosfera para
+     filtrar — ela E' o fundo. O que queremos e' suavizar os proprios
+     gradientes dela, que e' o que `filter` faz.
+
+     O blur e' menor que os 30px do painel porque aqui ele age sobre os
+     gradientes crus, nao sobre uma tela ja' composta: o alvo e' so' tirar o
+     contorno duro da faixa da sidebar, que era o unico motivo de o painel
+     existir. `saturate` reproduz o que o `--blur-painel` fazia com a cor. */
+  filter: blur(18px) saturate(125%);
   background:
     var(--faixa-sidebar) left / calc(var(--sidebar-w, 240px) + 42px) 100%
       no-repeat,
@@ -174,21 +200,45 @@ h4 {
    servido). O Chrome aplica o efeito, mas `getComputedStyle().backdropFilter`
    devolve "none" e a propriedade padrao some — Firefox e Safari moderno, que
    so' entendem a sem prefixo, ficariam sem vidro nenhum. A ferramenta adiciona
-   o prefixo sozinha quando a padrao vem sozinha. */
+   o prefixo sozinha quando a padrao vem sozinha.
+
+   ⚠️ MUDANCA DE 22/08/2026 — por que este bloco NAO usa mais backdrop-filter.
+
+   `backdrop-filter` custa duas passadas de renderizacao, e o navegador as
+   refaz A CADA FRAME para todo elemento que ROLA. Os cards rolam. Medido em
+   /configuracoes (1440x900, Chromium):
+
+     com backdrop-filter em tudo    86,9 ms/frame   59 de 59 frames > 20 ms
+     so' o painel de tela cheia     22,1 ms/frame   24 de 59
+     como esta agora                16,7 ms/frame    1 de 59
+
+   16,7 ms e' o quadro de 60 fps: o scroll passou a andar no limite do
+   monitor. Tentativas de manter o efeito e pagar menos por ele FALHARAM na
+   medicao — `will-change: backdrop-filter` + `translateZ(0)` deu 84,9 ms e
+   `contain: paint` no miolo deu 87,5 ms. O custo vem da AREA filtrada, e
+   nenhum dos dois a reduz.
+
+   O vidro NAO sumiu do app: ele ficou onde e' barato e onde de fato aparece —
+   header e sidebar, que sao `sticky`/`fixed` e por isso nao pagam por frame
+   (ver o bloco `bg-painel` logo abaixo). O que os cards perderam foi o blur;
+   a translucidez continua, agora sobre uma atmosfera que ja' vem suavizada
+   pelo `filter` dela propria.
+
+   As superficies ficaram mais OPACAS para compensar (ver --surface em
+   semantic.css): sem o blur, o translucido antigo deixava os gradientes da
+   atmosfera atravessarem o card e brigarem com o texto. */
 :where(
   [class*="bg-surface"]:not([class*="hover:bg-surface"]):not(
       [class*="focus:bg-surface"]
     )
 ) {
-  backdrop-filter: var(--blur-card);
+  backdrop-filter: none;
 }
 
-/* O par do seletor acima: elementos que SO' ganham a superficie no hover (ou
-   foco por teclado) so' precisam do blur nesse momento — antes disso nao ha
-   cor nenhuma pra revelar, entao o blur ligado o tempo todo so' borrava o
-   fundo a toa. */
+/* Idem para os que so' ganham superficie no hover/foco: sem blur, nao ha o que
+   ligar nesses estados — sobra so' a cor de fundo, que e' o que eles querem. */
 :where([class*="hover:bg-surface"]:hover, [class*="focus:bg-surface"]:focus) {
-  backdrop-filter: var(--blur-card);
+  backdrop-filter: none;
 }
 
 /* O painel (header, gaveta) usa um blur mais forte: ele cobre conteudo que
@@ -424,20 +474,21 @@ h4 {
   border: 1px solid var(--border);
   /* Declarado a mao: o vidro automatico vem da regra `[class*="bg-surface"]`
      la em cima, e este cartao nao usa aquela classe. */
-  backdrop-filter: var(--blur-card);
   box-shadow: var(--shadow-card);
   color: inherit;
   font: inherit;
   cursor: pointer;
   /* A SAIDA e' mais lenta que a entrada (260 vs 220): o hover que volta
      depressa demais da um estalo quando o mouse passa raspando pelos tres
-     cartoes. `backdrop-filter` entra na lista porque o blur muda no hover —
-     fora dela, saltaria de uma vez. */
+     cartoes.
+
+     `backdrop-filter` saiu desta lista em 22/08/2026 junto com o blur do
+     cartao (ver o bloco do vidro no topo do arquivo): sem a propriedade,
+     anima-la so' gastaria ciclo a toa. */
   transition:
     transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
     border-color 260ms ease,
-    box-shadow 260ms ease,
-    backdrop-filter 260ms ease;
+    box-shadow 260ms ease;
 }
 
 /* O hover e' um vidro que se APROXIMA. Nada de escurecer nem de subir:
@@ -448,7 +499,6 @@ h4 {
 .rec:hover {
   transform: scale(1.025);
   border-color: var(--border-strong);
-  backdrop-filter: blur(32px) saturate(150%);
   transition-duration: 220ms;
 }
 
@@ -526,7 +576,6 @@ h4 {
     ),
     var(--surface);
   border-color: transparent;
-  backdrop-filter: blur(11px) saturate(1.2);
 }
 
 /* A BORDA COM GRADIENTE. Mesma tecnica da moldura do botao: gradiente cobrindo
@@ -618,7 +667,6 @@ h4 {
   border-radius: var(--radius);
   background: var(--surface);
   border: 1px solid var(--border);
-  backdrop-filter: var(--blur-card);
   box-shadow: var(--shadow-card);
   overflow: hidden;
 }
@@ -1029,7 +1077,6 @@ h4 {
   color: var(--text);
   background: var(--vidro-solido);
   border: 1px solid var(--vidro-solido-borda);
-  backdrop-filter: var(--blur-card);
   box-shadow: var(--shadow-card);
   transition:
     background 140ms ease,
@@ -1578,7 +1625,6 @@ h4 {
   border-radius: var(--radius);
   background: var(--surface);
   border: 1px solid var(--border);
-  backdrop-filter: var(--blur-card);
   box-shadow: var(--shadow-card);
   overflow: hidden;
 }
@@ -1740,7 +1786,6 @@ h4 {
   border-radius: 99px;
   background: color-mix(in srgb, var(--text-muted) 13%, transparent);
   border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
-  backdrop-filter: blur(6px) saturate(1.3);
 }
 /* O brilho vive num pseudo-elemento do TRILHO (nao da barra preenchida): ele
    precisa cobrir a largura inteira do trilho, nao so' a parte colorida —
@@ -1898,7 +1943,6 @@ h4 {
   border-radius: var(--radius);
   background: var(--surface);
   border: 1px solid var(--border);
-  backdrop-filter: var(--blur-card);
   box-shadow: var(--shadow-card);
   /* A faixa ambar na borda esquerda e' o unico sinal de cor do bloco: chapar
      o fundo inteiro de ambar competiria com os cartoes de numero logo acima. */
@@ -2023,7 +2067,6 @@ h4 {
   border-radius: var(--radius);
   background: var(--surface);
   border: 1px solid var(--border);
-  backdrop-filter: var(--blur-card);
   box-shadow: var(--shadow-card);
   /* O conteudo interno tem cantos proprios (linhas com hover); sem isto eles
      escapariam pelo canto arredondado do card. */
@@ -2208,7 +2251,6 @@ h4 {
   border-radius: var(--radius);
   background: var(--surface);
   border: 1px solid var(--border);
-  backdrop-filter: var(--blur-card);
 }
 .turma-turno-icone {
   display: grid;
@@ -2520,7 +2562,6 @@ h4 {
   border-radius: var(--radius);
   background: var(--surface);
   border: 1px solid var(--border);
-  backdrop-filter: var(--blur-card);
   box-shadow: var(--shadow-card);
   overflow: hidden;
 }
