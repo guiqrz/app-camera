@@ -152,7 +152,20 @@ export function Sidebar({ aberto, aoFechar }: SidebarProps) {
         style={{
           background: "transparent",
           borderRight: "1px solid rgba(255, 255, 255, 0.07)",
-          backdropFilter: "saturate(155%) blur(10px)",
+          /* saturate 125% e nao 155% (22/08/2026).
+
+             A sidebar nao tem cor propria — ela SATURA o que passa por tras.
+             Ate 22/08 o que passava por tras era a atmosfera ja' filtrada
+             pelo painel de tela cheia, que saiu daqui por travar o scroll
+             (86,9 ms/frame). Sem essa camada intermediaria ela passou a
+             saturar a faixa violeta CRUA, e a 155% o resultado ficava mais
+             saturado que o original: medido no pixel, o canal verde caiu de
+             189 para 172 no tema claro.
+
+             125% sobre a faixa crua devolve o tom que 155% dava sobre a faixa
+             filtrada. O blur fica: a sidebar e' `sticky`, nao rola, entao nao
+             paga o custo por frame que motivou a mudanca. */
+          backdropFilter: "saturate(125%) blur(10px)",
         }}
         aria-label="Menu principal"
       >
