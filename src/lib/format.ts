@@ -4,7 +4,7 @@
  * Centralizado aqui para que toda tela mostre o mesmo dado do mesmo jeito.
  */
 
-import type { CorMateria, StatusEngajamento } from "./types";
+import type { CorMateria } from "./types";
 
 /**
  * Cores de materia, na ordem em que aparecem no seletor.
@@ -44,43 +44,6 @@ export function aparenciaDaCorMateria(
   if (cor === null) return null;
   const encontrada = CORES_MATERIA.find((opcao) => opcao.id === cor);
   return encontrada ? { fundo: encontrada.fundo, texto: encontrada.texto } : null;
-}
-
-/** Aparencia de cada faixa de engajamento. As cores vem dos tokens. */
-export const APARENCIA_STATUS: Record<
-  StatusEngajamento,
-  { rotulo: string; cor: string; fundo: string; texto: string }
-> = {
-  alto: {
-    rotulo: "Alto engajamento",
-    cor: "var(--ok)",
-    fundo: "var(--ok-bg)",
-    texto: "var(--ok-fg)",
-  },
-  moderado: {
-    rotulo: "Engajamento moderado",
-    cor: "var(--warn)",
-    fundo: "var(--warn-bg)",
-    texto: "var(--warn-fg)",
-  },
-  atencao: {
-    rotulo: "Atenção recomendada",
-    cor: "var(--danger)",
-    fundo: "var(--danger-bg)",
-    texto: "var(--danger-fg)",
-  },
-};
-
-/** Aparencia neutra para aula sem leitura de engajamento. */
-export const APARENCIA_SEM_DADOS = {
-  rotulo: "Sem dados",
-  cor: "var(--text-muted)",
-  fundo: "var(--surface-2)",
-  texto: "var(--text-muted)",
-};
-
-export function aparenciaDoStatus(status: StatusEngajamento | null) {
-  return status === null ? APARENCIA_SEM_DADOS : APARENCIA_STATUS[status];
 }
 
 /**
