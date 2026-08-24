@@ -142,6 +142,52 @@ h4 {
      contorno duro da faixa da sidebar, que era o unico motivo de o painel
      existir. `saturate` reproduz o que o `--blur-painel` fazia com a cor. */
   filter: blur(18px) saturate(125%);
+  /* MEDIDO em 24/08/2026 — o `fixed` sozinho nao bastou.
+
+     A troca de 22/08 (backdrop-filter no `.app` -> filter aqui) partiu de um
+     raciocinio correto: sendo `fixed`, o navegador PODERIA rasterizar o blur
+     uma vez e reusar o bitmap enquanto a pagina rola. So' que ele nao fazia
+     isso sozinho — na rolagem de /aulas o pior frame media 1284 ms.
+
+     `contain: paint` promete que nada pintado aqui escapa da caixa deste
+     elemento. Com essa garantia o navegador isola a camada e passa a reusar o
+     bitmap do blur, em vez de refazer o filtro a cada frame.
+
+     Medido na rolagem de /aulas (12 rodadas de scroll, Chromium 1440x900):
+
+       hoje (so' filter)............ pior frame 1284 ms | rolagem 2299 ms
+       + will-change: filter........ pior frame   35 ms | rolagem  950 ms
+       + transform: translateZ(0)... pior frame   38 ms | rolagem  963 ms
+       + contain: paint............. pior frame   23 ms | rolagem  949 ms  <--
+       filter: none (so' pra provar) pior frame   23 ms | rolagem  954 ms
+
+     `contain: paint` EMPATA com desligar o filtro: o custo do blur na rolagem
+     zera e o veu continua na tela. Escolhido em vez de `will-change: filter`
+     porque aquele pede ao navegador que mantenha a camada pronta pra mudar — e
+     este filtro nunca muda. `contain` descreve o que e' verdade (a pintura nao
+     vaza) em vez de anunciar uma mudanca que nao vem.
+
+     ATENCAO PRA QUEM LEMBRA DA MEDICAO DE 22/08: ficou registrado que
+     `will-change` e `contain` "nao resolvem". Aquilo foi medido no `.app`, que
+     ROLA e usava `backdrop-filter` — outro elemento, outra propriedade, outro
+     caso. Numa camada `fixed` com `filter`, os dois resolvem.
+
+     O QUE ESTA LINHA NAO RESOLVE, e fica em aberto:
+
+     Separando carga de rolagem, o custo que sobra e' o da PRIMEIRA pintura —
+     rasterizar blur de 18px sobre 1520x980 uma vez custa caro:
+
+       contain: paint (como esta)... 1a pintura 1836 ms | rolagem 0 frame longo
+       filter: none (teto do ganho). 1a pintura  156 ms | rolagem 0 frame longo
+       blur reduzido pra 8px........ 1a pintura  652 ms | rolagem 0 frame longo
+
+     (headless; com navegador de verdade a 1a pintura cai pra ~1027 ms, entao o
+     custo e' real, nao artefato de medicao.)
+
+     Reduzir o blur cortaria ~1,2 s da primeira pintura, mas MUDA O VISUAL — e
+     isso e' decisao do dono do produto, nao de quem otimiza. Fica registrado
+     aqui com os numeros pra escolha ser informada. */
+  contain: paint;
   background:
     var(--faixa-sidebar) left / calc(var(--sidebar-w, 240px) + 42px) 100%
       no-repeat,
