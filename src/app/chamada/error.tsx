@@ -15,5 +15,5 @@ export default function ErroChamada({
     console.error("[cupcam] falha ao carregar chamada:", error);
   }, [error]);
 
-  return <EstadoErroApi error={error} reset={reset} />;
+  return <EstadoErroApi error={error} reset={reset} titulo="Chamada" />;
 }

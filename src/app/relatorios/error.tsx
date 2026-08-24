@@ -15,5 +15,5 @@ export default function ErroRelatorio({
     console.error("[cupcam] falha ao carregar relatório:", error);
   }, [error]);
 
-  return <EstadoErroApi error={error} reset={reset} />;
+  return <EstadoErroApi error={error} reset={reset} titulo="Relatórios" />;
 }

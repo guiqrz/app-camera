@@ -1,5 +1,7 @@
 "use client";
 
+import { AppShell } from "./app-shell";
+
 /**
  * Tela de falha reutilizavel para qualquer pagina que dependa da API da NUVEM.
  *
@@ -12,13 +14,31 @@
  *
  * A tela de Camera NAO usa esta: la', o que cai e' o computador da sala, e a
  * mensagem certa e' outra (ver VistaDesconectada em components/camera).
+ *
+ * POR QUE ELA VEM DENTRO DO AppShell (24/08/2026)
+ * -----------------------------------------------
+ * Cada tela monta o proprio AppShell dentro do seu page.tsx. Quando o
+ * error.tsx de uma rota assume, a page NAO renderiza — e junto com ela ia
+ * embora o menu lateral.
+ *
+ * O resultado era um beco sem saida: a tela dizia "tente de novo" e o unico
+ * caminho era esse botao. Se o erro persistisse, nao havia como ir pra outra
+ * tela sem editar a URL na mao — e a causa mais provavel aqui (a API acordando)
+ * afeta uma tela de cada vez, entao navegar pra outra costuma ser exatamente o
+ * que resolve.
+ *
+ * Envolver no AppShell devolve a navegacao. O botao "Tentar novamente"
+ * continua sendo o caminho principal, mas deixa de ser o unico.
  */
 export function EstadoErroApi({
   error,
   reset,
+  titulo = "Erro",
 }: {
   error: Error;
   reset: () => void;
+  /** Titulo do cabecalho no celular. Cada rota passa o seu. */
+  titulo?: string;
 }) {
   // Casa com o prefixo das duas mensagens de rede de lib/api.ts ("...com a API
   // do CUPCAM na nuvem" e "...com o computador da sala"), sem depender do texto
@@ -28,7 +48,11 @@ export function EstadoErroApi({
     error.message.includes("fetch failed");
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-xl flex-col items-center justify-center gap-5 px-6 text-center">
+    <AppShell titulo={titulo}>
+      {/* min-h-[60vh] e nao min-h-screen: dentro da moldura o cabecalho ja'
+          ocupa o topo, e a tela cheia empurraria o conteudo pra baixo da
+          dobra. 60vh centra o aviso na area util sem criar rolagem. */}
+      <div className="mx-auto flex min-h-[60vh] max-w-xl flex-col items-center justify-center gap-5 px-6 text-center">
       <div
         className="flex h-14 w-14 items-center justify-center rounded-full"
         style={{ background: "var(--danger-bg)" }}
@@ -84,6 +108,7 @@ export function EstadoErroApi({
       >
         Tentar novamente
       </button>
-    </main>
+      </div>
+    </AppShell>
   );
 }

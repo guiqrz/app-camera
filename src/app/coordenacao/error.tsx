@@ -15,5 +15,5 @@ export default function ErroAdministracao({
     console.error("[cupcam] falha ao carregar administracao:", error);
   }, [error]);
 
-  return <EstadoErroApi error={error} reset={reset} />;
+  return <EstadoErroApi error={error} reset={reset} titulo="Coordenação" />;
 }

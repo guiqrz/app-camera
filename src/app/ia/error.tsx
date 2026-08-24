@@ -15,5 +15,5 @@ export default function ErroIa({
     console.error("[cupcam] falha na tela do Cup AI:", error);
   }, [error]);
 
-  return <EstadoErroApi error={error} reset={reset} />;
+  return <EstadoErroApi error={error} reset={reset} titulo="Cup AI" />;
 }
