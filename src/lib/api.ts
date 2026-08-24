@@ -309,6 +309,22 @@ async function requisitar<T>(
 /** Todas as turmas — alimenta o seletor de turma. */
 export function listarTurmas(): Promise<Turma[]> {
   // Turmas mudam raramente; cache mais longo evita ida a rede a cada tela.
+  //
+  // LACUNA CONHECIDA (auditoria de cache, 24/08/2026): estes 300s NAO sao
+  // invalidados quando o coordenador cria, renomeia ou exclui uma turma. Nao
+  // existe revalidatePath nem revalidateTag em lugar nenhum do projeto —
+  // conferido com grep em src/ inteiro.
+  //
+  // Efeito pratico: depois de um CRUD de turma, o SELETOR das telas que chamam
+  // esta funcao (/aulas, /chamada, /camera, /relatorios, /configuracoes) pode
+  // ficar ate' 5 minutos desatualizado. A tela de Administracao nao sofre: ela
+  // le a lista por buscarPanoramaCoordenacao e se atualiza sozinha com
+  // `no-store` depois de cada escrita.
+  //
+  // Documentado em vez de corrigido porque o conserto certo (invalidar na
+  // escrita) toca o caminho de atualizacao de cinco telas, e cache mudado
+  // errado mostra dado velho — falha PIOR que lentidao, porque e' silenciosa.
+  // CRUD de turma e' raro e so' o coordenador faz, entao o risco hoje e' baixo.
   return requisitar<Turma[]>("/turmas", { revalidate: 300 });
 }
 
