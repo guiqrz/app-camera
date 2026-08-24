@@ -45,7 +45,17 @@ export function SecaoLousas({ sessaoId }: SecaoLousasProps) {
     }
   }, [sessaoId]);
 
+  // Busca inicial. Este e' o uso LEGITIMO de useEffect — sincronizar com um
+  // sistema externo (a API) — e nao o antipadrao de estado derivado que a regra
+  // mira. O lint dispara porque `buscar` chama setState la' dentro, coisa que
+  // toda busca assincrona faz; ele nao distingue "setState em cascata durante o
+  // render" de "setState quando a resposta da rede chega".
+  //
+  // A alternativa real seria buscar no servidor e passar por props, ou adotar
+  // uma biblioteca de dados. As duas sao mudanca de arquitetura, nao conserto
+  // de lint — ficam como decisao separada, fora deste lote.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void buscar();
   }, [buscar]);
 

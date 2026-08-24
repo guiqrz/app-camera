@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { DicaAjuda } from "@/components/ui/dica-ajuda";
 import { IconLousa, IconRecomecar } from "@/components/ui/icons";
@@ -57,7 +57,14 @@ export function PainelLousa({ sessaoId, desabilitado = false }: PainelLousaProps
    * `lousas.length` alcanca este numero. null = nao ha captura em curso.
    */
   const [esperandoAte, setEsperandoAte] = useState<number | null>(null);
-  const [ciclosEsperando, setCiclosEsperando] = useState(0);
+  /**
+   * Quantos ciclos de polling ja' passaram esperando a foto chegar.
+   *
+   * Ref, e nao estado, porque nenhum pedaco da tela le este numero — ele so'
+   * alimenta a decisao de desistir, dentro do proprio tick do intervalo. Como
+   * estado, cada incremento disparava uma renderizacao que nao mudava nada.
+   */
+  const ciclosEsperandoRef = useRef(0);
 
   const buscar = useCallback(async () => {
     if (sessaoId === null) return;
@@ -76,7 +83,13 @@ export function PainelLousa({ sessaoId, desabilitado = false }: PainelLousaProps
 
   // Busca ao entrar no modo: a aula pode ja' ter quadros guardados de antes (o
   // professor entrou na Lousa, saiu e voltou).
+  //
+  // Uso LEGITIMO de useEffect (sincronizar com a API), nao o antipadrao de
+  // estado derivado que a regra mira: o lint dispara so' porque `buscar` chama
+  // setState quando a resposta da rede chega. Mesma justificativa em
+  // components/relatorio/secao-lousas.tsx.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void buscar();
   }, [buscar]);
 
@@ -93,30 +106,46 @@ export function PainelLousa({ sessaoId, desabilitado = false }: PainelLousaProps
       void buscar();
       // So' conta ciclo enquanto espera a FOTO: a leitura do texto pode
       // demorar mais e nao deve estourar o teto.
-      if (capturaPendente) setCiclosEsperando((atual) => atual + 1);
+      if (!capturaPendente) return;
+
+      // A desistencia decide DENTRO do tick, com o valor novo do contador em
+      // maos. Antes ela morava num efeito separado que observava
+      // `ciclosEsperando` e chamava setState em cadeia — o padrao que a regra
+      // react-hooks/set-state-in-effect aponta.
+      //
+      // Aqui nao ha cascata: o tick e' um evento do relogio, nao uma
+      // renderizacao.
+      //
+      // O contador vive num ref, nao em estado: ele so' alimenta esta decisao
+      // e nada na tela le o valor dele. Como estado, cada incremento pedia uma
+      // renderizacao que nao mudava um pixel — e ainda obrigava o efeito a
+      // reassinar o intervalo a cada ciclo.
+      ciclosEsperandoRef.current += 1;
+      if (ciclosEsperandoRef.current < MAXIMO_CICLOS_ESPERANDO_FOTO) return;
+
+      // Estourou o teto: a captura pode ter falhado no processo da camera
+      // (disco cheio, camera desligada no meio) e ali o backend registra no
+      // log, mas nao tem como avisar a tela.
+      ciclosEsperandoRef.current = 0;
+      setEsperandoAte(null);
+      setErro(
+        "A câmera não confirmou a captura. Verifique se ela continua ligada no modo Lousa.",
+      );
     }, INTERVALO_MS);
     return () => clearInterval(timer);
   }, [capturaPendente, lendoAlgum, buscar]);
 
-  // Desiste de esperar a foto depois do teto. A captura pode ter falhado no
-  // processo da camera (disco cheio, camera desligada no meio), e ali o
-  // backend registra no log mas nao tem como avisar a tela.
-  useEffect(() => {
-    if (ciclosEsperando < MAXIMO_CICLOS_ESPERANDO_FOTO) return;
-    setEsperandoAte(null);
-    setCiclosEsperando(0);
-    setErro(
-      "A câmera não confirmou a captura. Verifique se ela continua ligada no modo Lousa.",
-    );
-  }, [ciclosEsperando]);
-
-  // Chegou a foto que esperavamos: para de esperar.
-  useEffect(() => {
-    if (esperandoAte !== null && lousas.length >= esperandoAte) {
-      setEsperandoAte(null);
-      setCiclosEsperando(0);
-    }
-  }, [lousas.length, esperandoAte]);
+  // "Chegou a foto que esperavamos" NAO precisa de efeito: e' comparacao entre
+  // dois valores que a tela ja' tem em maos, e `capturaPendente` (acima) e' o
+  // resultado dela, derivado durante o render.
+  //
+  // Havia aqui um useEffect que zerava `esperandoAte` quando a foto chegava.
+  // Ele disparava uma renderizacao extra so' pra apagar um estado que ja' nao
+  // era mais lido — o React chama isso de estado derivado, e a regra
+  // react-hooks/set-state-in-effect existe pra apontar exatamente este caso.
+  //
+  // O contador de ciclos morreu junto: ele so' e' incrementado enquanto
+  // `capturaPendente` e' verdadeiro, e o proximo clique em Capturar o zera.
 
   async function capturar() {
     setErro(null);
@@ -133,7 +162,7 @@ export function PainelLousa({ sessaoId, desabilitado = false }: PainelLousaProps
       // detecta a chegada e' o polling, comparando com este alvo — em vez de
       // um `await` fixo, que perdia a foto quando ela demorava mais.
       setEsperandoAte(lousas.length + 1);
-      setCiclosEsperando(0);
+      ciclosEsperandoRef.current = 0;
     } catch {
       setErro("Não foi possível falar com a câmera.");
     }
