@@ -765,41 +765,6 @@ export function IconClipe({ size = 18, className }: IconProps) {
   );
 }
 
-/** Marcador de lista — a caixinha do lembrete (vazia ou marcada). */
-export function IconCaixa({ size = 18, className }: IconProps) {
-  return (
-    <svg {...base(size, className)}>
-      <rect
-        x="3.5"
-        y="3.5"
-        width="17"
-        height="17"
-        rx="5"
-        stroke="currentColor"
-        strokeWidth="1.8"
-      />
-    </svg>
-  );
-}
-
-/** Caixinha do lembrete ja marcada. */
-export function IconCaixaMarcada({ size = 18, className }: IconProps) {
-  return (
-    <svg {...base(size, className)}>
-      <rect x="3.5" y="3.5" width="17" height="17" rx="5" fill="currentColor" />
-      {/* O check e' vazado na cor da PAGINA, nao branco fixo: no tema escuro a
-          caixa e' preenchida com lilas claro e um check branco sumiria nela.
-          --bg acompanha o tema nos dois sentidos. */}
-      <path
-        d="m8 12 2.8 2.8L16 9.5"
-        stroke="var(--bg)"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
 
 /** Seta pra cima saindo de uma bandeja — enviar arquivo. */
 export function IconSubir({ size = 18, className }: IconProps) {
