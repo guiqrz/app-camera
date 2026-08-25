@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { AgendaSemana } from "@/components/aulas/agenda-semana";
+import { AtalhosDaTurma } from "@/components/aulas/atalhos-da-turma";
 import { EngajamentoDaTurma } from "@/components/aulas/engajamento-da-turma";
 import { ListaAulas } from "@/components/aulas/lista-aulas";
 import { NumerosDaTurma } from "@/components/aulas/numeros-da-turma";
@@ -134,6 +135,11 @@ export default async function AulasDaTurmaPage({ params }: Props) {
             natural é "parei aqui → e agora?". Foi o furo que ele apontou em
             24/08 — o produto inteiro respondia só o passado. */}
         <OQueVem turmaId={id} atraso={atraso} />
+
+        {/* As telas de abertura e fechamento do bimestre. Fora do menu
+            lateral, que e' pro trabalho de todo dia, mas com porta visivel:
+            feature que so' existe pra quem sabe a URL nao existe. */}
+        <AtalhosDaTurma turmaId={id} />
 
         {resumo && <EngajamentoDaTurma serie={resumo.serie} turmaId={id} />}
 
