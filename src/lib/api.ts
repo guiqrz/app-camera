@@ -48,6 +48,7 @@ import type {
   PreparacaoDaSemana,
   PreviaDoCronograma,
   RascunhoDePeriodo,
+  RespostaDaFicha,
   ResumoDoAluno,
   SugestaoDaProximaAula,
   TempoDaAula,
@@ -1253,9 +1254,15 @@ export function listarFichasDaTurma(
   );
 }
 
-/** Ficha de um aluno. `null` quando ele nao tem ficha — nao e' erro. */
-export function buscarFichaDoAluno(ra: string): Promise<FichaDoAluno | null> {
-  return requisitar<FichaDoAluno | null>(
+/**
+ * Ficha de um aluno.
+ *
+ * Aluno SEM ficha devolve `tem_ficha: false`, nao 404 nem null: e' resposta
+ * legitima, e diferente de "aluno nao existe". A tela nunca deve ler isso como
+ * "aluno sem necessidade de apoio" — significa "sem ficha cadastrada".
+ */
+export function buscarFichaDoAluno(ra: string): Promise<RespostaDaFicha> {
+  return requisitar<RespostaDaFicha>(
     `/admin/alunos/${encodeURIComponent(ra)}/ficha`,
     { revalidate: 0 },
   );
@@ -1271,8 +1278,8 @@ export function buscarFichaDoAluno(ra: string): Promise<FichaDoAluno | null> {
 export function salvarFichaDoAluno(
   ra: string,
   dados: { tipos_de_apoio: TipoDeApoio[]; adaptacoes: string },
-): Promise<FichaDoAluno> {
-  return requisitar<FichaDoAluno>(
+): Promise<RespostaDaFicha> {
+  return requisitar<RespostaDaFicha>(
     `/admin/alunos/${encodeURIComponent(ra)}/ficha`,
     { method: "PUT", body: dados },
   );

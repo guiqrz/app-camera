@@ -1007,6 +1007,18 @@ export type FichaDoAluno = {
   atualizada_em: string;
 };
 
+/**
+ * A resposta de "qual e' a ficha deste aluno".
+ *
+ * `tem_ficha: false` significa SEM FICHA CADASTRADA — nunca "aluno sem
+ * necessidade de apoio". Ler uma coisa como a outra seria inventar um
+ * diagnostico por omissao, que e' o erro mais facil de cometer numa feature
+ * de dado sensivel. A uniao discriminada obriga a tela a tratar os dois casos.
+ */
+export type RespostaDaFicha =
+  | ({ tem_ficha: true } & FichaDoAluno)
+  | { tem_ficha: false; aluno_ra: string };
+
 /* --- F9 · Cronograma do bimestre ---------------------------------- */
 
 /**
