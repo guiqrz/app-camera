@@ -3,7 +3,13 @@ import { notFound } from "next/navigation";
 import { VistaRelatorio } from "@/components/relatorio/vista-relatorio";
 import { AppShell } from "@/components/layout/app-shell";
 import { Breadcrumb, type EloBreadcrumb } from "@/components/layout/breadcrumb";
-import { ApiError, buscarChamada, buscarRelatorio } from "@/lib/api";
+import {
+  ApiError,
+  buscarChamada,
+  buscarRelatorio,
+  buscarTempoDaAula,
+  buscarTempoDaChamada,
+} from "@/lib/api";
 import { dataDoTimestamp, formatarDataCurta } from "@/lib/format";
 
 type Props = {
@@ -38,10 +44,14 @@ export default async function RelatorioPage({ params, searchParams }: Props) {
 
   if (!Number.isInteger(id) || id <= 0) notFound();
 
-  // As duas em paralelo: o relatorio traz as CONTAGENS de presenca, mas a
+  // Todas em paralelo: o relatorio traz as CONTAGENS de presenca, mas a
   // lista de alunos (com nome e frequencia historica) so' vive na rota de
   // chamada — e o bloco "Chamada automatica" mostra os dois.
-  const [relatorio, chamada] = await Promise.all([
+  //
+  // So' o relatorio pode derrubar a tela. As outras tres engolem a falha e
+  // viram null: cada uma alimenta UM bloco, e perder um bloco e' muito melhor
+  // que perder o relatorio inteiro por causa dele.
+  const [relatorio, chamada, tempo, tempoDaChamada] = await Promise.all([
     buscarRelatorio(id).catch((causa) => {
       // Sessao inexistente e' 404, nao erro de servidor.
       if (causa instanceof ApiError && causa.isNotFound) notFound();
@@ -50,6 +60,10 @@ export default async function RelatorioPage({ params, searchParams }: Props) {
     // Engole a falha: sem a lista o bloco mostra so' o numero, e o resto do
     // relatorio (grafico, conteudo, transcricao) continua de pe.
     buscarChamada(id).catch(() => null),
+    // Feature F1 — reparticao do tempo da aula.
+    buscarTempoDaAula(id).catch(() => null),
+    // Feature F6 — cronometro da chamada.
+    buscarTempoDaChamada(id).catch(() => null),
   ]);
 
   /* De qual turma o professor veio.
@@ -68,7 +82,12 @@ export default async function RelatorioPage({ params, searchParams }: Props) {
 
   return (
     <AppShell titulo="Relatório" breadcrumb={<Breadcrumb elos={elos} />}>
-      <VistaRelatorio relatorio={relatorio} chamada={chamada} />
+      <VistaRelatorio
+        relatorio={relatorio}
+        chamada={chamada}
+        tempo={tempo}
+        tempoDaChamada={tempoDaChamada}
+      />
     </AppShell>
   );
 }

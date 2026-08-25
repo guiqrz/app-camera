@@ -1,3 +1,4 @@
+import { BarraTempoAula } from "@/components/relatorio/barra-tempo-aula";
 import { BlocoChamada } from "@/components/relatorio/bloco-chamada";
 import { BlocoColapsavel } from "@/components/relatorio/bloco-colapsavel";
 import { BotaoCopiarDiario } from "@/components/relatorio/botao-copiar-diario";
@@ -21,15 +22,25 @@ import {
 import {
   dataDoTimestamp,
   formatarDataExtensa,
+  formatarDuracaoDaChamada,
   formatarIntervalo,
   formatarPct,
 } from "@/lib/format";
-import type { ChamadaDaSessao, RelatorioDaSessao } from "@/lib/types";
+import type {
+  ChamadaDaSessao,
+  RelatorioDaSessao,
+  TempoDaAula,
+  TempoDaChamada,
+} from "@/lib/types";
 
 type VistaRelatorioProps = {
   relatorio: RelatorioDaSessao;
   /** Lista de alunos da chamada. Null quando a rota falhou. */
   chamada: ChamadaDaSessao | null;
+  /** Feature F1: reparticao do tempo da aula. Null quando a rota falhou. */
+  tempo: TempoDaAula | null;
+  /** Feature F6: quanto a chamada levou. Null quando a rota falhou. */
+  tempoDaChamada: TempoDaChamada | null;
 };
 
 /** Texto e cor da variacao vs media historica (positivo/negativo/neutro). */
@@ -79,7 +90,12 @@ function faixaDaVariacao(variacao: number | null): FaixaNumero {
  * dai pra baixo tudo em largura cheia — conteudo, lousa, sugestao e a
  * transcricao por ultimo.
  */
-export function VistaRelatorio({ relatorio, chamada }: VistaRelatorioProps) {
+export function VistaRelatorio({
+  relatorio,
+  chamada,
+  tempo,
+  tempoDaChamada,
+}: VistaRelatorioProps) {
   const engajamento = formatarPct(relatorio.engajamento_medio_pct);
   const variacao = descreverVariacao(relatorio.variacao_vs_historico_pct);
   const faixaDoEngajamento = faixaDaVariacao(
@@ -251,6 +267,41 @@ export function VistaRelatorio({ relatorio, chamada }: VistaRelatorioProps) {
           ) : (
             <p className="text-text-muted text-[12.5px]">
               Não foi possível carregar a lista de alunos desta aula.
+            </p>
+          )}
+
+          {/* Feature F6 — o cronometro da chamada.
+              So' aparece quando FOI medido. Uma chamada nao cronometrada
+              exibida como "0s" seria a mentira mais conveniente possivel numa
+              feature criada pra provar que somos mais rapidos que o papel. */}
+          {tempoDaChamada?.medido && (
+            <p
+              className="mt-4 border-t pt-3 text-[12px] leading-relaxed"
+              style={{
+                borderColor: "var(--border)",
+                color: "var(--text-muted)",
+              }}
+            >
+              Chamada concluída em{" "}
+              <strong style={{ color: "var(--text)" }}>
+                {formatarDuracaoDaChamada(tempoDaChamada.segundos)}
+              </strong>{" "}
+              para {tempoDaChamada.alunos_confirmados} de{" "}
+              {tempoDaChamada.alunos_na_turma} alunos.
+            </p>
+          )}
+        </BlocoColapsavel>
+
+        {/* Feature F1, logo abaixo do par grafico/chamada e ACIMA do
+            conteudo: e' a leitura mais acionavel da aula. O grafico mostra
+            QUANDO a turma dispersou; esta secao mostra QUANTO isso custou em
+            minutos — que e' a unidade em que o professor decide. */}
+        <BlocoColapsavel titulo="Em que o tempo foi gasto">
+          {tempo ? (
+            <BarraTempoAula tempo={tempo} />
+          ) : (
+            <p className="text-text-muted text-[12.5px]">
+              Não foi possível carregar a repartição do tempo desta aula.
             </p>
           )}
         </BlocoColapsavel>

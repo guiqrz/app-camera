@@ -183,3 +183,24 @@ export function duracaoDesde(
   const dias = Math.floor(horas / 24);
   return dias === 1 ? "há 1 dia" : `há ${dias} dias`;
 }
+
+/**
+ * Duracao da chamada em texto curto (feature F6).
+ *
+ * Abaixo de 1 min mostra em segundos inteiros, acima vira "1 min 20 s". O
+ * corte importa: o sistema do Parana prometeu 30 SEGUNDOS e entregou 2
+ * MINUTOS, e 80% dos professores voltaram pro papel. Um numero que so' apareca
+ * em minutos esconderia exatamente a faixa onde essa promessa se ganha ou se
+ * perde.
+ *
+ * Sem casa decimal: "42 s" e "41,7 s" informam a mesma coisa ao professor, e a
+ * segunda sugere uma precisao que a medicao (baseada em timestamp de segundo)
+ * nao tem.
+ */
+export function formatarDuracaoDaChamada(segundos: number): string {
+  if (segundos < 60) return `${Math.round(segundos)} s`;
+
+  const minutos = Math.floor(segundos / 60);
+  const resto = Math.round(segundos % 60);
+  return resto === 0 ? `${minutos} min` : `${minutos} min ${resto} s`;
+}

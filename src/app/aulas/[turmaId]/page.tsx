@@ -5,10 +5,12 @@ import { EngajamentoDaTurma } from "@/components/aulas/engajamento-da-turma";
 import { ListaAulas } from "@/components/aulas/lista-aulas";
 import { NumerosDaTurma } from "@/components/aulas/numeros-da-turma";
 import { OndeParei } from "@/components/aulas/onde-parei";
+import { OQueVem } from "@/components/aulas/o-que-vem";
 import { SeletorTurma } from "@/components/aulas/seletor-turma";
 import { AppShell } from "@/components/layout/app-shell";
 import {
   ApiError,
+  buscarAtrasoDaTurma,
   buscarAulasDaTurma,
   buscarContinuidadeDaTurma,
   buscarEstatisticasDaTurma,
@@ -41,7 +43,8 @@ export default async function AulasDaTurmaPage({ params }: Props) {
   if (!Number.isInteger(id) || id <= 0) notFound();
 
   // As chamadas sao independentes: em paralelo, nao em sequencia.
-  const [turmas, aulas, continuidade, semana, estatisticas] = await Promise.all([
+  const [turmas, aulas, continuidade, semana, estatisticas, atraso] =
+    await Promise.all([
     listarTurmas(),
     buscarAulasDaTurma(id).catch((causa) => {
       if (causa instanceof ApiError && causa.isNotFound) notFound();
@@ -57,6 +60,10 @@ export default async function AulasDaTurmaPage({ params }: Props) {
     // E os numeros tambem: sem eles a tela perde a fileira do topo, mas a
     // lista de aulas continua de pe.
     buscarEstatisticasDaTurma(id).catch(() => null),
+    // Feature F10 — o alerta de atraso do cronograma. Consulta ao banco, sem
+    // IA: barata o bastante pra carregar junto da tela. A sugestao da proxima
+    // aula (F11), que gasta modelo, fica sob demanda dentro do componente.
+    buscarAtrasoDaTurma(id).catch(() => null),
   ]);
 
   // Reusa o mesmo consolidador da tela Relatorios: a media de engajamento e a
@@ -122,6 +129,11 @@ export default async function AulasDaTurmaPage({ params }: Props) {
             }
           />
         )}
+
+        {/* O par de futuro do "Você parou aqui", logo abaixo dele: a leitura
+            natural é "parei aqui → e agora?". Foi o furo que ele apontou em
+            24/08 — o produto inteiro respondia só o passado. */}
+        <OQueVem turmaId={id} atraso={atraso} />
 
         {resumo && <EngajamentoDaTurma serie={resumo.serie} turmaId={id} />}
 
