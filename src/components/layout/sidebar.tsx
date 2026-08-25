@@ -9,6 +9,7 @@ import { LogoCupcam } from "@/components/layout/logo-cupcam";
 import {
   IconAdministracao,
   IconAulas,
+  IconCalendario,
   IconCamera,
   IconChamada,
   IconConfiguracoes,
@@ -36,6 +37,10 @@ const GRUPOS: { rotulo: string; itens: ItemMenu[] }[] = [
     rotulo: "Sala de aula",
     itens: [
       { rotulo: "Minhas aulas", href: "/aulas", Icone: IconAulas },
+      // "Minha semana" (F12) vem logo depois de "Minhas aulas" e ANTES da
+      // chamada: as duas primeiras respondem preparacao, a chamada em diante e'
+      // o que acontece durante a aula.
+      { rotulo: "Minha semana", href: "/semana", Icone: IconCalendario },
       { rotulo: "Chamada", href: "/chamada", Icone: IconChamada },
       { rotulo: "Relatórios", href: "/relatorios", Icone: IconRelatorios },
       { rotulo: "Câmera", href: "/camera", Icone: IconCamera },
