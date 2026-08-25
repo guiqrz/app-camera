@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { TextoFormatado } from "@/components/ia/texto-formatado";
 import { IconCadeado, IconCopiar, IconEstrela } from "@/components/ui/icons";
 import type { FormatoDoResumo, ResumoDoAluno } from "@/lib/types";
 
@@ -183,11 +184,17 @@ export function ResumoParaOAluno({
             </button>
           </div>
 
+          {/* MEDIDO CONTRA A API REAL em 24/08: o modelo devolve markdown
+              ("### titulo", "**IMPORTANTE:**"). Com `whitespace-pre-wrap` o
+              aluno leria os asteriscos crus — e o formato "blocos curtos", que
+              existe justamente pra sinalizar prioridade, perderia a sinalizacao.
+              `TextoFormatado` e' o mesmo renderizador do Cup AI e do conteudo
+              da aula. */}
           <div
-            className="rounded-xl px-4 py-3.5 text-[13.5px] leading-relaxed whitespace-pre-wrap"
+            className="rounded-xl px-4 py-3.5 text-[13.5px] leading-relaxed"
             style={ESTILO_CAMPO}
           >
-            {resumo.texto}
+            <TextoFormatado texto={resumo.texto} />
           </div>
 
           {/* A trava, dita em voz alta. Não é rodapé decorativo: é o contrato

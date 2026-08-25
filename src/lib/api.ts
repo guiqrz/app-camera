@@ -49,6 +49,7 @@ import type {
   PreviaDoCronograma,
   RascunhoDePeriodo,
   RespostaDaFicha,
+  RespostaDoCronograma,
   ResumoDoAluno,
   SugestaoDaProximaAula,
   TempoDaAula,
@@ -1333,11 +1334,16 @@ export function salvarCronograma(
   });
 }
 
-/** Cronograma gravado da turma. `null` quando ela nao tem — nao e' erro. */
+/**
+ * Cronograma gravado da turma.
+ *
+ * Turma SEM cronograma devolve `tem_cronograma: false`, nunca null nem 404 —
+ * medido contra a API real. E' o estado normal de quem ainda nao montou um.
+ */
 export function buscarCronograma(
   turmaId: number,
-): Promise<CronogramaSalvo | null> {
-  return requisitar<CronogramaSalvo | null>(`/turmas/${turmaId}/cronograma`, {
+): Promise<RespostaDoCronograma> {
+  return requisitar<RespostaDoCronograma>(`/turmas/${turmaId}/cronograma`, {
     revalidate: 0,
   });
 }

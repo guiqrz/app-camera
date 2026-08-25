@@ -198,9 +198,20 @@ export function duracaoDesde(
  * nao tem.
  */
 export function formatarDuracaoDaChamada(segundos: number): string {
-  if (segundos < 60) return `${Math.round(segundos)} s`;
+  // Arredonda PRIMEIRO, depois reparte. Fazendo o contrário, 59,6 s cairia no
+  // ramo "< 60" e sairia como "60 s" — que ninguém escreve.
+  const inteiro = Math.round(segundos);
 
-  const minutos = Math.floor(segundos / 60);
-  const resto = Math.round(segundos % 60);
+  // MEDIDO CONTRA O BANCO REAL em 24/08: a sessão 60 tem chamada de 1 aluno
+  // aberta e confirmada no MESMO segundo, e a API devolve `segundos: 0.0` com
+  // `medido: true`. "0 s" não é medição crível — é ruído de arredondamento de
+  // um timestamp com precisão de segundo, e numa feature criada pra provar que
+  // somos mais rápidos que o papel, exibi-lo soaria como propaganda.
+  if (inteiro < 1) return "menos de 1 s";
+
+  if (inteiro < 60) return `${inteiro} s`;
+
+  const minutos = Math.floor(inteiro / 60);
+  const resto = inteiro % 60;
   return resto === 0 ? `${minutos} min` : `${minutos} min ${resto} s`;
 }

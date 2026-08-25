@@ -1071,6 +1071,21 @@ export type CronogramaSalvo = {
   conteudos_sem_data: number;
 };
 
+/**
+ * A resposta de "qual e' o cronograma desta turma".
+ *
+ * MEDIDO CONTRA A API REAL em 24/08/2026: a rota NUNCA devolve null nem 404
+ * para turma sem cronograma — devolve `{turma_id, tem_cronograma: false}`,
+ * igual as rotas de atraso (F10) e proxima aula (F11).
+ *
+ * Tipar isso como `CronogramaSalvo | null` compilava e passava nos testes, e
+ * teria quebrado na tela: `cronograma.itens` num objeto que so' tem dois
+ * campos.
+ */
+export type RespostaDoCronograma =
+  | ({ tem_cronograma: true } & CronogramaSalvo)
+  | { tem_cronograma: false; turma_id: number };
+
 /* --- F10 · Alerta de atraso --------------------------------------- */
 
 /**
@@ -1097,7 +1112,8 @@ export type AtrasoDaTurma =
       aulas_restantes: number;
       /** Ritmo REAL dele (conteudos por aula), nao o planejado. */
       ritmo_por_aula: number | null;
-      conteudos_que_devem_sobrar: number;
+      /** null quando nao ha aula restante ou ritmo do qual projetar. */
+      conteudos_que_devem_sobrar: number | null;
       mensagem: string;
     }
   | { turma_id: number; tem_cronograma: false };
@@ -1129,7 +1145,19 @@ export type SugestaoDaProximaAula =
       sugestao: string;
       modelo: string;
     }
-  | { tem_cronograma: true; tem_proxima: false; turma_id: number }
+  | {
+      tem_cronograma: true;
+      tem_proxima: false;
+      turma_id: number;
+      /**
+       * Por que nao ha proxima aula — MEDIDO contra a API real em 24/08.
+       *
+       * O backend distingue "o periodo acabou" de "todo o conteudo ja' foi
+       * dado", e as duas coisas pedem acoes diferentes do professor. A tela
+       * deve mostrar este texto em vez de uma frase generica.
+       */
+      motivo?: string;
+    }
   | { turma_id: number; tem_cronograma: false };
 
 /* --- F12 · Preparacao da semana ----------------------------------- */

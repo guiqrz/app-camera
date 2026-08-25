@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { TextoFormatado } from "@/components/ia/texto-formatado";
 import { IconEstrela } from "@/components/ui/icons";
 import { dataDoTimestamp, formatarDataExtensa } from "@/lib/format";
 import type { SugestaoDaProximaAula } from "@/lib/types";
@@ -68,9 +69,12 @@ export function BotaoProximaAula({ turmaId }: { turmaId: number }) {
         {/* O parágrafo da IA vem DEPOIS do conteúdo planejado e visualmente
             mais leve: o conteúdo é o que o PROFESSOR escreveu no cronograma, a
             sugestão é opinião do app sobre ele. Invertida, leria como ordem. */}
-        <p className="text-text-body mt-[9px] text-[13px] leading-relaxed">
-          {sugestao.sugestao}
-        </p>
+        {/* `TextoFormatado` e nao texto cru: o modelo devolve markdown, e sem
+            renderizar o professor leria os asteriscos. Mesmo renderizador do
+            Cup AI. */}
+        <div className="text-text-body mt-[9px] text-[13px] leading-relaxed">
+          <TextoFormatado texto={sugestao.sugestao} />
+        </div>
 
         <p className="text-text-muted mt-[7px] text-[11.5px]">
           Sugestão da Cup AI a partir do seu cronograma e das últimas aulas.
@@ -86,7 +90,10 @@ export function BotaoProximaAula({ turmaId }: { turmaId: number }) {
         className="text-text-muted border-t pt-[13px] text-[12.5px]"
         style={{ borderColor: "var(--vidro-forte-borda)" }}
       >
-        Não há próxima aula prevista no cronograma deste período.
+        {/* O motivo vem do backend, que distingue "o periodo acabou" de "todo
+            o conteudo ja' foi dado". A frase generica fica so' de reserva. */}
+        {sugestao.motivo ??
+          "Não há próxima aula prevista no cronograma deste período."}
       </p>
     );
   }

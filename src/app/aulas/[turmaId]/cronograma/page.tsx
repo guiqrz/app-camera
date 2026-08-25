@@ -41,10 +41,17 @@ export default async function CronogramaPage({ params }: Props) {
       if (causa instanceof ApiError && causa.isNotFound) notFound();
       throw causa;
     }),
-    // Turma sem cronograma devolve null, e isso e' o estado normal de quem
-    // ainda nao montou um — nunca erro.
+    // Turma sem cronograma devolve `tem_cronograma: false`, nunca null nem
+    // 404 — e' o estado normal de quem ainda nao montou um. O `.catch` cobre
+    // so' falha de rede.
     buscarCronograma(id).catch(() => null),
   ]);
+
+  // MEDIDO CONTRA A API REAL em 24/08: a rota usa `tem_cronograma` como
+  // discriminante, igual as de atraso e proxima aula. O editor quer o
+  // cronograma em si, ou null quando nao ha — a conversao acontece aqui.
+  const cronogramaInicial =
+    cronograma?.tem_cronograma === true ? cronograma : null;
 
   const elos: EloBreadcrumb[] = [
     { rotulo: "Minhas aulas", href: `/aulas/${id}` },
@@ -57,7 +64,7 @@ export default async function CronogramaPage({ params }: Props) {
       <EditorCronograma
         turmaId={id}
         nomeTurma={aulas.turma.nome}
-        inicial={cronograma}
+        inicial={cronogramaInicial}
       />
     </AppShell>
   );
