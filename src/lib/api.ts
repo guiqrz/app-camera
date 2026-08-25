@@ -40,6 +40,20 @@ import type {
   ContinuidadeDaTurma,
   ConteudoDaAula,
   Conversa,
+  AtrasoDaTurma,
+  CronogramaSalvo,
+  FichaDoAluno,
+  FormatoDoResumo,
+  PeriodoDoRelatorio,
+  PreparacaoDaSemana,
+  PreviaDoCronograma,
+  RascunhoDePeriodo,
+  ResumoDoAluno,
+  SugestaoDaProximaAula,
+  TempoDaAula,
+  TempoDaChamada,
+  TempoDaTurma,
+  TipoDeApoio,
   DiaDaSemana,
   DiarioDaAula,
   EstadoCamera,
@@ -1086,4 +1100,312 @@ export async function exportarMaterial(
     contentType: resposta.headers.get("content-type") ?? "application/octet-stream",
     contentDisposition: resposta.headers.get("content-disposition") ?? "attachment",
   };
+}
+
+/* ==================================================================== */
+/* MEGA LOTE — as 10 features de 24/08/2026                             */
+/*                                                                      */
+/* Spec: projeto_Cupcam/docs/superpowers/specs/                         */
+/*       2026-08-24-mega-lote-features-design.md                        */
+/*                                                                      */
+/* POR QUE TANTA COISA AQUI E' POST E NAO GET:                          */
+/* as rotas de F2, F3, F7 e F11 GASTAM chamada de IA. Um GET seria      */
+/* cacheado pelo Next, pre-carregado pelo navegador e repetido a cada   */
+/* F5 — cada repeticao custando dinheiro e devolvendo um texto          */
+/* ligeiramente diferente do que o professor acabou de ler.             */
+/* ==================================================================== */
+
+/* --- F1 · Tempo perdido da aula ---------------------------------- */
+
+/**
+ * Em que o tempo desta aula foi gasto: conteudo, ordem, burocracia.
+ *
+ * Sem cache: o relatorio da aula e' lido logo depois de ela encerrar, e o
+ * numero muda enquanto a sessao ainda esta sendo fechada.
+ */
+export function buscarTempoDaAula(sessaoId: number): Promise<TempoDaAula> {
+  return requisitar<TempoDaAula>(`/sessoes/${sessaoId}/tempo`, {
+    revalidate: 0,
+  });
+}
+
+/**
+ * A tendencia das ultimas aulas da turma.
+ *
+ * Cache de 60 s: e' uma serie historica de aulas ja' encerradas, que so' muda
+ * quando uma aula nova termina. Reler a cada abertura de tela seria puro custo.
+ */
+export function buscarTempoDaTurma(
+  turmaId: number,
+  limite = 10,
+): Promise<TempoDaTurma> {
+  return requisitar<TempoDaTurma>(
+    `/turmas/${turmaId}/tempo?limite=${limite}`,
+    { revalidate: 60 },
+  );
+}
+
+/* --- F2 · Conselho de classe -------------------------------------- */
+
+/**
+ * Rascunho do relatorio de conselho de classe.
+ *
+ * NAO grava e NAO envia nada: devolve o texto pro professor ler, corrigir e
+ * colar no formulario da escola. O documento vai ser assinado por ele, entao a
+ * decisao de usar e' dele — mesmo padrao ja' provado pelo diario (feature I).
+ */
+export function gerarRascunhoDoConselho(
+  turmaId: number,
+  periodo: PeriodoDoRelatorio,
+): Promise<RascunhoDePeriodo> {
+  return requisitar<RascunhoDePeriodo>(`/turmas/${turmaId}/conselho`, {
+    method: "POST",
+    body: periodo,
+  });
+}
+
+/* --- F3 · Boletim da familia -------------------------------------- */
+
+/**
+ * Boletim pedagogico da turma, escrito pra familia ler.
+ *
+ * Mesmo material do conselho, outro leitor e outro tom. NENHUM dado de aluno
+ * atravessa — nem a frequencia agregada que o conselho recebe.
+ *
+ * Tambem nao grava nem envia: quem manda pra familia e' a escola, depois de ler.
+ */
+export function gerarBoletimDaFamilia(
+  turmaId: number,
+  periodo: PeriodoDoRelatorio,
+): Promise<RascunhoDePeriodo> {
+  return requisitar<RascunhoDePeriodo>(`/turmas/${turmaId}/boletim`, {
+    method: "POST",
+    body: periodo,
+  });
+}
+
+/* --- F6 · Chamada cronometrada ------------------------------------ */
+
+/**
+ * Quanto tempo a chamada desta sessao levou.
+ *
+ * Sem cache: e' lido na propria tela de chamada, logo depois de o professor
+ * terminar de confirmar. Um numero de 30 s atras seria de outra chamada.
+ */
+export function buscarTempoDaChamada(
+  sessaoId: number,
+): Promise<TempoDaChamada> {
+  return requisitar<TempoDaChamada>(`/sessoes/${sessaoId}/chamada/tempo`, {
+    revalidate: 0,
+  });
+}
+
+/* --- F7 · Resumo da aula pro aluno -------------------------------- */
+
+/**
+ * Formatos disponiveis do resumo.
+ *
+ * Cache de 1 h: e' uma constante do backend, nao muda entre deploys.
+ */
+export function listarFormatosDoResumo(): Promise<{
+  formatos: FormatoDoResumo[];
+}> {
+  return requisitar<{ formatos: FormatoDoResumo[] }>("/resumo-aluno/formatos", {
+    revalidate: 3600,
+  });
+}
+
+/**
+ * Gera o resumo da aula no formato pedido.
+ *
+ * NAO publica nada — devolve a PREVIA que o professor ve do que o aluno veria.
+ * A publicacao depende do login de aluno, que foi adiado; quando existir, sera'
+ * decisao nova com desenho proprio.
+ */
+export function gerarResumoDoAluno(
+  sessaoId: number,
+  formato: string,
+): Promise<ResumoDoAluno> {
+  return requisitar<ResumoDoAluno>(`/sessoes/${sessaoId}/resumo-aluno`, {
+    method: "POST",
+    body: { formato },
+  });
+}
+
+/* --- F8 · Ficha de apoio do aluno --------------------------------- */
+
+/**
+ * Fichas dos alunos de uma turma.
+ *
+ * Devolve SO' os alunos que TEM ficha. Misturar com a lista completa da turma
+ * faria a tela mostrar, lado a lado, quem tem e quem nao tem laudo — um mapa de
+ * diagnostico da sala, o oposto do que esta feature quer ser.
+ *
+ * Sem cache: dado sensivel recem-editado nao pode voltar velho pro professor
+ * que acabou de corrigir.
+ */
+export function listarFichasDaTurma(
+  turmaId: number,
+): Promise<{ fichas: FichaDoAluno[] }> {
+  return requisitar<{ fichas: FichaDoAluno[] }>(
+    `/admin/turmas/${turmaId}/fichas`,
+    { revalidate: 0 },
+  );
+}
+
+/** Ficha de um aluno. `null` quando ele nao tem ficha — nao e' erro. */
+export function buscarFichaDoAluno(ra: string): Promise<FichaDoAluno | null> {
+  return requisitar<FichaDoAluno | null>(
+    `/admin/alunos/${encodeURIComponent(ra)}/ficha`,
+    { revalidate: 0 },
+  );
+}
+
+/**
+ * Cria ou atualiza a ficha.
+ *
+ * `adaptacoes` e' o que funciona na pratica com o aluno ("senta na frente",
+ * "prova em duas partes"). NUNCA historico clinico: o backend limita o texto
+ * justamente pra desencorajar isso.
+ */
+export function salvarFichaDoAluno(
+  ra: string,
+  dados: { tipos_de_apoio: TipoDeApoio[]; adaptacoes: string },
+): Promise<FichaDoAluno> {
+  return requisitar<FichaDoAluno>(
+    `/admin/alunos/${encodeURIComponent(ra)}/ficha`,
+    { method: "PUT", body: dados },
+  );
+}
+
+/** Apaga a ficha do aluno. */
+export function excluirFichaDoAluno(ra: string): Promise<void> {
+  return requisitar<void>(`/admin/alunos/${encodeURIComponent(ra)}/ficha`, {
+    method: "DELETE",
+  });
+}
+
+/* --- F9 · Cronograma do bimestre ---------------------------------- */
+
+/**
+ * Previa do cronograma, SEM gravar.
+ *
+ * E' aqui que o professor descobre que planejou 14 conteudos e so' tem 11
+ * aulas — antes de salvar, e em fevereiro, nao em novembro.
+ */
+export function preverCronograma(
+  turmaId: number,
+  dados: {
+    inicio: string;
+    fim: string;
+    itens: string[];
+    excecoes?: string[];
+    periodo?: string | null;
+  },
+): Promise<PreviaDoCronograma> {
+  return requisitar<PreviaDoCronograma>(`/turmas/${turmaId}/cronograma/previa`, {
+    method: "POST",
+    body: dados,
+  });
+}
+
+/** Grava o cronograma da turma, substituindo o do mesmo periodo. */
+export function salvarCronograma(
+  turmaId: number,
+  dados: {
+    inicio: string;
+    fim: string;
+    itens: string[];
+    excecoes?: string[];
+    periodo?: string | null;
+  },
+): Promise<CronogramaSalvo> {
+  return requisitar<CronogramaSalvo>(`/turmas/${turmaId}/cronograma`, {
+    method: "PUT",
+    body: dados,
+  });
+}
+
+/** Cronograma gravado da turma. `null` quando ela nao tem — nao e' erro. */
+export function buscarCronograma(
+  turmaId: number,
+): Promise<CronogramaSalvo | null> {
+  return requisitar<CronogramaSalvo | null>(`/turmas/${turmaId}/cronograma`, {
+    revalidate: 0,
+  });
+}
+
+/** Apaga o cronograma da turma. */
+export function excluirCronograma(
+  turmaId: number,
+  inicio: string,
+  fim: string,
+): Promise<void> {
+  return requisitar<void>(
+    `/turmas/${turmaId}/cronograma?inicio=${inicio}&fim=${fim}`,
+    { method: "DELETE" },
+  );
+}
+
+/* --- F10 · Alerta de atraso --------------------------------------- */
+
+/**
+ * O cronograma da turma esta em dia?
+ *
+ * Cache de 60 s: depende de aulas encerradas e do calendario, que mudam no
+ * ritmo de dias, nao de segundos.
+ *
+ * A TRAVA, que vale tanto pra tela quanto pra rota: isto e' recado do app PRO
+ * PROFESSOR. Nao existe, e nao pode existir, tela de coordenacao consumindo
+ * esta funcao — "professor atrasado" numa tela de gestao e' exatamente o uso
+ * que o PRODUCT.md proibe, e foi o que cortou a F5 do lote.
+ */
+export function buscarAtrasoDaTurma(turmaId: number): Promise<AtrasoDaTurma> {
+  return requisitar<AtrasoDaTurma>(`/turmas/${turmaId}/atraso`, {
+    revalidate: 60,
+  });
+}
+
+/* --- F11 · Sugestao da proxima aula ------------------------------- */
+
+/**
+ * O que vem na proxima aula, e o que vale considerar antes.
+ *
+ * Sem cronograma a rota RECUSA (`tem_cronograma: false`) em vez de adivinhar:
+ * gerar sugestao sem plano faria o modelo inventar a sequencia pedagogica, que
+ * e' exatamente o que a trava do continuidade.py existe pra impedir.
+ */
+export function sugerirProximaAula(
+  turmaId: number,
+): Promise<SugestaoDaProximaAula> {
+  return requisitar<SugestaoDaProximaAula>(`/turmas/${turmaId}/proxima-aula`, {
+    method: "POST",
+  });
+}
+
+/* --- F12 · Preparacao da semana ----------------------------------- */
+
+/**
+ * As aulas da semana, o que cada uma preve e o que falta anexar.
+ *
+ * `turmaId` opcional: sem ele traz todas as turmas, que e' a visao de quem da'
+ * aula em varias. `data` e' qualquer dia da semana desejada (default: hoje).
+ *
+ * Sem cache: o professor anexa material e volta pra tela esperando ver a
+ * pendencia sumir.
+ */
+export function buscarPreparacaoDaSemana(opcoes?: {
+  turmaId?: number;
+  data?: string;
+}): Promise<PreparacaoDaSemana> {
+  const parametros = new URLSearchParams();
+  if (opcoes?.turmaId !== undefined) {
+    parametros.set("turma_id", String(opcoes.turmaId));
+  }
+  if (opcoes?.data) parametros.set("data", opcoes.data);
+  const busca = parametros.toString();
+
+  return requisitar<PreparacaoDaSemana>(`/semana${busca ? `?${busca}` : ""}`, {
+    revalidate: 0,
+  });
 }

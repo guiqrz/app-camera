@@ -821,3 +821,348 @@ export type DiarioDaAula = {
   };
   texto: string;
 };
+
+/* ==================================================================== */
+/* MEGA LOTE — as 10 features de 24/08/2026                             */
+/*                                                                      */
+/* Spec: projeto_Cupcam/docs/superpowers/specs/                         */
+/*       2026-08-24-mega-lote-features-design.md                        */
+/*                                                                      */
+/* Duas regras da spec estao codificadas nestes tipos, e nao sao        */
+/* detalhe de estilo:                                                   */
+/*                                                                      */
+/*   1. Comportamento e' sempre COLETIVO. Nenhum tipo daqui liga        */
+/*      atento/desatento/usando_celular a um RA.                        */
+/*   2. "Nao sei" nunca vira zero. Os campos `observado`, `medido` e    */
+/*      `tem_cronograma` existem pra tela distinguir ausencia de dado   */
+/*      de um valor real — a mentira mais facil de cometer aqui.        */
+/* ==================================================================== */
+
+/* --- F1 · Tempo perdido da aula ---------------------------------- */
+
+/**
+ * As tres faixas em que o tempo de aula e' repartido.
+ *
+ * TALIS 2024 mediu no Brasil 67% conteudo / 20-21% ordem / 13% burocracia.
+ * Nenhum concorrente mede isso — e' o angulo mais defensavel do produto.
+ */
+export type FaixaDeTempo = "conteudo" | "ordem" | "burocracia";
+
+/**
+ * Reparticao do tempo de UMA aula.
+ *
+ * `observado: false` significa que a aula nao teve leitura util nenhuma
+ * (camera desligada, sala vazia) — e nesse caso `faixas` e `percentuais` nao
+ * vem. A tela PRECISA tratar esse caso: mostrar "100% conteudo" ali seria
+ * elogiar uma aula que o sistema nunca viu.
+ */
+export type TempoDaAula =
+  | {
+      sessao_id: number;
+      observado: true;
+      duracao_min: number;
+      faixas: Record<FaixaDeTempo, number>;
+      percentuais: Record<FaixaDeTempo, number>;
+    }
+  | { sessao_id: number; observado: false };
+
+/**
+ * A tendencia das ultimas aulas da turma.
+ *
+ * O valor da F1 esta na SERIE, nao numa aula isolada: "voce recuperou 11
+ * minutos de conteudo esta semana" e' o que muda comportamento.
+ *
+ * `media` e' null quando nenhuma aula teve leitura util.
+ */
+export type TempoDaTurma = {
+  turma_id: number;
+  aulas: TempoDaAula[];
+  media: Record<FaixaDeTempo, number> | null;
+  aulas_observadas: number;
+};
+
+/* --- F2 · Conselho de classe · F3 · Boletim da familia ------------ */
+
+/** Periodo pedido pra um relatorio de fim de bimestre. */
+export type PeriodoDoRelatorio = {
+  inicio: string;
+  fim: string;
+  periodo?: string | null;
+};
+
+/**
+ * Rascunho gerado por IA pro professor ler, corrigir e colar.
+ *
+ * NAO grava e NAO envia nada. O texto vira documento assinado por ele, entao
+ * a decisao de usar e' dele — mesmo padrao ja' provado pelo diario (feature I).
+ *
+ * `frequencia_media` so' existe no conselho (F2). O boletim da familia (F3)
+ * nao carrega nenhum dado de aluno, nem agregado.
+ */
+export type RascunhoDePeriodo = {
+  texto: string;
+  modelo: string;
+  turma_id: number;
+  periodo: string | null;
+  /** Sobre QUANTO material o texto foi escrito — a tela deve mostrar. */
+  aulas_no_periodo: number;
+  aulas_com_conteudo: number;
+  aulas_sem_conteudo: number;
+  /** So' no conselho (F2); ausente no boletim da familia (F3). */
+  frequencia_media?: number | null;
+};
+
+/* --- F6 · Chamada cronometrada ------------------------------------ */
+
+/**
+ * Quanto tempo a chamada levou de verdade.
+ *
+ * `medido: false` quando nao da' pra medir (chamada nunca aberta, nenhuma
+ * confirmacao). NUNCA e' zero nesse caso: uma chamada nao cronometrada
+ * apareceria como instantanea — a mentira mais conveniente possivel numa
+ * feature criada justamente pra provar que somos rapidos.
+ *
+ * O sistema do Parana prometeu 30s, entregou 2min, e 80% dos professores
+ * voltaram pro papel. Isto existe pra sabermos de que lado da linha estamos.
+ */
+export type TempoDaChamada =
+  | {
+      sessao_id: number;
+      medido: true;
+      segundos: number;
+      alunos_confirmados: number;
+      alunos_na_turma: number;
+      aberta_em: string;
+      ultima_confirmacao_em: string;
+    }
+  | { sessao_id: number; medido: false };
+
+/* --- F7 · Resumo da aula pro aluno -------------------------------- */
+
+/**
+ * Um formato de resumo.
+ *
+ * `rotulo` e `descricao` nunca dizem o publico-alvo. A tela mostra "blocos
+ * curtos", nunca "formato pra TDAH": assim o aluno escolhe o que funciona pra
+ * ele sem precisar se declarar.
+ */
+export type FormatoDoResumo = {
+  id: string;
+  rotulo: string;
+  descricao: string;
+};
+
+/**
+ * Resumo da aula escrito pro aluno estudar.
+ *
+ * `publicado` e' sempre false hoje: a publicacao depende do login de aluno,
+ * que foi adiado. Isto e' a PREVIA que o professor ve do que o aluno veria.
+ *
+ * A trava do botao publicar e' obrigatoria e nao e' capricho: a transcricao
+ * bruta pega o professor errando e aluno citado pelo nome. Sem ela, o
+ * professor perde o controle do que a turma le dele — e uma ferramenta que
+ * ameaca o professor morre tao rapido quanto uma que da' trabalho.
+ */
+export type ResumoDoAluno = {
+  sessao_id: number;
+  formato: string;
+  rotulo: string;
+  texto: string;
+  modelo: string;
+  publicado: boolean;
+};
+
+/* --- F8 · Ficha de apoio do aluno --------------------------------- */
+
+/**
+ * Tipo de apoio de que o aluno precisa.
+ *
+ * DADO PESSOAL SENSIVEL (LGPD art. 5o, II) — categoria acima do dado comum.
+ * Limites que NAO sao negociaveis, e estao na spec:
+ *
+ *   - ve: professor da turma + coordenacao. So'. Nunca outro aluno.
+ *   - nunca no diario de classe, nunca na transcricao publicada.
+ *   - NUNCA cruzado com engajamento. "Aluno TEA teve 40% de atencao" e'
+ *     exatamente o uso que o PRODUCT.md (linha 123) proibe.
+ */
+export type TipoDeApoio =
+  | "tdah"
+  | "tea"
+  | "dislexia"
+  | "discalculia"
+  | "deficiencia_visual"
+  | "deficiencia_auditiva"
+  | "deficiencia_fisica"
+  | "altas_habilidades"
+  | "outro";
+
+/** Ficha de um aluno: de que apoio ele precisa e o que funciona com ele. */
+export type FichaDoAluno = {
+  aluno_ra: string;
+  /** So' vem na listagem da turma, onde a tela precisa exibir o nome. */
+  nome?: string;
+  tipos_de_apoio: TipoDeApoio[];
+  /** O que funciona na pratica. Nunca historico clinico. */
+  adaptacoes: string;
+  atualizada_em: string;
+};
+
+/* --- F9 · Cronograma do bimestre ---------------------------------- */
+
+/**
+ * Um conteudo do cronograma, ja' encaixado numa data real da grade.
+ *
+ * `data: null` e' o achado mais importante da feature: significa que o
+ * conteudo NAO CABE no bimestre. Empurrar dois conteudos pra mesma aula
+ * esconderia isso ate' novembro.
+ */
+export type ItemDoCronograma = {
+  ordem: number;
+  titulo: string;
+  data: string | null;
+  aula_id: number | null;
+  materia: string | null;
+};
+
+/**
+ * Previa do cronograma, antes de gravar.
+ *
+ * `cabe: false` e' o aviso que a feature inteira existe pra dar: o professor
+ * planeja "14 aulas" no papel e descobre em novembro que tinha 11, porque teve
+ * feriado, jogo, conselho e semana de prova.
+ */
+export type PreviaDoCronograma = {
+  turma_id: number;
+  periodo: string | null;
+  inicio: string;
+  fim: string;
+  aulas_disponiveis: number;
+  conteudos: number;
+  itens: ItemDoCronograma[];
+  cabe: boolean;
+  conteudos_sem_data: number;
+  aulas_sobrando: number;
+};
+
+/** Cronograma ja' gravado. */
+export type CronogramaSalvo = {
+  id: number;
+  turma_id: number;
+  periodo: string | null;
+  inicio: string;
+  fim: string;
+  excecoes: string[];
+  criado_em: string;
+  itens: ItemDoCronograma[];
+  conteudos: number;
+  cabe: boolean;
+  conteudos_sem_data: number;
+};
+
+/* --- F10 · Alerta de atraso --------------------------------------- */
+
+/**
+ * O cronograma esta em dia?
+ *
+ * `tem_cronograma: false` NAO e' o mesmo que estar em dia — a tela precisa
+ * distinguir os dois, ou dira' "tudo certo" pra quem nunca planejou nada.
+ *
+ * A TRAVA: isto e' recado do app PRO PROFESSOR. Nunca vai pra coordenacao,
+ * nunca vira ranking, nunca compara turmas. Foi por essa mesma razao que a F5
+ * (observacao assincrona pra coordenacao) foi cortada do lote.
+ */
+export type AtrasoDaTurma =
+  | {
+      tem_cronograma: true;
+      turma_id: number;
+      periodo: string | null;
+      atrasado: boolean;
+      /** Em AULAS, nao em porcentagem: e' o que o professor consegue agir. */
+      aulas_de_diferenca: number;
+      previstos_ate_hoje: number;
+      dados: number;
+      aulas_que_aconteceram: number;
+      aulas_restantes: number;
+      /** Ritmo REAL dele (conteudos por aula), nao o planejado. */
+      ritmo_por_aula: number | null;
+      conteudos_que_devem_sobrar: number;
+      mensagem: string;
+    }
+  | { turma_id: number; tem_cronograma: false };
+
+/* --- F11 · Sugestao da proxima aula ------------------------------- */
+
+/**
+ * O que vem na proxima aula, e o que vale considerar antes.
+ *
+ * Cruza continuidade (onde parou), cronograma (onde deveria estar) e tempo de
+ * aula (como a turma reagiu).
+ *
+ * POR QUE E' SEGURO: a trava do ia/continuidade.py existe pra impedir o modelo
+ * de INVENTAR sequencia pedagogica. Com o cronograma da F9 ele nao inventa —
+ * le a sequencia que o professor escreveu. Sem cronograma, a rota recusa em
+ * vez de adivinhar.
+ *
+ * Continua sugestao, nunca ordem: o professor conhece a turma, o app conhece o
+ * calendario.
+ */
+export type SugestaoDaProximaAula =
+  | {
+      tem_cronograma: true;
+      tem_proxima: true;
+      turma_id: number;
+      conteudo_planejado: string;
+      data: string;
+      materia: string | null;
+      sugestao: string;
+      modelo: string;
+    }
+  | { tem_cronograma: true; tem_proxima: false; turma_id: number }
+  | { turma_id: number; tem_cronograma: false };
+
+/* --- F12 · Preparacao da semana ----------------------------------- */
+
+/** Uma aula da semana, com o que ela preve e o que falta anexar. */
+export type AulaDaSemana = {
+  aula_id: number;
+  turma_id: number;
+  turma: string;
+  materia: string | null;
+  hora_inicio: string;
+  hora_fim: string;
+  /** O que o cronograma (F9) preve pra este dia. null sem cronograma. */
+  conteudo_previsto: string | null;
+  tem_plano: boolean;
+  anexos: number;
+  /** Preve conteudo, mas nao tem plano nem anexo. E' a pendencia acionavel. */
+  falta_material: boolean;
+};
+
+/** Um dia da semana com as aulas dele. */
+export type DiaDaPreparacao = {
+  data: string;
+  dia_semana: number;
+  rotulo: string;
+  e_hoje: boolean;
+  aulas: AulaDaSemana[];
+};
+
+/**
+ * A semana inteira numa tela so'.
+ *
+ * O professor brasileiro gasta 9,3 h/semana preparando aula — 2,2 h a mais que
+ * em 2018. Boa parte disso e' reconstruir contexto abrindo quatro lugares. Isto
+ * responde "o que me espera" de uma vez.
+ *
+ * A semana comeca na SEGUNDA: quem abre no domingo a noite quer ver a semana
+ * que COMECA, nao a que terminou.
+ */
+export type PreparacaoDaSemana = {
+  inicio: string;
+  fim: string;
+  turma_id: number | null;
+  dias: DiaDaPreparacao[];
+  total_de_aulas: number;
+  aulas_sem_material: number;
+  pendencias: AulaDaSemana[];
+};
