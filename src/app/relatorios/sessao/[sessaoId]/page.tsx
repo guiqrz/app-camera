@@ -9,6 +9,7 @@ import {
   buscarRelatorio,
   buscarTempoDaAula,
   buscarTempoDaChamada,
+  listarFormatosDoResumo,
 } from "@/lib/api";
 import { dataDoTimestamp, formatarDataCurta } from "@/lib/format";
 
@@ -51,7 +52,8 @@ export default async function RelatorioPage({ params, searchParams }: Props) {
   // So' o relatorio pode derrubar a tela. As outras tres engolem a falha e
   // viram null: cada uma alimenta UM bloco, e perder um bloco e' muito melhor
   // que perder o relatorio inteiro por causa dele.
-  const [relatorio, chamada, tempo, tempoDaChamada] = await Promise.all([
+  const [relatorio, chamada, tempo, tempoDaChamada, formatos] =
+    await Promise.all([
     buscarRelatorio(id).catch((causa) => {
       // Sessao inexistente e' 404, nao erro de servidor.
       if (causa instanceof ApiError && causa.isNotFound) notFound();
@@ -64,6 +66,9 @@ export default async function RelatorioPage({ params, searchParams }: Props) {
     buscarTempoDaAula(id).catch(() => null),
     // Feature F6 — cronometro da chamada.
     buscarTempoDaChamada(id).catch(() => null),
+    // Feature F7 — formatos do resumo. Sem eles o bloco nao aparece: um
+    // seletor vazio seria pior que a ausencia da secao.
+    listarFormatosDoResumo().catch(() => null),
   ]);
 
   /* De qual turma o professor veio.
@@ -87,6 +92,7 @@ export default async function RelatorioPage({ params, searchParams }: Props) {
         chamada={chamada}
         tempo={tempo}
         tempoDaChamada={tempoDaChamada}
+        formatosDoResumo={formatos?.formatos ?? []}
       />
     </AppShell>
   );

@@ -10,6 +10,7 @@ import {
   NumeroDaAula,
   type FaixaNumero,
 } from "@/components/relatorio/numero-da-aula";
+import { ResumoParaOAluno } from "@/components/relatorio/resumo-para-o-aluno";
 import { SecaoLousas } from "@/components/relatorio/secao-lousas";
 import { SecaoTranscricao } from "@/components/relatorio/secao-transcricao";
 import { SugestaoDaCupcam } from "@/components/relatorio/sugestao-da-cupcam";
@@ -28,6 +29,7 @@ import {
 } from "@/lib/format";
 import type {
   ChamadaDaSessao,
+  FormatoDoResumo,
   RelatorioDaSessao,
   TempoDaAula,
   TempoDaChamada,
@@ -41,6 +43,8 @@ type VistaRelatorioProps = {
   tempo: TempoDaAula | null;
   /** Feature F6: quanto a chamada levou. Null quando a rota falhou. */
   tempoDaChamada: TempoDaChamada | null;
+  /** Feature F7: formatos do resumo pro aluno. Vazio quando a rota falhou. */
+  formatosDoResumo: FormatoDoResumo[];
 };
 
 /** Texto e cor da variacao vs media historica (positivo/negativo/neutro). */
@@ -95,6 +99,7 @@ export function VistaRelatorio({
   chamada,
   tempo,
   tempoDaChamada,
+  formatosDoResumo,
 }: VistaRelatorioProps) {
   const engajamento = formatarPct(relatorio.engajamento_medio_pct);
   const variacao = descreverVariacao(relatorio.variacao_vs_historico_pct);
@@ -311,6 +316,18 @@ export function VistaRelatorio({
         <BlocoColapsavel titulo="Conteúdo da aula">
           <ConteudoDaAula sessaoId={relatorio.sessao.id} />
         </BlocoColapsavel>
+
+        {/* Feature F7 — o resumo pro aluno NASCE do conteudo registrado logo
+            acima, entao vem na sequencia. Nasce FECHADO: gera texto por IA, e
+            um bloco aberto convida a clicar sem intencao. */}
+        {formatosDoResumo.length > 0 && (
+          <BlocoColapsavel titulo="Resumo para o aluno" abertoInicial={false}>
+            <ResumoParaOAluno
+              sessaoId={relatorio.sessao.id}
+              formatos={formatosDoResumo}
+            />
+          </BlocoColapsavel>
+        )}
 
         <BlocoColapsavel titulo="Lousa">
           <SecaoLousas sessaoId={relatorio.sessao.id} />
