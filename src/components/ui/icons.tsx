@@ -751,6 +751,21 @@ export function IconBaixar({ size = 18, className }: IconProps) {
 }
 
 /** Clipe de papel — anexo da aula na agenda. */
+/** Elo de corrente — o anexo que e' LINK, ao lado do clipe que e' arquivo. */
+export function IconLink({ size = 18, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <path
+        d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.5 1.5M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.5-1.5"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function IconClipe({ size = 18, className }: IconProps) {
   return (
     <svg {...base(size, className)}>

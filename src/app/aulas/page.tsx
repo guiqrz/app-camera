@@ -5,7 +5,14 @@ import { SecaoLembretes } from "@/components/aulas/secao-lembretes";
 import { SeletorTurma } from "@/components/aulas/seletor-turma";
 import { AppShell } from "@/components/layout/app-shell";
 import { IconPessoas, IconRelogio } from "@/components/ui/icons";
-import { buscarVisaoGeral, listarTurmas } from "@/lib/api";
+import {
+  buscarVisaoGeral,
+  listarEventosDaAgenda,
+  listarMaterias,
+  listarTurmas,
+} from "@/lib/api";
+
+import { periodoDaAgenda } from "@/lib/semana";
 
 import { AvisoSemTurmas } from "./aviso-sem-turmas";
 
@@ -31,8 +38,26 @@ function formatarHoras(horas: number) {
  * conteudo proprio — a visao consolidada — e /aulas/{id} continua sendo a
  * visao de UMA turma. O seletor no cabecalho navega entre as duas.
  */
-export default async function AulasPage() {
-  const [turmas, visao] = await Promise.all([listarTurmas(), buscarVisaoGeral()]);
+type Props = {
+  // No App Router a query string chega como Promise.
+  searchParams: Promise<{ data?: string }>;
+};
+
+export default async function AulasPage({ searchParams }: Props) {
+  const { data } = await searchParams;
+  const periodo = periodoDaAgenda(data);
+
+  const [turmas, visao, eventos, materias] = await Promise.all([
+    listarTurmas(),
+    buscarVisaoGeral(),
+    // Engole a falha: a agenda continua de pe sem os eventos, so' sem as
+    // marcacoes daquela semana. Perder a grade inteira por causa deles seria
+    // pior do que mostrar a grade sem eles.
+    listarEventosDaAgenda(periodo).catch(() => []),
+    // Alimentam o dropdown do modal de aula nova. Falha vira lista vazia: o
+    // modal continua abrindo, so' com "Sem materia" como unica opcao.
+    listarMaterias().catch(() => []),
+  ]);
 
   if (turmas.length === 0) {
     return <AvisoSemTurmas />;
@@ -58,7 +83,16 @@ export default async function AulasPage() {
           <SeletorTurma turmas={turmas} turmaAtualId={null} comOpcaoTodas />
         </div>
 
-        <AgendaSemana semana={visao.semana} />
+        {/* `turmas` e `materias` aqui, e nao so' na tela de UMA turma: sem
+            turma no topo pra herdar, o modal de aula nova e o de evento
+            precisam perguntar em qual turma criar (29/08/2026). */}
+        <AgendaSemana
+          semana={visao.semana}
+          turmas={turmas}
+          materias={materias}
+          eventos={eventos}
+          data={data}
+        />
 
         {/* O card "Lembretes" e o painel vivem juntos em `SecaoLembretes`:
             os dois leem a MESMA lista, entao criar um lembrete no painel

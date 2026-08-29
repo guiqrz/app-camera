@@ -1,23 +1,36 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import { useFocoPreso } from "@/components/coordenacao/usar-foco-preso";
-import { BotaoIcone } from "@/components/ui/botao-icone";
 import {
-  IconBaixar,
-  IconClipe,
-  IconFechar,
-  IconLixeira,
-  IconSubir,
-} from "@/components/ui/icons";
-import type { Aula } from "@/lib/types";
+  CampoAnexo,
+  LinhaDeAnexo,
+  type EscolhaDeAnexo,
+} from "@/components/ui/campo-anexo";
+import { Modal } from "@/components/ui/modal";
+import type { Aula, Materia } from "@/lib/types";
 
 /** Espelha o max_length do model PlanoDaAula no backend. */
 const MAXIMO_PLANO = 200;
 
 /** Espelha TAMANHO_MAXIMO_ANEXO_AULA_BYTES em cupcam/web/api.py. */
 const MAXIMO_ANEXO_BYTES = 10 * 1024 * 1024;
+
+/** Segunda primeiro: a semana escolar comeca nela, e domingo quase nunca tem aula. */
+const DIAS = [
+  { valor: 1, nome: "Segunda-feira" },
+  { valor: 2, nome: "Terça-feira" },
+  { valor: 3, nome: "Quarta-feira" },
+  { valor: 4, nome: "Quinta-feira" },
+  { valor: 5, nome: "Sexta-feira" },
+  { valor: 6, nome: "Sábado" },
+  { valor: 0, nome: "Domingo" },
+];
+
+const ESTILO_CAMPO =
+  "bg-surface-2 border-border-default text-text placeholder:text-text-muted w-full rounded-[9px] border px-[11px] py-[9px] text-[13px] outline-none focus:outline-2 focus:-outline-offset-1 focus:outline-[var(--primary-hover)] disabled:opacity-50";
+
+const ROTULO = "text-text-muted text-[10px] font-bold tracking-[0.1em] uppercase";
 
 function formatarTamanho(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -26,38 +39,42 @@ function formatarTamanho(bytes: number) {
 }
 
 type Props = {
-  /** Aula sendo editada. `null` fecha o painel. */
+  /** Aula sendo editada. `null` fecha o modal. */
   aula: Aula | null;
+  /** Materias da escola, pro seletor. */
+  materias?: Materia[];
   aoFechar: () => void;
   /** Chamado depois de salvar, pra tela recarregar os dados do servidor. */
   aoSalvar: () => void;
 };
 
 /**
- * Painel de preparacao da aula: o plano e o material.
+ * Edicao de uma aula da grade: o que ela E' (materia, dia, horario), o plano e
+ * o material.
  *
- * Os dois pertencem a AULA DA GRADE, nao a sessao gravada — sao preparacao,
- * existem antes de a camera ligar e valem em toda repeticao semanal daquela
- * aula (ver o docstring de gestao/planos.py no backend).
+ * MODAL CENTRADO, NAO GAVETA (29/08/2026): era um painel de 380px encostado na
+ * direita, desenhado quando so' havia dois campos. Com materia e horario
+ * editaveis a gaveta ficou apertada, e o pedido foi explicito — abrir no meio,
+ * grande, com mais coisa editavel.
  *
- * O prototipo tinha um terceiro campo, "link do slide". Ele NAO foi feito: nao
- * existe coluna pra ele no banco, e inventar um lugar (guardar a URL dentro do
- * texto do plano, por exemplo) criaria um campo fantasma que nenhuma outra
- * parte do sistema saberia ler. Fica como decisao do usuario adicionar depois.
+ * O plano e o material pertencem a' AULA DA GRADE, nao a' sessao gravada: sao
+ * preparacao, existem antes de a camera ligar e valem em toda repeticao semanal
+ * daquela aula (ver o docstring de gestao/planos.py no backend).
  */
-export function EditorAula({ aula, aoFechar, aoSalvar }: Props) {
+export function EditorAula({ aula, materias = [], aoFechar, aoSalvar }: Props) {
   const [plano, setPlano] = useState("");
+  const [materiaId, setMateriaId] = useState<number | null>(null);
+  const [diaSemana, setDiaSemana] = useState(1);
+  const [horaInicio, setHoraInicio] = useState("");
+  const [horaFim, setHoraFim] = useState("");
   const [arquivo, setArquivo] = useState<File | null>(null);
+  const [link, setLink] = useState<{ url: string; nome: string } | null>(null);
   const [removerAnexo, setRemoverAnexo] = useState(false);
-  const [arrastando, setArrastando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
 
   const aberto = aula !== null;
-  const refPainel = useFocoPreso(aberto);
   const refPlano = useRef<HTMLTextAreaElement>(null);
-  const refArquivo = useRef<HTMLInputElement>(null);
-  const idTitulo = useId();
 
   // Reset na transicao fechado->aberto, durante a renderizacao — o padrao
   // oficial do React pra estado derivado de props, em vez de setState num
@@ -66,7 +83,12 @@ export function EditorAula({ aula, aoFechar, aoSalvar }: Props) {
   if ((aula?.id ?? null) !== aulaAnterior) {
     setAulaAnterior(aula?.id ?? null);
     setPlano(aula?.plano ?? "");
+    setMateriaId(aula?.materia_id ?? null);
+    setDiaSemana(aula?.dia_semana ?? 1);
+    setHoraInicio(aula?.hora_inicio ?? "");
+    setHoraFim(aula?.hora_fim ?? "");
     setArquivo(null);
+    setLink(null);
     setRemoverAnexo(false);
     setErro(null);
     setEnviando(false);
@@ -77,25 +99,7 @@ export function EditorAula({ aula, aoFechar, aoSalvar }: Props) {
     refPlano.current?.focus();
   }, [aberto]);
 
-  useEffect(() => {
-    if (!aberto) return;
-    const aoTeclar = (evento: KeyboardEvent) => {
-      if (evento.key === "Escape") aoFechar();
-    };
-    document.addEventListener("keydown", aoTeclar);
-    return () => document.removeEventListener("keydown", aoTeclar);
-  }, [aberto, aoFechar]);
-
-  useEffect(() => {
-    if (!aberto) return;
-    const anterior = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = anterior;
-    };
-  }, [aberto]);
-
-  // Ctrl+V com o painel aberto anexa o arquivo do clipboard — o caminho mais
+  // Ctrl+V com o modal aberto anexa o arquivo do clipboard — o caminho mais
   // rapido pra quem acabou de printar um slide.
   useEffect(() => {
     if (!aberto) return;
@@ -103,7 +107,7 @@ export function EditorAula({ aula, aoFechar, aoSalvar }: Props) {
       const colado = evento.clipboardData?.files?.[0];
       if (colado) {
         evento.preventDefault();
-        escolherArquivo(colado);
+        escolherAnexo({ tipo: "arquivo", arquivo: colado });
       }
     };
     document.addEventListener("paste", aoColar);
@@ -112,29 +116,106 @@ export function EditorAula({ aula, aoFechar, aoSalvar }: Props) {
 
   if (!aula) return null;
 
-  function escolherArquivo(escolhido: File) {
-    if (escolhido.size > MAXIMO_ANEXO_BYTES) {
-      setErro(
-        `O arquivo tem ${formatarTamanho(escolhido.size)} — o limite é 10 MB.`,
-      );
-      return;
-    }
-    if (escolhido.size === 0) {
-      setErro("O arquivo está vazio.");
-      return;
-    }
+  function escolherAnexo(escolha: EscolhaDeAnexo) {
     setErro(null);
-    setArquivo(escolhido);
     setRemoverAnexo(false);
+    if (escolha.tipo === "arquivo") {
+      if (escolha.arquivo.size === 0) {
+        setErro("O arquivo está vazio.");
+        return;
+      }
+      setArquivo(escolha.arquivo);
+      setLink(null);
+    } else {
+      setLink({ url: escolha.url, nome: escolha.nome });
+      setArquivo(null);
+    }
   }
+
+  // O material mostrado: o recem-escolhido tem prioridade sobre o ja' gravado.
+  const materialAtual = arquivo
+    ? {
+        nome: arquivo.name,
+        detalhe: `${formatarTamanho(arquivo.size)} · será enviado ao salvar`,
+        ehLink: false,
+        href: undefined,
+      }
+    : link
+      ? {
+          nome: link.nome || link.url,
+          detalhe: "link · será salvo ao confirmar",
+          ehLink: true,
+          href: link.url,
+        }
+      : !removerAnexo && aula.anexo_nome
+        ? {
+            nome: aula.anexo_nome,
+            detalhe: aula.anexo_eh_link
+              ? (aula.anexo_url ?? "link")
+              : formatarTamanho(aula.anexo_tamanho ?? 0),
+            ehLink: aula.anexo_eh_link,
+            // Link abre o endereco; arquivo baixa pela rota. Baixar um link
+            // devolveria 409 — ver baixar_anexo_da_aula no backend.
+            href: aula.anexo_eh_link
+              ? (aula.anexo_url ?? undefined)
+              : `/api/admin/aulas/${aula.id}/anexo`,
+          }
+        : null;
 
   async function salvar() {
     if (!aula) return;
     setErro(null);
-    setEnviando(true);
 
+    if (!horaInicio || !horaFim) {
+      setErro("Preencha o horário de início e de fim.");
+      return;
+    }
+
+    setEnviando(true);
     try {
-      // O plano vai sempre: texto vazio LIMPA o plano, que e' como a tela apaga.
+      const mudouIdentidade =
+        materiaId !== aula.materia_id ||
+        diaSemana !== aula.dia_semana ||
+        horaInicio !== aula.hora_inicio ||
+        horaFim !== aula.hora_fim;
+
+      if (mudouIdentidade) {
+        // PUT aqui e' SUBSTITUICAO TOTAL, nao merge parcial: `materia_id`
+        // omitido LIMPA a materia da aula (contrato de 25/07/2026, coberto por
+        // teste no backend). Por isso os quatro campos vao SEMPRE juntos,
+        // mesmo quando so' um deles mudou.
+        const resposta = await fetch(`/api/admin/aulas/${aula.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            dia_semana: diaSemana,
+            hora_inicio: horaInicio,
+            hora_fim: horaFim,
+            materia_id: materiaId,
+          }),
+        });
+        if (!resposta.ok) {
+          const corpo = await resposta.json().catch(() => null);
+          // 409 e' choque de horario, e o backend manda o nome da aula
+          // concorrente — dizer QUAL evita o professor tentar horarios no escuro.
+          if (resposta.status === 409) {
+            const nome = corpo?.detalhe?.nome ?? corpo?.erro?.nome;
+            throw new Error(
+              typeof nome === "string"
+                ? `Esse horário já é da aula de ${nome}.`
+                : "Esse horário choca com outra aula.",
+            );
+          }
+          throw new Error(
+            typeof corpo?.erro === "string"
+              ? corpo.erro
+              : "Não foi possível salvar o horário.",
+          );
+        }
+      }
+
+      // O plano vai sempre que muda: texto vazio LIMPA o plano, que e' como a
+      // tela apaga.
       if (plano !== aula.plano) {
         const resposta = await fetch(`/api/admin/aulas/${aula.id}/plano`, {
           method: "PUT",
@@ -152,11 +233,25 @@ export function EditorAula({ aula, aoFechar, aoSalvar }: Props) {
           body: form,
         });
         if (!resposta.ok) throw new Error("Não foi possível enviar o arquivo.");
+      } else if (link) {
+        const resposta = await fetch(`/api/admin/aulas/${aula.id}/link`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(link),
+        });
+        if (!resposta.ok) {
+          const corpo = await resposta.json().catch(() => null);
+          throw new Error(
+            typeof corpo?.erro === "string"
+              ? corpo.erro
+              : "Não foi possível salvar o link.",
+          );
+        }
       } else if (removerAnexo && aula.tem_anexo) {
         const resposta = await fetch(`/api/admin/aulas/${aula.id}/anexo`, {
           method: "DELETE",
         });
-        if (!resposta.ok) throw new Error("Não foi possível remover o anexo.");
+        if (!resposta.ok) throw new Error("Não foi possível remover o material.");
       }
 
       aoSalvar();
@@ -166,238 +261,21 @@ export function EditorAula({ aula, aoFechar, aoSalvar }: Props) {
     }
   }
 
-  // O anexo mostrado: o novo escolhido tem prioridade sobre o que ja estava.
-  const anexoAtual = arquivo
-    ? { nome: arquivo.name, tamanho: arquivo.size, novo: true }
-    : !removerAnexo && aula.tem_anexo && aula.anexo_nome
-      ? { nome: aula.anexo_nome, tamanho: aula.anexo_tamanho ?? 0, novo: false }
-      : null;
-
   return (
-    // Fundo do prototipo (.fundo-painel): veu roxo escuro a 28% com blur de
-    // 2px — nao o preto a 50% dos modais. O painel e' uma gaveta lateral, nao
-    // um modal centrado: escurecer demais faria a agenda atras sumir, e ela e'
-    // o contexto do que se esta editando.
-    <div
-      className="fixed inset-0 z-40 flex justify-end"
-      style={{
-        background: "rgba(30, 18, 45, 0.28)",
-        backdropFilter: "blur(2px)",
-      }}
-      onClick={aoFechar}
-    >
-      <aside
-        ref={refPainel}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={idTitulo}
-        onClick={(evento) => evento.stopPropagation()}
-        className="relative flex h-full w-[min(380px,100vw)] flex-col"
-        style={{
-          background: "var(--surface)",
-          borderLeft: "1px solid var(--border)",
-          backdropFilter: "var(--blur-card)",
-        }}
-      >
-        {/* O vidro do painel precisa de algo opaco atras: sobre a pagina
-            rolada ele ficaria ilegivel. Camada abaixo do conteudo (-z-10),
-            dentro do proprio painel. */}
-        <span
-          aria-hidden
-          className="absolute inset-0 -z-10"
-          style={{ background: "var(--painel-solido)", opacity: 0.92 }}
-        />
-
-        {/* .editor-topo: 16px 18px 12px, h2 de 15px peso 650. */}
-        <div className="border-border-default flex items-start gap-[10px] border-b px-[18px] pt-4 pb-3">
-          <div className="min-w-0 flex-1">
-            <h2
-              id={idTitulo}
-              className="text-text truncate text-[15px]"
-              style={{ fontWeight: 650 }}
-            >
-              {aula.materia_nome ?? "Sem matéria"} · {aula.hora_inicio}
-            </h2>
-            <p className="text-text-muted mt-0.5 text-[10.5px] capitalize">
-              {aula.dia_semana_nome} · {aula.turma_nome}
-            </p>
-          </div>
-          <BotaoIcone
-            rotulo="Fechar"
-            aoClicar={aoFechar}
-            desabilitado={enviando}
-            cor="var(--text-muted)"
-          >
-            <IconFechar size={16} />
-          </BotaoIcone>
-        </div>
-
-        {/* .editor-corpo: 16px 18px, gap 16px. */}
-        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-[18px] py-4">
-          {/* .campo: gap 6px. .campo-rotulo: 10px, peso 700, tracking .1em,
-              MAIUSCULA e apagado — e' etiqueta, nao titulo. */}
-          <div className="flex flex-col gap-1.5">
-            <label
-              htmlFor="campo-plano"
-              className="text-text-muted text-[10px] font-bold tracking-[0.1em] uppercase"
-            >
-              Plano da aula
-            </label>
-            <textarea
-              id="campo-plano"
-              ref={refPlano}
-              value={plano}
-              onChange={(evento) => setPlano(evento.target.value)}
-              maxLength={MAXIMO_PLANO}
-              disabled={enviando}
-              placeholder="Em uma frase: o que você vai dar nesta aula"
-              className="bg-surface-2 border-border-default text-text placeholder:text-text-muted min-h-[66px] w-full resize-y rounded-[9px] border px-[11px] py-[9px] text-[12.5px] outline-none focus:outline-2 focus:-outline-offset-1 focus:outline-[var(--primary-hover)]"
-            />
-            {/* O limite e' visivel ENQUANTO se escreve, nao um erro depois de
-                enviar. Fica ambar perto do fim pra avisar antes de cortar. */}
-            <span
-              className="self-end text-[10px] tabular-nums"
-              style={{
-                color:
-                  plano.length > MAXIMO_PLANO - 20
-                    ? "var(--warn-fg)"
-                    : "var(--text-muted)",
-                fontWeight: plano.length > MAXIMO_PLANO - 20 ? 600 : 400,
-              }}
-            >
-              {plano.length}/{MAXIMO_PLANO}
-            </span>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <span className="text-text-muted text-[10px] font-bold tracking-[0.1em] uppercase">
-              Material
-            </span>
-            <span className="text-text-muted text-[10.5px]">
-              Um arquivo por aula — enviar outro substitui o atual.
-            </span>
-
-            {anexoAtual ? (
-              <div className="bg-surface border-border-default flex items-center gap-3 rounded-xl border px-3.5 py-3">
-                <IconClipe size={16} className="text-text-muted flex-none" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-text-body truncate text-sm">
-                    {anexoAtual.nome}
-                  </p>
-                  <p className="text-text-muted text-[11px]">
-                    {formatarTamanho(anexoAtual.tamanho)}
-                    {anexoAtual.novo && " · será enviado ao salvar"}
-                  </p>
-                </div>
-
-                {/* Baixar so' faz sentido pro anexo QUE JA ESTA no servidor —
-                    o recem-escolhido ainda esta no computador do professor. */}
-                {!anexoAtual.novo && (
-                  <a
-                    href={`/api/admin/aulas/${aula.id}/anexo`}
-                    className="text-text-muted hover:text-primary flex-none rounded-lg p-1.5"
-                    aria-label={`Baixar ${anexoAtual.nome}`}
-                  >
-                    <IconBaixar size={16} />
-                  </a>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (anexoAtual.novo) setArquivo(null);
-                    else setRemoverAnexo(true);
-                  }}
-                  disabled={enviando}
-                  className="text-text-muted hover:text-danger flex-none rounded-lg p-1.5"
-                  aria-label={`Remover ${anexoAtual.nome}`}
-                >
-                  <IconLixeira size={16} />
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => refArquivo.current?.click()}
-                onDragEnter={(evento) => {
-                  evento.preventDefault();
-                  setArrastando(true);
-                }}
-                onDragOver={(evento) => evento.preventDefault()}
-                onDragLeave={() => setArrastando(false)}
-                onDrop={(evento) => {
-                  evento.preventDefault();
-                  setArrastando(false);
-                  const solto = evento.dataTransfer.files[0];
-                  if (solto) escolherArquivo(solto);
-                }}
-                disabled={enviando}
-                className="flex flex-col items-center gap-[5px] rounded-[9px] px-3 py-4 text-center text-[11.5px] transition-colors"
-                style={{
-                  // 1.5px cravado: a classe border-[1.5px] do Tailwind sai
-                  // como 0.8px no computado (ele resolve em rem e o browser
-                  // arredonda), e o tracejado fica fino demais.
-                  border: `1.5px dashed ${arrastando ? "var(--primary-hover)" : "var(--border)"}`,
-                  background: "var(--surface-2)",
-                  color: arrastando ? "var(--text-body)" : "var(--text-muted)",
-                }}
-              >
-                <IconSubir size={18} />
-                <span>
-                  Arraste um arquivo, cole com Ctrl+V
-                  <br />
-                  ou clique para escolher
-                </span>
-              </button>
-            )}
-
-            <input
-              ref={refArquivo}
-              type="file"
-              className="hidden"
-              onChange={(evento) => {
-                const escolhido = evento.target.files?.[0];
-                if (escolhido) escolherArquivo(escolhido);
-                // Zera pra que escolher o MESMO arquivo de novo dispare change.
-                evento.target.value = "";
-              }}
-            />
-
-            {removerAnexo && aula.tem_anexo && (
-              <p className="text-text-muted text-[13px]">
-                O anexo será removido ao salvar.{" "}
-                <button
-                  type="button"
-                  onClick={() => setRemoverAnexo(false)}
-                  className="font-semibold underline"
-                  style={{ color: "var(--primary)" }}
-                >
-                  Desfazer
-                </button>
-              </p>
-            )}
-          </div>
-
-          {erro && (
-            <p
-              role="alert"
-              className="rounded-xl px-4 py-3 text-sm font-semibold"
-              style={{ background: "var(--danger-bg)", color: "var(--danger-fg)" }}
-            >
-              {erro}
-            </p>
-          )}
-        </div>
-
-        {/* .editor-rodape: 12px 18px 16px, gap 8px, os DOIS botoes com
-            flex:1 — eles dividem a largura em vez de ficarem encostados na
-            direita. Numa gaveta estreita isso da alvos de toque grandes. */}
-        <div className="border-border-default flex gap-2 border-t px-[18px] pt-3 pb-4">
+    <Modal
+      aberto={aberto}
+      titulo="Editar aula"
+      subtitulo={aula.turma_nome}
+      largura="grande"
+      ocupado={enviando}
+      aoFechar={aoFechar}
+      rodape={
+        <>
           <button
             type="button"
             onClick={aoFechar}
             disabled={enviando}
-            className="bg-surface-2 border-border-default text-text-body flex-1 rounded-[9px] border p-2.5 text-[12.5px] font-semibold disabled:opacity-40"
+            className="bg-surface-2 border-border-default text-text-body rounded-[9px] border px-4 py-2.5 text-[13px] font-semibold disabled:opacity-40"
           >
             Cancelar
           </button>
@@ -405,7 +283,7 @@ export function EditorAula({ aula, aoFechar, aoSalvar }: Props) {
             type="button"
             onClick={() => void salvar()}
             disabled={enviando}
-            className="flex flex-1 items-center justify-center gap-2 rounded-[9px] p-2.5 text-[12.5px] font-semibold transition-opacity disabled:opacity-60"
+            className="flex items-center justify-center gap-2 rounded-[9px] px-5 py-2.5 text-[13px] font-semibold transition-opacity disabled:opacity-60"
             style={{ background: "var(--primary)", color: "var(--text-on-brand)" }}
           >
             {enviando && (
@@ -416,8 +294,170 @@ export function EditorAula({ aula, aoFechar, aoSalvar }: Props) {
             )}
             {enviando ? "Salvando..." : "Salvar"}
           </button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-5 pb-2">
+        {/* O QUE A AULA E'. Vem primeiro porque e' o que o professor reconhece
+            no bloco que ele acabou de clicar. */}
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="campo-materia" className={ROTULO}>
+              Matéria
+            </label>
+            <select
+              id="campo-materia"
+              value={materiaId ?? ""}
+              onChange={(evento) =>
+                setMateriaId(
+                  evento.target.value ? Number(evento.target.value) : null,
+                )
+              }
+              disabled={enviando}
+              className={`${ESTILO_CAMPO} cursor-pointer`}
+            >
+              <option value="">Sem matéria</option>
+              {materias.map((materia) => (
+                <option key={materia.id} value={materia.id}>
+                  {materia.nome}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="campo-dia" className={ROTULO}>
+                Dia
+              </label>
+              <select
+                id="campo-dia"
+                value={diaSemana}
+                onChange={(evento) => setDiaSemana(Number(evento.target.value))}
+                disabled={enviando}
+                className={`${ESTILO_CAMPO} cursor-pointer`}
+              >
+                {DIAS.map((dia) => (
+                  <option key={dia.valor} value={dia.valor}>
+                    {dia.nome}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="campo-inicio" className={ROTULO}>
+                Início
+              </label>
+              <input
+                id="campo-inicio"
+                type="time"
+                value={horaInicio}
+                onChange={(evento) => setHoraInicio(evento.target.value)}
+                disabled={enviando}
+                className={ESTILO_CAMPO}
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="campo-fim" className={ROTULO}>
+                Fim
+              </label>
+              <input
+                id="campo-fim"
+                type="time"
+                value={horaFim}
+                onChange={(evento) => setHoraFim(evento.target.value)}
+                disabled={enviando}
+                className={ESTILO_CAMPO}
+              />
+            </div>
+          </div>
         </div>
-      </aside>
-    </div>
+
+        {/* O QUE VAI ACONTECER NELA. */}
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="campo-plano" className={ROTULO}>
+            Plano da aula
+          </label>
+          <textarea
+            id="campo-plano"
+            ref={refPlano}
+            value={plano}
+            onChange={(evento) => setPlano(evento.target.value)}
+            maxLength={MAXIMO_PLANO}
+            disabled={enviando}
+            placeholder="Em uma frase: o que você vai dar nesta aula"
+            className={`${ESTILO_CAMPO} min-h-[66px] resize-y`}
+          />
+          {/* O limite e' visivel ENQUANTO se escreve, nao um erro depois de
+              enviar. Fica ambar perto do fim pra avisar antes de cortar. */}
+          <span
+            className="self-end text-[10px] tabular-nums"
+            style={{
+              color:
+                plano.length > MAXIMO_PLANO - 20
+                  ? "var(--warn-fg)"
+                  : "var(--text-muted)",
+              fontWeight: plano.length > MAXIMO_PLANO - 20 ? 600 : 400,
+            }}
+          >
+            {plano.length}/{MAXIMO_PLANO}
+          </span>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <span className={ROTULO}>Material</span>
+          <span className="text-text-muted text-[11.5px]">
+            Um arquivo ou um link por aula — o novo substitui o atual.
+          </span>
+
+          {materialAtual ? (
+            <LinhaDeAnexo
+              nome={materialAtual.nome}
+              detalhe={materialAtual.detalhe}
+              ehLink={materialAtual.ehLink}
+              href={materialAtual.href}
+              desabilitado={enviando}
+              aoRemover={() => {
+                if (arquivo) setArquivo(null);
+                else if (link) setLink(null);
+                else setRemoverAnexo(true);
+              }}
+            />
+          ) : (
+            <CampoAnexo
+              maximoBytes={MAXIMO_ANEXO_BYTES}
+              desabilitado={enviando}
+              aoEscolher={escolherAnexo}
+            />
+          )}
+
+          {removerAnexo && aula.tem_anexo && (
+            <p className="text-text-muted text-[12.5px]">
+              O material será removido ao salvar.{" "}
+              <button
+                type="button"
+                onClick={() => setRemoverAnexo(false)}
+                className="font-semibold underline"
+                style={{ color: "var(--primary)" }}
+              >
+                Desfazer
+              </button>
+            </p>
+          )}
+        </div>
+
+        {erro && (
+          <p
+            role="alert"
+            className="rounded-xl px-4 py-3 text-[13px] font-semibold"
+            style={{ background: "var(--danger-bg)", color: "var(--danger-fg)" }}
+          >
+            {erro}
+          </p>
+        )}
+      </div>
+    </Modal>
   );
 }
