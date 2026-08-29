@@ -1,8 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 
-import { IconAlerta, IconCalendario, IconCheck } from "@/components/ui/icons";
+import {
+  IconAlerta,
+  IconCalendario,
+  IconCheck,
+  IconLixeira,
+  IconMais,
+} from "@/components/ui/icons";
 import { dataDoTimestamp, formatarDataCurta } from "@/lib/format";
 import type { CronogramaSalvo, PreviaDoCronograma } from "@/lib/types";
 
@@ -29,6 +35,21 @@ import type { CronogramaSalvo, PreviaDoCronograma } from "@/lib/types";
  * O professor precisa VER que os 14 conteudos nao cabem antes de salvar, e
  * ainda em fevereiro. Gravar primeiro e avisar depois inverteria o unico
  * momento em que o aviso muda alguma coisa.
+ *
+ * REFORMA DE CLAREZA (29/08/2026)
+ * --------------------------------
+ * Ele apontou a tela como confusa. O que estava errado, especificamente:
+ *   - dois textarea do MESMO tamanho pra coisas de peso muito diferente —
+ *     conteudos e' o miolo da feature, excecoes e' o caso raro;
+ *   - o contador ("0 conteúdos na lista") lia como CONTAGEM ERRADA quando o
+ *     textarea mostrava so' o placeholder de exemplo — nao e' bug de logica,
+ *     e' o placeholder se disfarcando de dado real;
+ *   - "Salvar cronograma" parecia clicavel mas vinha desabilitado (a regra
+ *     "so' salva depois de ver a previa" ja' existia) sem dizer o motivo;
+ *   - datas a pular pediam AAAA-MM-DD escrito a mao, com date pickers de
+ *     verdade duas linhas acima;
+ *   - nao havia estado proprio pra "esta turma ainda nao tem cronograma".
+ * As correcoes estao marcadas abaixo, uma por uma.
  */
 
 /** Um conteudo por linha — o formato em que a escola entrega o currículo. */
@@ -51,6 +72,9 @@ const ESTILO_CAMPO = {
   color: "var(--text)",
 } as const;
 
+const ROTULO_CAMPO =
+  "text-[11px] font-semibold tracking-wide uppercase";
+
 type EditorCronogramaProps = {
   turmaId: number;
   nomeTurma: string;
@@ -69,8 +93,15 @@ export function EditorCronograma({
   const [texto, setTexto] = useState(
     inicial?.itens.map((item) => item.titulo).join("\n") ?? "",
   );
-  const [excecoes, setExcecoes] = useState(
-    inicial?.excecoes.join("\n") ?? "",
+  // CORRECAO: excecoes agora e' uma LISTA de datas, uma por vez, com
+  // <input type="date"> — nao mais um textarea de texto livre em AAAA-MM-DD.
+  // Guardado como array de verdade, e nao como string com quebra de linha: e'
+  // o formato que o formulario abaixo edita.
+  const [excecoes, setExcecoes] = useState<string[]>(inicial?.excecoes ?? []);
+  // Painel de "datas a pular" comeca FECHADO: e' o caso raro, e destaca-lo do
+  // mesmo jeito que os conteudos sugeriria que os dois pesam igual.
+  const [mostrarExcecoes, setMostrarExcecoes] = useState(
+    (inicial?.excecoes.length ?? 0) > 0,
   );
 
   const [previa, setPrevia] = useState<PreviaDoCronograma | null>(null);
@@ -79,15 +110,26 @@ export function EditorCronograma({
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
 
+  const idInicio = useId();
+  const idFim = useId();
+  const idPeriodo = useId();
+  const idConteudos = useId();
+
   const itens = separarLinhas(texto);
   const podePrever = inicio !== "" && fim !== "" && itens.length > 0;
+  // Mudou desde a ultima previa vista? Se mudou, a previa na tela nao
+  // corresponde mais ao que seria salvo — Salvar tem que ficar bloqueado ate'
+  // o professor conferir de novo.
+  const previaDesatualizada = previa === null;
 
   function corpo() {
     return {
       inicio,
       fim,
       itens,
-      excecoes: separarLinhas(excecoes),
+      // Filtra linhas vazias: "Adicionar data" comeca sem valor, e enviar ""
+      // junto das datas reais so' sujaria o `excecoes_json` gravado.
+      excecoes: excecoes.filter(Boolean),
       periodo: periodo.trim() || null,
     };
   }
@@ -126,6 +168,29 @@ export function EditorCronograma({
     }
   }
 
+  // Qualquer edicao depois de ver a previa invalida ela: o que esta na tela
+  // deixou de refletir o que seria salvo. Chamado pelos onChange abaixo.
+  function aoEditar() {
+    if (previa !== null) setPrevia(null);
+  }
+
+  function adicionarExcecao() {
+    setExcecoes((atuais) => [...atuais, ""]);
+    aoEditar();
+  }
+
+  function mudarExcecao(indice: number, valor: string) {
+    setExcecoes((atuais) =>
+      atuais.map((data, i) => (i === indice ? valor : data)),
+    );
+    aoEditar();
+  }
+
+  function removerExcecao(indice: number) {
+    setExcecoes((atuais) => atuais.filter((_, i) => i !== indice));
+    aoEditar();
+  }
+
   // A previa manda na tela enquanto existe; sem ela, mostra o que esta gravado.
   const emExibicao: PreviaDoCronograma | CronogramaSalvo | null =
     previa ?? salvo;
@@ -141,51 +206,67 @@ export function EditorCronograma({
         descontando feriados e semanas de prova.
       </p>
 
+      {/* CORRECAO: turma sem cronograma ganha um estado PROPRIO, em vez de a
+          tela simplesmente aparecer com campos vazios sem dizer nada. */}
+      {inicial === null && salvo === null && (
+        <div
+          className="ml-[17px] flex items-center gap-2 rounded-xl px-3.5 py-2.5 text-[12.5px]"
+          style={{ background: "var(--surface-2)", color: "var(--text-muted)" }}
+        >
+          <IconCalendario size={13} />
+          Esta turma ainda não tem cronograma. Preencha abaixo para criar o
+          primeiro.
+        </div>
+      )}
+
       <section className="rounded-2xl p-5" style={ESTILO_CARTAO}>
         <div className="grid gap-4 sm:grid-cols-3">
-          <label className="flex flex-col gap-1.5">
-            <span
-              className="text-[11px] font-semibold tracking-wide uppercase"
-              style={{ color: "var(--text-muted)" }}
-            >
+          <label htmlFor={idInicio} className="flex flex-col gap-1.5">
+            <span className={ROTULO_CAMPO} style={{ color: "var(--text-muted)" }}>
               Início do período
             </span>
             <input
+              id={idInicio}
               type="date"
               value={inicio}
-              onChange={(evento) => setInicio(evento.target.value)}
+              onChange={(evento) => {
+                setInicio(evento.target.value);
+                aoEditar();
+              }}
               className="rounded-xl px-3 py-2.5 text-sm"
               style={ESTILO_CAMPO}
             />
           </label>
 
-          <label className="flex flex-col gap-1.5">
-            <span
-              className="text-[11px] font-semibold tracking-wide uppercase"
-              style={{ color: "var(--text-muted)" }}
-            >
+          <label htmlFor={idFim} className="flex flex-col gap-1.5">
+            <span className={ROTULO_CAMPO} style={{ color: "var(--text-muted)" }}>
               Fim do período
             </span>
             <input
+              id={idFim}
               type="date"
               value={fim}
-              onChange={(evento) => setFim(evento.target.value)}
+              onChange={(evento) => {
+                setFim(evento.target.value);
+                aoEditar();
+              }}
               className="rounded-xl px-3 py-2.5 text-sm"
               style={ESTILO_CAMPO}
             />
           </label>
 
-          <label className="flex flex-col gap-1.5">
-            <span
-              className="text-[11px] font-semibold tracking-wide uppercase"
-              style={{ color: "var(--text-muted)" }}
-            >
+          <label htmlFor={idPeriodo} className="flex flex-col gap-1.5">
+            <span className={ROTULO_CAMPO} style={{ color: "var(--text-muted)" }}>
               Nome (opcional)
             </span>
             <input
+              id={idPeriodo}
               type="text"
               value={periodo}
-              onChange={(evento) => setPeriodo(evento.target.value)}
+              onChange={(evento) => {
+                setPeriodo(evento.target.value);
+                aoEditar();
+              }}
               placeholder="3º bimestre"
               className="rounded-xl px-3 py-2.5 text-sm"
               style={ESTILO_CAMPO}
@@ -193,49 +274,131 @@ export function EditorCronograma({
           </label>
         </div>
 
-        <label className="mt-5 flex flex-col gap-1.5">
+        {/* CORRECAO: o rotulo do bloco principal ganhou peso proprio (14px, nao
+            11px uppercase igual aos outros campos) — ele e' O QUE O
+            PROFESSOR VEIO FAZER AQUI, e precisa parecer maior que "Nome
+            (opcional)" ao lado. */}
+        <label htmlFor={idConteudos} className="mt-6 flex flex-col gap-1.5">
           <span
-            className="text-[11px] font-semibold tracking-wide uppercase"
-            style={{ color: "var(--text-muted)" }}
+            className="text-[14px] font-semibold"
+            style={{ color: "var(--text)" }}
           >
-            Conteúdos — um por linha
+            Conteúdos do período
+          </span>
+          <span className="text-[12px]" style={{ color: "var(--text-muted)" }}>
+            Um por linha, na ordem em que você vai dar. Cole direto do
+            currículo da escola.
           </span>
           <textarea
+            id={idConteudos}
             value={texto}
-            onChange={(evento) => setTexto(evento.target.value)}
+            onChange={(evento) => {
+              setTexto(evento.target.value);
+              aoEditar();
+            }}
             rows={8}
             placeholder={
               "Funções do 1º grau\nSistemas lineares\nFunção quadrática\nRevisão"
             }
-            className="resize-y rounded-xl px-3 py-2.5 font-mono text-[13px] leading-relaxed"
+            className="mt-1 resize-y rounded-xl px-3 py-2.5 font-mono text-[13px] leading-relaxed"
             style={ESTILO_CAMPO}
           />
-          <span className="text-[12px]" style={{ color: "var(--text-muted)" }}>
-            {itens.length}{" "}
-            {itens.length === 1 ? "conteúdo" : "conteúdos"} na lista. Cole
-            direto do currículo da escola.
-          </span>
+          {/* CORRECAO: o contador so' aparece com pelo menos 1 item. "0
+              conteúdos na lista" ao lado de um textarea mostrando so' o
+              PLACEHOLDER lia como contagem errada — o professor via 4 linhas
+              de exemplo e um "0" ao lado. Textarea vazio agora fica silencioso;
+              a instrucao acima ja' basta. */}
+          {itens.length > 0 && (
+            <span
+              className="text-[12px] font-medium"
+              style={{ color: "var(--text-muted)" }}
+            >
+              {itens.length} {itens.length === 1 ? "conteúdo" : "conteúdos"} na
+              lista.
+            </span>
+          )}
         </label>
 
-        <label className="mt-4 flex flex-col gap-1.5">
-          <span
-            className="text-[11px] font-semibold tracking-wide uppercase"
-            style={{ color: "var(--text-muted)" }}
-          >
-            Datas a pular — uma por linha (opcional)
-          </span>
-          <textarea
-            value={excecoes}
-            onChange={(evento) => setExcecoes(evento.target.value)}
-            rows={3}
-            placeholder={"2026-09-07\n2026-10-12"}
-            className="resize-y rounded-xl px-3 py-2.5 font-mono text-[13px]"
-            style={ESTILO_CAMPO}
-          />
-          <span className="text-[12px]" style={{ color: "var(--text-muted)" }}>
-            Feriados, conselho, semana de prova. Formato AAAA-MM-DD.
-          </span>
-        </label>
+        {/* CORRECAO: "Datas a pular" vira uma secao RECOLHIDA por padrao, do
+            tamanho de um link — nao mais um textarea do mesmo porte do bloco
+            principal. E' o caso raro (feriado, conselho, prova) tratado como
+            raro. */}
+        <div className="mt-5">
+          {!mostrarExcecoes ? (
+            <button
+              type="button"
+              onClick={() => setMostrarExcecoes(true)}
+              className="flex items-center gap-1.5 text-[12.5px] font-semibold transition-colors"
+              style={{ color: "var(--text-muted)" }}
+            >
+              <IconMais size={13} />
+              Pular feriado, conselho ou semana de prova
+              {excecoes.length > 0 && ` (${excecoes.length})`}
+            </button>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <span
+                  className={ROTULO_CAMPO}
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  Datas a pular
+                </span>
+                {excecoes.length === 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setMostrarExcecoes(false)}
+                    className="text-[12px] underline"
+                    style={{ color: "var(--text-muted)" }}
+                  >
+                    Fechar
+                  </button>
+                )}
+              </div>
+
+              {/* CORRECAO: um <input type="date"> por linha, igual aos campos
+                  de inicio/fim acima — em vez de exigir "AAAA-MM-DD" escrito a
+                  mao logo abaixo de dois date pickers nativos. */}
+              {excecoes.map((data, indice) => (
+                <div key={indice} className="flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={data}
+                    onChange={(evento) =>
+                      mudarExcecao(indice, evento.target.value)
+                    }
+                    className="rounded-xl px-3 py-2 text-sm"
+                    style={ESTILO_CAMPO}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removerExcecao(indice)}
+                    aria-label="Remover esta data"
+                    className="rounded-lg p-2 transition-colors"
+                    style={{ color: "var(--text-muted)" }}
+                  >
+                    <IconLixeira size={14} />
+                  </button>
+                </div>
+              ))}
+
+              <button
+                type="button"
+                onClick={adicionarExcecao}
+                className="flex w-fit items-center gap-1.5 text-[12.5px] font-semibold"
+                style={{ color: "var(--primary)" }}
+              >
+                <IconMais size={12} />
+                Adicionar data
+              </button>
+
+              <span className="text-[11.5px]" style={{ color: "var(--text-muted)" }}>
+                O app já desconta os feriados nacionais — só as datas
+                específicas da turma precisam entrar aqui.
+              </span>
+            </div>
+          )}
+        </div>
 
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <button
@@ -248,20 +411,38 @@ export function EditorCronograma({
             {ocupado === "previa" ? "Distribuindo…" : "Ver como fica"}
           </button>
 
-          {/* Salvar só depois de ver a prévia: é ela que mostra se cabe. */}
-          <button
-            type="button"
-            onClick={() => chamar("PUT")}
-            disabled={previa === null || ocupado !== null}
-            className="rounded-xl px-4 py-2.5 text-sm font-semibold transition-opacity disabled:opacity-50"
-            style={{
-              background: "var(--surface-2)",
-              border: "1px solid var(--border)",
-              color: "var(--text)",
-            }}
-          >
-            {ocupado === "salvar" ? "Salvando…" : "Salvar cronograma"}
-          </button>
+          {/* CORRECAO: o botao desabilitado agora diz PRA QUE serve o passo
+              anterior, em vez de so' aparecer apagado sem explicacao — a
+              regra ("so' salva depois de ver a previa, e ela some a cada
+              edicao") ja' existia no `disabled`, so' nao era comunicada. */}
+          <div className="flex flex-col gap-1">
+            <button
+              type="button"
+              onClick={() => chamar("PUT")}
+              disabled={previaDesatualizada || ocupado !== null}
+              title={
+                previaDesatualizada
+                  ? "Clique em “Ver como fica” primeiro"
+                  : undefined
+              }
+              className="rounded-xl px-4 py-2.5 text-sm font-semibold transition-opacity disabled:opacity-50"
+              style={{
+                background: "var(--surface-2)",
+                border: "1px solid var(--border)",
+                color: "var(--text)",
+              }}
+            >
+              {ocupado === "salvar" ? "Salvando…" : "Salvar cronograma"}
+            </button>
+            {previaDesatualizada && !erro && (
+              <span
+                className="text-[11px]"
+                style={{ color: "var(--text-muted)" }}
+              >
+                Veja como fica antes de salvar
+              </span>
+            )}
+          </div>
 
           {erro && (
             <p className="text-[12.5px]" style={{ color: "var(--danger-fg)" }}>
