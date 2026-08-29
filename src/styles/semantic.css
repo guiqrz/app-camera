@@ -36,6 +36,19 @@
      @supports em globals.css). Sem ele o card translucido fica ilegivel. */
   --painel-solido: #efe7f5;
 
+  /* Fundo das JANELAS SOBREPOSTAS (modais, dialogos de confirmacao, editores).
+     OPACO de proposito, e por isso nao e' --surface.
+
+     POR QUE EXISTE: --surface e' translucido (0.3 no claro, 0.055 no escuro)
+     porque cards vivem SOBRE a atmosfera da pagina, um fundo que o app
+     controla. Um modal e' position:fixed e flutua sobre conteudo ARBITRARIO --
+     texto, tabelas, outro card. Com 0.3 de opacidade o que esta atras
+     atravessa e o formulario fica ilegivel.
+
+     Mesma cor do --painel-solido, que ja resolve o caso "translucido sem
+     atmosfera atras" quando backdrop-filter nao existe. */
+  --modal: #efe7f5;
+
   /* Veu sobre o bloco PASTEL da agenda (o fundo do botao de editar). Nao e'
      --surface: aquele e' translucido sobre a atmosfera, e aqui o que esta
      atras e' o pastel solido da materia. Precisa clarear o pastel, nao o
@@ -221,23 +234,30 @@
   /* Cores de materia — o grifo atras do nome na grade e na lista.
      Par -bg/-fg por cor: o fundo e' o grifo, o texto vai por cima dele.
      Os ids (azul, verde, ...) espelham CORES_MATERIA no backend; o banco
-     guarda o id, e o tom exato de cada tema e' decidido aqui. */
-  --materia-azul-bg: rgba(220, 233, 252, 0.6);
-  --materia-azul-fg: #1a3d7d;
-  --materia-verde-bg: rgba(218, 242, 229, 0.6);
-  --materia-verde-fg: #0f5836;
-  --materia-ambar-bg: rgba(252, 238, 212, 0.6);
-  --materia-ambar-fg: #6b4405;
-  --materia-vermelho-bg: rgba(253, 224, 222, 0.6);
-  --materia-vermelho-fg: #9b2c26;
-  --materia-roxo-bg: rgba(235, 224, 249, 0.6);
-  --materia-roxo-fg: #4a2775;
-  --materia-rosa-bg: rgba(252, 224, 238, 0.6);
-  --materia-rosa-fg: #9b2c6a;
-  --materia-ciano-bg: rgba(213, 242, 246, 0.6);
-  --materia-ciano-fg: #0d5b66;
-  --materia-cinza-bg: rgba(230, 235, 240, 0.6);
-  --materia-cinza-fg: #414b57;
+     guarda o id, e o tom exato de cada tema e' decidido aqui.
+
+     CORES CHAPADAS, SEM ALFA (29/08): o grifo era `rgba(..., 0.6)` sobre
+     branco, o que achatava tudo em ~95% de claridade — os cards liam como
+     pastel lavado. Agora a cor ja' vem no tom final: ~85% de claridade, sem
+     depender do que estiver atras. Os 16 pares (8 cores x 2 temas) foram
+     medidos e passam em WCAG AA: o pior texto/grifo e' 5.17:1 (rosa claro),
+     bem acima dos 4.5:1. Mexer num tom exige remedir o par. */
+  --materia-azul-bg: #c3dcfb;
+  --materia-azul-fg: #123a7d;
+  --materia-verde-bg: #b6e8cd;
+  --materia-verde-fg: #0a5231;
+  --materia-ambar-bg: #fce0ab;
+  --materia-ambar-fg: #6b4001;
+  --materia-vermelho-bg: #fcc8c4;
+  --materia-vermelho-fg: #96241e;
+  --materia-roxo-bg: #ddc7f7;
+  --materia-roxo-fg: #452070;
+  --materia-rosa-bg: #fbc4e0;
+  --materia-rosa-fg: #962461;
+  --materia-ciano-bg: #b3e7ef;
+  --materia-ciano-fg: #0a545f;
+  --materia-cinza-bg: #dbe3ec;
+  --materia-cinza-fg: #38424e;
 
   /* Cores de grafico. Separadas das de materia de proposito: o grifo de
      texto precisa de contraste com o TEXTO por cima, o grafico precisa de
@@ -310,6 +330,8 @@
      blur tinha pouco tom a espalhar. */
   --painel: rgba(196, 165, 255, 0.12);
   --painel-solido: #241d2e;
+  /* Ver a nota em :root. Opaco pelo mesmo motivo. */
+  --modal: #241d2e;
 
   /* No escuro o pastel da materia ja e' escuro: o veu ESCURECE em vez de
      clarear, senao o botao virava um quadrado branco sobre o bloco. */
@@ -437,22 +459,22 @@
   --warn: #c2872b;
   --danger: #e2685f;
 
-  --materia-azul-bg: #1f2f4d;
-  --materia-azul-fg: #bcd6fa;
-  --materia-verde-bg: #17372a;
-  --materia-verde-fg: #a7e8c4;
-  --materia-ambar-bg: #3d3018;
-  --materia-ambar-fg: #f7d9a3;
-  --materia-vermelho-bg: rgba(224, 72, 63, 0.2);
-  --materia-vermelho-fg: #fca5a5;
-  --materia-roxo-bg: #33244a;
-  --materia-roxo-fg: #e0cbfa;
-  --materia-rosa-bg: rgba(219, 92, 158, 0.22);
-  --materia-rosa-fg: #f9a8d4;
-  --materia-ciano-bg: rgba(34, 172, 190, 0.2);
-  --materia-ciano-fg: #7fdbe8;
-  --materia-cinza-bg: rgba(255, 255, 255, 0.12);
-  --materia-cinza-fg: #cbd5e1;
+  --materia-azul-bg: #1e3f70;
+  --materia-azul-fg: #c5ddff;
+  --materia-verde-bg: #12513a;
+  --materia-verde-fg: #a6efc9;
+  --materia-ambar-bg: #54400f;
+  --materia-ambar-fg: #fbdca4;
+  --materia-vermelho-bg: #61201d;
+  --materia-vermelho-fg: #ffb9b4;
+  --materia-roxo-bg: #402766;
+  --materia-roxo-fg: #ddc4fb;
+  --materia-rosa-bg: #5d2145;
+  --materia-rosa-fg: #ffb3da;
+  --materia-ciano-bg: #0f4d59;
+  --materia-ciano-fg: #93e4f0;
+  --materia-cinza-bg: #333c48;
+  --materia-cinza-fg: #d3dbe5;
 
   /* No escuro o grafico clareia: os tons do claro somem no fundo #191228. */
   /* Ver o comentario da versao clara: a ordem separa o par roxo/azul, e
@@ -492,6 +514,8 @@
        conforme a origem da escolha do tema. */
     --painel: rgba(196, 165, 255, 0.12);
     --painel-solido: #241d2e;
+    /* Ver a nota em :root. Opaco pelo mesmo motivo. */
+    --modal: #241d2e;
 
     /* No escuro o pastel da materia ja e' escuro: o veu ESCURECE em vez de
        clarear, senao o botao virava um quadrado branco sobre o bloco. */
@@ -588,22 +612,22 @@
     --warn: #c2872b;
     --danger: #e2685f;
 
-    --materia-azul-bg: #1f2f4d;
-    --materia-azul-fg: #bcd6fa;
-    --materia-verde-bg: #17372a;
-    --materia-verde-fg: #a7e8c4;
-    --materia-ambar-bg: #3d3018;
-    --materia-ambar-fg: #f7d9a3;
-    --materia-vermelho-bg: rgba(224, 72, 63, 0.2);
-    --materia-vermelho-fg: #fca5a5;
-    --materia-roxo-bg: #33244a;
-    --materia-roxo-fg: #e0cbfa;
-    --materia-rosa-bg: rgba(219, 92, 158, 0.22);
-    --materia-rosa-fg: #f9a8d4;
-    --materia-ciano-bg: rgba(34, 172, 190, 0.2);
-    --materia-ciano-fg: #7fdbe8;
-    --materia-cinza-bg: rgba(255, 255, 255, 0.12);
-    --materia-cinza-fg: #cbd5e1;
+    --materia-azul-bg: #1e3f70;
+    --materia-azul-fg: #c5ddff;
+    --materia-verde-bg: #12513a;
+    --materia-verde-fg: #a6efc9;
+    --materia-ambar-bg: #54400f;
+    --materia-ambar-fg: #fbdca4;
+    --materia-vermelho-bg: #61201d;
+    --materia-vermelho-fg: #ffb9b4;
+    --materia-roxo-bg: #402766;
+    --materia-roxo-fg: #ddc4fb;
+    --materia-rosa-bg: #5d2145;
+    --materia-rosa-fg: #ffb3da;
+    --materia-ciano-bg: #0f4d59;
+    --materia-ciano-fg: #93e4f0;
+    --materia-cinza-bg: #333c48;
+    --materia-cinza-fg: #d3dbe5;
 
     /* Escurecidas e saturadas em relacao aos pasteis do tema: os tons de
        TEXTO do escuro (L~0,87, croma ~0,07) reprovavam 3 dos 5 checks como
