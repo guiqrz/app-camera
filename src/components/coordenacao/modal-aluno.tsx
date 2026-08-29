@@ -6,6 +6,8 @@ import {
   CamposDaFicha,
   FICHA_VAZIA,
   fichaEstaVazia,
+  fichaParaEnviar,
+  respostaInicial,
   type ValoresDaFicha,
 } from "@/components/coordenacao/campos-da-ficha";
 import { useFocoPreso } from "@/components/coordenacao/usar-foco-preso";
@@ -87,6 +89,8 @@ export function ModalAluno({
   const [ficha, setFicha] = useState<ValoresDaFicha>(FICHA_VAZIA);
   const [fichaOriginal, setFichaOriginal] = useState<ValoresDaFicha>(FICHA_VAZIA);
   const [carregandoFicha, setCarregandoFicha] = useState(false);
+  /** A opcao "condicoes especiais" esta marcada? Decide o que a ficha GRAVA. */
+  const [temCondicao, setTemCondicao] = useState(false);
 
   const editando = modo === "editar";
 
@@ -108,6 +112,7 @@ export function ModalAluno({
       }
       setFicha(FICHA_VAZIA);
       setFichaOriginal(FICHA_VAZIA);
+      setTemCondicao(false);
       // Ligada aqui, e nao dentro do efeito que busca: setState sincrono no
       // corpo de um efeito dispara render em cascata. Este bloco ja' roda
       // durante a renderizacao, que e' o lugar certo pra estado derivado.
@@ -172,6 +177,9 @@ export function ModalAluno({
             : FICHA_VAZIA;
         setFicha(valores);
         setFichaOriginal(valores);
+        // Ja' nasce marcada quando o aluno TEM apoio: senao a ficha de quem
+        // tem laudo abriria fechada e o professor acharia que o dado sumiu.
+        setTemCondicao(respostaInicial(valores));
       })
       .catch(() => {
         // Falha na ficha nao derruba o cadastro: o professor continua podendo
@@ -305,10 +313,14 @@ export function ModalAluno({
       // Enviada so' quando MUDOU: um PUT com os tres campos vazios APAGA a
       // ficha, e mandar sempre destruiria a ficha de todo aluno que tivesse o
       // nome corrigido.
+      // Desmarcar LIMPA a parte sensivel — mas so' aqui, no envio: com o modal
+      // aberto o professor podia voltar atras sem ter perdido nada.
+      const paraEnviar = fichaParaEnviar(ficha, temCondicao);
+
       const mudouFicha =
-        ficha.descricao !== fichaOriginal.descricao ||
-        ficha.adaptacoes !== fichaOriginal.adaptacoes ||
-        ficha.tipos_de_apoio.slice().sort().join() !==
+        paraEnviar.descricao !== fichaOriginal.descricao ||
+        paraEnviar.adaptacoes !== fichaOriginal.adaptacoes ||
+        paraEnviar.tipos_de_apoio.slice().sort().join() !==
           fichaOriginal.tipos_de_apoio.slice().sort().join();
 
       if (mudouFicha) {
@@ -318,7 +330,7 @@ export function ModalAluno({
           {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(ficha),
+            body: JSON.stringify(paraEnviar),
           },
         );
         if (!resposta.ok) {
@@ -495,19 +507,37 @@ export function ModalAluno({
               Vive aqui desde 29/08/2026; antes era um painel separado na pagina
               da turma, e dois lugares editando o mesmo dado saem de sincronia.
               As travas continuam no backend (ver gestao/fichas.py). */}
+          {/* MAIS VISIVEL (29/08/2026): era `--surface-2`, a elevacao mais
+              sutil do sistema — o card se perdia entre os campos e ele nao
+              achava. Agora tem superficie propria, borda na cor da marca e um
+              filete de destaque na esquerda. */}
           <div
-            className="flex flex-col gap-3 rounded-xl p-4"
+            className="flex flex-col gap-3 overflow-hidden rounded-xl p-4"
             style={{
-              background: "var(--surface-2)",
-              border: "1px solid var(--border)",
+              background: "var(--surface)",
+              border: "1px solid var(--primary-soft-hover)",
+              borderLeft: "3px solid var(--primary)",
+              boxShadow: "var(--shadow-card)",
             }}
           >
             <div className="flex items-center gap-2">
-              <IconFicha size={16} className="text-text-muted flex-none" />
-              <h3 className="text-text text-[13px] font-semibold">
+              {/* O icone ganha um disco da marca: sozinho, em --text-muted, ele
+                  lia como decoracao. */}
+              <span
+                className="grid size-[26px] flex-none place-items-center rounded-lg"
+                /* A cor vai no CONTAINER: os icones do projeto desenham com
+                   `currentColor`, e `IconProps` nao aceita `style`. */
+                style={{ background: "var(--primary-soft)", color: "var(--primary)" }}
+                aria-hidden
+              >
+                <IconFicha size={15} />
+              </span>
+              <h3 className="text-text text-[14px] font-semibold">
                 Ficha de apoio
               </h3>
-              <span className="text-text-muted text-[11px]">tudo opcional</span>
+              <span className="text-text-muted ml-auto text-[11px]">
+                tudo opcional
+              </span>
             </div>
 
             {carregandoFicha ? (
@@ -519,6 +549,8 @@ export function ModalAluno({
               <CamposDaFicha
                 valores={ficha}
                 aoMudar={setFicha}
+                temCondicao={temCondicao}
+                aoResponder={setTemCondicao}
                 desabilitado={enviando}
               />
             )}
