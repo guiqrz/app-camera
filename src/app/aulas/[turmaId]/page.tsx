@@ -16,13 +16,17 @@ import {
   buscarContinuidadeDaTurma,
   buscarEstatisticasDaTurma,
   buscarSemanaDaTurma,
+  listarEventosDaAgenda,
+  listarMaterias,
   listarTurmas,
 } from "@/lib/api";
 import { consolidarTurma } from "@/lib/consolidar";
+import { periodoDaAgenda } from "@/lib/semana";
 
 type Props = {
   // No App Router os parametros de rota chegam como Promise.
   params: Promise<{ turmaId: string }>;
+  searchParams: Promise<{ data?: string }>;
 };
 
 export async function generateMetadata({ params }: Props) {
@@ -36,16 +40,27 @@ export async function generateMetadata({ params }: Props) {
   return { title: `Aulas · ${aulas.turma.nome} — Cupcam Insights` };
 }
 
-export default async function AulasDaTurmaPage({ params }: Props) {
+export default async function AulasDaTurmaPage({ params, searchParams }: Props) {
   const { turmaId } = await params;
+  const { data } = await searchParams;
   const id = Number(turmaId);
 
   // Endereco com id nao numerico (/aulas/abc) e' 404, nao erro de servidor.
   if (!Number.isInteger(id) || id <= 0) notFound();
 
   // As chamadas sao independentes: em paralelo, nao em sequencia.
-  const [turmas, aulas, continuidade, semana, estatisticas, atraso] =
-    await Promise.all([
+  const periodo = periodoDaAgenda(data);
+
+  const [
+    turmas,
+    aulas,
+    continuidade,
+    semana,
+    estatisticas,
+    atraso,
+    materias,
+    eventos,
+  ] = await Promise.all([
     listarTurmas(),
     buscarAulasDaTurma(id).catch((causa) => {
       if (causa instanceof ApiError && causa.isNotFound) notFound();
@@ -65,6 +80,12 @@ export default async function AulasDaTurmaPage({ params }: Props) {
     // IA: barata o bastante pra carregar junto da tela. A sugestao da proxima
     // aula (F11), que gasta modelo, fica sob demanda dentro do componente.
     buscarAtrasoDaTurma(id).catch(() => null),
+    // Materias pro dropdown do formulario de aula nova, dentro da agenda.
+    // Lista vazia e' valida: a aula pode ser criada sem materia.
+    listarMaterias().catch(() => []),
+    // Mesma logica das outras: a grade nao pode sumir porque os eventos
+    // falharam.
+    listarEventosDaAgenda({ ...periodo, turmaId: id }).catch(() => []),
   ]);
 
   // Reusa o mesmo consolidador da tela Relatorios: a media de engajamento e a
@@ -74,10 +95,6 @@ export default async function AulasDaTurmaPage({ params }: Props) {
     ? consolidarTurma(aulas.aulas, estatisticas)
     : null;
 
-  // Turma sem NENHUMA aula na grade nao desenha o bloco: cinco colunas dizendo
-  // "Sem aula" ocupam meia tela pra nao informar nada. A API sempre devolve os
-  // 7 dias, entao `semana.length > 0` nao serve como teste aqui.
-  const temGrade = semana?.some((dia) => dia.aulas.length > 0) ?? false;
 
   return (
     <AppShell
@@ -104,8 +121,20 @@ export default async function AulasDaTurmaPage({ params }: Props) {
           <SeletorTurma turmas={turmas} turmaAtualId={id} comOpcaoTodas />
         </div>
 
-        {temGrade && semana && (
-          <AgendaSemana semana={semana} nomeDaTurma={aulas.turma.nome} />
+        {/* A condicao caiu de `temGrade` pra `semana`: com o botao de
+            adicionar, a grade VAZIA deixou de ser cinco colunas dizendo "sem
+            aula" e passou a ser o lugar onde a primeira aula da turma nasce.
+            Escondendo o bloco, uma turma recem-criada nao teria por onde
+            comecar a grade sem ir ate' a tela de Coordenacao. */}
+        {semana && (
+          <AgendaSemana
+            semana={semana}
+            nomeDaTurma={aulas.turma.nome}
+            turmaId={id}
+            materias={materias}
+            eventos={eventos}
+            data={data}
+          />
         )}
 
         {estatisticas && (

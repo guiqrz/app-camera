@@ -21,7 +21,7 @@ export async function generateMetadata({ params }: Props) {
 }
 
 /**
- * Tela de fim de periodo: conselho de classe (F2) e boletim pra familia (F3).
+ * Tela de fim de periodo: o rascunho do conselho de classe (F2).
  *
  * As duas moram na mesma tela porque sao o mesmo material com outro leitor e
  * outro tom — e porque o professor faz as duas no MESMO momento do ano, na

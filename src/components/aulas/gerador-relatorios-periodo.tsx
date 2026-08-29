@@ -6,7 +6,7 @@ import { IconCopiar, IconEstrela, IconInfo } from "@/components/ui/icons";
 import type { RascunhoDePeriodo } from "@/lib/types";
 
 /**
- * Features F2 (conselho de classe) e F3 (boletim pra familia).
+ * Feature F2 (conselho de classe).
  *
  * POR QUE A F2 E' A PRIORIDADE 1 DO LOTE
  * --------------------------------------
@@ -29,31 +29,18 @@ import type { RascunhoDePeriodo } from "@/lib/types";
  * e' um app que ele desliga.
  */
 
-type Tipo = "conselho" | "boletim";
+/* O gerador nasceu com dois relatorios (conselho e boletim pra familia). O
+   boletim foi removido a pedido do professor em 25/08/2026, entao o seletor
+   de tipo saiu junto: um radiogroup de uma opcao so' e' controle morto. O
+    continua indo no corpo da requisicao porque a ponte e a API ainda
+   discriminam por ele. */
+const TIPO = "conselho" as const;
 
-const TIPOS: {
-  id: Tipo;
-  rotulo: string;
-  descricao: string;
-  aviso: string;
-}[] = [
-  {
-    id: "conselho",
-    rotulo: "Rascunho do conselho",
-    descricao:
-      "O que foi trabalhado no período e a frequência da turma, no formato que o conselho de classe pede.",
-    aviso:
-      "Leva a frequência média da turma. Nunca engajamento por aluno, nunca transcrição.",
-  },
-  {
-    id: "boletim",
-    rotulo: "Boletim para a família",
-    descricao:
-      "O mesmo período em linguagem de pai: o que a turma estudou e como evoluiu.",
-    aviso:
-      "Não leva nenhum dado de aluno — nem a frequência agregada. Sem nota, sem nome, sem comparação.",
-  },
-];
+const ESCOLHIDO = {
+  rotulo: "Rascunho do conselho",
+  aviso:
+    "Leva a frequência média da turma. Nunca engajamento por aluno, nunca transcrição.",
+};
 
 const ESTILO_CARTAO = {
   background: "var(--surface)",
@@ -74,7 +61,6 @@ export function GeradorRelatoriosPeriodo({
   turmaId: number;
   nomeTurma: string;
 }) {
-  const [tipo, setTipo] = useState<Tipo>("conselho");
   const [inicio, setInicio] = useState("");
   const [fim, setFim] = useState("");
   const [periodo, setPeriodo] = useState("");
@@ -89,7 +75,6 @@ export function GeradorRelatoriosPeriodo({
   // perder o original quando ele edita.
   const [textoEditado, setTextoEditado] = useState("");
 
-  const escolhido = TIPOS.find((item) => item.id === tipo)!;
   const podeGerar = inicio !== "" && fim !== "" && !gerando;
 
   async function gerar() {
@@ -101,7 +86,7 @@ export function GeradorRelatoriosPeriodo({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          tipo,
+          tipo: TIPO,
           inicio,
           fim,
           periodo: periodo.trim() || null,
@@ -152,50 +137,6 @@ export function GeradorRelatoriosPeriodo({
       </p>
 
       <section className="rounded-2xl p-5" style={ESTILO_CARTAO}>
-        {/* --- Qual dos dois --- */}
-        <div
-          role="radiogroup"
-          aria-label="Tipo de relatório"
-          className="grid gap-3 sm:grid-cols-2"
-        >
-          {TIPOS.map((item) => {
-            const ativo = item.id === tipo;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                role="radio"
-                aria-checked={ativo}
-                onClick={() => {
-                  setTipo(item.id);
-                  // O texto anterior é de OUTRO relatório: mantê-lo na tela
-                  // depois de trocar o tipo faria o professor copiar o
-                  // boletim achando que é o conselho.
-                  setResultado(null);
-                  setErro(null);
-                }}
-                className="rounded-xl p-4 text-left transition-transform hover:-translate-y-px"
-                style={{
-                  background: ativo ? "var(--primary-soft)" : "var(--surface-2)",
-                  border: `1px solid ${ativo ? "var(--primary)" : "var(--border)"}`,
-                }}
-              >
-                <span
-                  className="text-[13.5px] font-semibold"
-                  style={{ color: ativo ? "var(--text-brand)" : "var(--text)" }}
-                >
-                  {item.rotulo}
-                </span>
-                <span
-                  className="mt-1 block text-[12.5px] leading-snug"
-                  style={{ color: "var(--text-muted)" }}
-                >
-                  {item.descricao}
-                </span>
-              </button>
-            );
-          })}
-        </div>
 
         {/* --- O período --- */}
         <div className="mt-5 grid gap-4 sm:grid-cols-3">
@@ -259,7 +200,7 @@ export function GeradorRelatoriosPeriodo({
           <span className="mt-0.5 flex-none">
             <IconInfo size={13} />
           </span>
-          {escolhido.aviso}
+          {ESCOLHIDO.aviso}
         </p>
 
         <div className="mt-5 flex flex-wrap items-center gap-3">
@@ -271,7 +212,7 @@ export function GeradorRelatoriosPeriodo({
             style={{ background: "var(--primary)" }}
           >
             <IconEstrela size={13} />
-            {gerando ? "Escrevendo…" : `Gerar ${escolhido.rotulo.toLowerCase()}`}
+            {gerando ? "Escrevendo…" : `Gerar ${ESCOLHIDO.rotulo.toLowerCase()}`}
           </button>
 
           {erro && (
@@ -291,7 +232,7 @@ export function GeradorRelatoriosPeriodo({
                 className="text-[11px] font-semibold tracking-wide uppercase"
                 style={{ color: "var(--text-muted)" }}
               >
-                {escolhido.rotulo}
+                {ESCOLHIDO.rotulo}
               </h2>
               {/* Sobre QUANTO material o texto foi escrito. Sem isso o
                   professor não tem como julgar se pode confiar nele: um
@@ -333,7 +274,7 @@ export function GeradorRelatoriosPeriodo({
             rows={16}
             className="w-full resize-y rounded-xl px-3.5 py-3 text-[13.5px] leading-relaxed"
             style={ESTILO_CAMPO}
-            aria-label={`Texto do ${escolhido.rotulo.toLowerCase()}, editável`}
+            aria-label={`Texto do ${ESCOLHIDO.rotulo.toLowerCase()}, editável`}
           />
 
           <p

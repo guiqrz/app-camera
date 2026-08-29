@@ -22,7 +22,7 @@ const ATALHOS = [
   {
     href: "relatorios-periodo",
     rotulo: "Fim de período",
-    descricao: "Rascunho do conselho e boletim para a família.",
+    descricao: "Rascunho do conselho de classe, a partir do que foi dado.",
     Icone: IconRelatorios,
   },
 ];

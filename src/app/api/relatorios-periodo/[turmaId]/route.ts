@@ -1,28 +1,24 @@
 import { NextResponse } from "next/server";
 
-import {
-  ApiError,
-  gerarBoletimDaFamilia,
-  gerarRascunhoDoConselho,
-} from "@/lib/api";
+import { ApiError, gerarRascunhoDoConselho } from "@/lib/api";
 
 /**
- * Ponte dos relatorios de fim de periodo: conselho (F2) e boletim (F3).
+ * Ponte do relatorio de fim de periodo: o conselho de classe (F2).
  *
  * Existe pelo mesmo motivo das outras pontes: a chave da API do CUPCAM fica no
  * servidor e nunca chega ao navegador (ver o cabecalho de lib/api.ts).
  *
- * As duas features moram na MESMA ponte porque sao o mesmo motor com outro
- * recorte: o conselho leva frequencia da turma, o boletim da familia nao leva
- * nenhum dado de aluno — nem agregado. O `tipo` no corpo escolhe qual.
+ * O boletim pra familia (F3) morava aqui e foi removido em 25/08/2026. O
+ * `tipo` continua sendo validado porque o corpo ainda o carrega — recusar um
+ * valor desconhecido e' mais seguro que ignora-lo.
  *
  * POST e nao GET porque GASTA chamada de IA: um GET seria cacheado,
  * pre-carregado pelo navegador e repetido a cada F5, cada um custando dinheiro
  * e devolvendo um texto ligeiramente diferente do que o professor acabou de
  * ler.
  *
- * NENHUMA das duas grava ou envia nada. O texto volta pro professor ler,
- * corrigir e usar — o documento vai ser assinado por ele.
+ * NAO grava nem envia nada. O texto volta pro professor ler, corrigir e usar —
+ * o documento vai ser assinado por ele.
  */
 
 export const dynamic = "force-dynamic";
@@ -73,9 +69,9 @@ export async function POST(
     periodo?: unknown;
   };
 
-  if (corpo.tipo !== "conselho" && corpo.tipo !== "boletim") {
+  if (corpo.tipo !== "conselho") {
     return NextResponse.json(
-      { erro: "Escolha entre o rascunho do conselho e o boletim." },
+      { erro: "Tipo de relatório desconhecido." },
       { status: 422 },
     );
   }
@@ -96,10 +92,7 @@ export async function POST(
   };
 
   try {
-    const texto =
-      corpo.tipo === "conselho"
-        ? await gerarRascunhoDoConselho(id, periodo)
-        : await gerarBoletimDaFamilia(id, periodo);
+    const texto = await gerarRascunhoDoConselho(id, periodo);
     return NextResponse.json(texto);
   } catch (causa) {
     if (causa instanceof ApiError) {
