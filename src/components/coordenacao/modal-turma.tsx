@@ -134,7 +134,7 @@ export function ModalTurma({ aberto, aoFechar, aoSalvar }: ModalTurmaProps) {
         onClick={(evento) => evento.stopPropagation()}
         className="flex w-full max-w-md flex-col gap-5 rounded-2xl p-6"
         style={{
-          background: "var(--surface)",
+          background: "var(--modal)",
           border: "1px solid var(--border)",
           boxShadow: "var(--shadow-raise)",
         }}
