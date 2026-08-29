@@ -49,7 +49,14 @@ export function BlocoColapsavel({
 
   return (
     <section
-      className="bg-surface border-border-default flex flex-col overflow-hidden rounded-[12px] border"
+      /* `self-start` quando FECHADO: a grade pai usa `items-stretch` pra igualar
+         a altura de dois blocos lado a lado, e sem isto um bloco fechado
+         continuava esticado ate' a altura do vizinho — o conteudo sumia mas a
+         caixa vazia ficava (ele apontou em 29/08). Aberto, o stretch volta e o
+         par continua alinhado. */
+      className={`bg-surface border-border-default flex flex-col overflow-hidden rounded-[12px] border ${
+        aberto ? "" : "self-start"
+      }`}
       style={
         {
           boxShadow: "var(--shadow-card)",
