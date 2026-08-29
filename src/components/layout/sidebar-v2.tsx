@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ComponentType } from "react";
@@ -12,7 +13,6 @@ import {
   IconChamada,
   IconConfiguracoes,
   IconFechar,
-  IconMais,
   IconRecolherMenu,
   IconRelatorios,
 } from "@/components/ui/icons";
@@ -131,7 +131,11 @@ export function SidebarV2({ aberto, aoFechar }: SidebarProps) {
       )}
 
       {/* O painel FLUTUA: `inset-y-3 left-3` (em vez de colar em inset-y-0
-          left-0 como a v1) destaca a coluna do fundo, igual a referencia —
+          left-0 como a v1) destaca a coluna do fundo, igual a referencia.
+          `lg:ml-3 lg:mr-4` da' o respiro dos DOIS lados no computador — sem o
+          `mr` a coluna encostava no conteudo e os textos quase se tocavam
+          (ele apontou em 29/08/2026). O `ml` repete o afastamento da borda,
+          que no modo `sticky` o `left-3` do `fixed` nao aplica. —
           la' o painel tem folga dos 4 lados da tela. Cantos bem arredondados
           (--radius-xl, 24px) reforcam a leitura de "objeto pousado".
 
@@ -139,7 +143,7 @@ export function SidebarV2({ aberto, aoFechar }: SidebarProps) {
           o degrade solido da v1 — a referencia e' um fosco raso, nao um
           gradiente de cor forte. */}
       <aside
-        className={`fixed inset-y-3 left-3 z-50 flex w-[var(--sidebar-w)] flex-col gap-4 overflow-hidden rounded-[var(--radius-xl)] px-3 pt-4 pb-3 shadow-[var(--shadow-raise)] transition-[transform,padding] duration-200 lg:sticky lg:top-3 lg:h-[calc(100vh-1.5rem)] lg:translate-x-0 ${
+        className={`fixed inset-y-3 left-3 z-50 flex w-[var(--sidebar-w)] flex-col gap-4 overflow-hidden rounded-[var(--radius-xl)] px-3 pt-4 pb-3 shadow-[var(--shadow-raise)] transition-[transform,padding] duration-200 lg:sticky lg:top-3 lg:mr-4 lg:ml-3 lg:h-[calc(100vh-1.5rem)] lg:translate-x-0 ${
           aberto ? "translate-x-0" : "-translate-x-[120%]"
         } ${recolhida ? "lg:px-[11px]" : ""}`}
         style={{
@@ -150,41 +154,45 @@ export function SidebarV2({ aberto, aoFechar }: SidebarProps) {
         }}
         aria-label="Menu principal"
       >
-        {/* Cabecalho: avatar circular + saudacao em duas linhas, como no
-            desenho ("Good Day 👋" pequeno em cima, nome grande embaixo). O
-            avatar reusa as iniciais do cartao de perfil (GQ) em vez de foto —
-            o app nao tem upload de avatar. */}
+        {/* Cabecalho: a MARCA, como na v1 (pedido dele em 29/08/2026). A
+            referencia poe avatar e saudacao aqui, mas o nome do professor ja'
+            aparece no cartao do rodape — repetir gastaria o topo com dado
+            duplicado em vez da identidade do produto. */}
         <div
-          className={`flex items-center gap-2.5 px-1 pt-0.5 ${
-            recolhida ? "lg:flex-col lg:gap-2" : ""
+          className={`flex items-center gap-[9px] px-1 pt-0.5 ${
+            recolhida ? "lg:flex-col lg:gap-2.5 lg:px-0" : ""
           }`}
         >
           <span
-            className="grid h-[38px] w-[38px] flex-none place-items-center overflow-hidden rounded-full text-[13px] text-white"
-            style={{ background: "var(--sidebar-v2-acao)", fontWeight: 650 }}
+            className="grid h-[30px] w-[30px] flex-none place-items-center overflow-hidden rounded-full"
             aria-hidden
           >
-            GQ
+            <Image
+              src="/logo-cupcam.png"
+              alt=""
+              width={30}
+              height={30}
+              className="h-full w-full object-contain"
+              priority
+            />
           </span>
-
-          <div className={`min-w-0 ${recolhida ? "lg:hidden" : ""}`}>
-            <p
-              className="truncate text-[11px] leading-none"
-              style={{ color: "var(--sidebar-v2-text-muted)" }}
-            >
-              Boa aula 👋
-            </p>
-            <p
-              className="truncate text-[15px] leading-[1.3] font-semibold"
-              style={{
-                color: "var(--sidebar-v2-text)",
-                fontFamily: "var(--font-display)",
-                letterSpacing: "-0.01em",
-              }}
-            >
-              Guilherme
-            </p>
-          </div>
+          {/* Traco fino entre a logo e o nome — o mesmo da v1. Some quando a
+              coluna recolhe, junto com o nome. */}
+          <span
+            className={`h-[18px] w-px flex-none ${recolhida ? "lg:hidden" : ""}`}
+            style={{ background: "var(--sidebar-v2-borda)" }}
+            aria-hidden
+          />
+          <span
+            className={`text-[16px] font-semibold ${recolhida ? "lg:hidden" : ""}`}
+            style={{
+              color: "var(--sidebar-v2-text)",
+              fontFamily: "var(--font-display)",
+              letterSpacing: "-0.02em",
+            }}
+          >
+            Cupcam
+          </span>
 
           <button
             type="button"
@@ -263,9 +271,10 @@ export function SidebarV2({ aberto, aoFechar }: SidebarProps) {
             </nav>
           </div>
 
-          {/* Grupo "Apoio": CARTAO BRANCO arredondado por dentro, como o
-              cartao "Service" da referencia — o que separa esse grupo do
-              resto nao e' so' o rotulo, e' uma camada propria. */}
+          {/* Grupo "Apoio": SEM cartao proprio (pedido dele em 29/08/2026). A
+              referencia embrulha esse grupo numa camada branca, mas aqui ela
+              competia com a pilula do item ativo por atencao — o rotulo com o
+              contador ja' separa os dois grupos. */}
           <div>
             <p
               className={`mb-1.5 flex items-baseline gap-1 px-2 text-[10px] font-bold uppercase ${
@@ -280,12 +289,7 @@ export function SidebarV2({ aberto, aoFechar }: SidebarProps) {
               <span aria-hidden>· {GRUPOS[1].itens.length}</span>
             </p>
 
-            <nav
-              className={`flex flex-col gap-1 rounded-[var(--radius-lg)] ${
-                recolhida ? "p-1 lg:p-1" : "p-1.5"
-              }`}
-              style={{ background: "var(--sidebar-v2-cartao)" }}
-            >
+            <nav className="flex flex-col gap-1">
               {GRUPOS[1].itens.map(({ rotulo, href, Icone }) => (
                 <ItemDeMenu
                   key={href}
@@ -301,11 +305,11 @@ export function SidebarV2({ aberto, aoFechar }: SidebarProps) {
           </div>
         </div>
 
-        {/* Rodape: cartao de perfil (mesmo conteudo da v1 — GQ / Guilherme /
-            Professor) e, abaixo, o BOTAO CIRCULAR GRANDE de acao da
-            referencia. Ele abre "Minhas aulas", a acao mais frequente do
-            professor (equivalente ao "Create new task" do desenho). */}
-        <div className="mt-auto flex flex-col gap-2.5">
+        {/* Rodape: so' o cartao de perfil. O botao circular de acao da
+            referencia saiu (pedido dele em 29/08/2026) — la' ele e' "criar
+            tarefa", e aqui nao havia acao equivalente: virava um atalho a mais
+            pra uma tela que ja' esta no menu logo acima. */}
+        <div className="mt-auto">
           <div
             className={`flex items-center gap-[9px] rounded-[12px] p-[9px] ${
               recolhida ? "lg:justify-center lg:px-0 lg:py-[7px]" : ""
@@ -335,27 +339,6 @@ export function SidebarV2({ aberto, aoFechar }: SidebarProps) {
             </div>
           </div>
 
-          <Link
-            href="/aulas"
-            onClick={aoFechar}
-            title="Minhas aulas"
-            aria-label="Ir para Minhas aulas"
-            className={`grid place-items-center rounded-full text-white transition-colors ${
-              recolhida
-                ? "mx-auto h-[38px] w-[38px]"
-                : "h-[46px] w-full"
-            }`}
-            style={{ background: "var(--sidebar-v2-acao)" }}
-            onMouseEnter={(evento) => {
-              evento.currentTarget.style.background =
-                "var(--sidebar-v2-acao-hover)";
-            }}
-            onMouseLeave={(evento) => {
-              evento.currentTarget.style.background = "var(--sidebar-v2-acao)";
-            }}
-          >
-            <IconMais size={recolhida ? 16 : 18} />
-          </Link>
         </div>
       </aside>
     </>
@@ -387,10 +370,11 @@ function ItemDeMenu({
       onClick={aoFechar}
       aria-current={ativo ? "page" : undefined}
       title={rotulo}
-      /* `rounded-full` nos 4 cantos (e nao so' a esquerda como na v1): na
-         referencia a pilula ativa e' um objeto FECHADO, solto dentro do
-         painel — nao sangra ate' a borda. */
-      className={`flex items-center rounded-full text-[13.5px] transition-colors ${
+      /* `rounded-[10px]`, e nao `rounded-full` (pedido dele em 29/08/2026):
+         canto mais fechado, quadrado o bastante pra o item ler como bloco e
+         nao como capsula. O item continua solto dentro do painel — nao sangra
+         ate' a borda como na v1. */
+      className={`flex items-center rounded-[10px] text-[13.5px] transition-colors ${
         recolhida
           ? "gap-2.5 px-3 py-2.5 lg:justify-center lg:gap-0 lg:px-0"
           : "gap-2.5 px-3 py-2.5"
