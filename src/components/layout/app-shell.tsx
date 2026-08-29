@@ -3,7 +3,10 @@
 import { useState, type ReactNode } from "react";
 
 import { Header } from "./header";
-import { Sidebar } from "./sidebar";
+/* SIDEBAR V2 (29/08/2026) — a versao nova, desenhada a partir da segunda
+   referencia que ele mandou. A v1 continua em `./sidebar`, intocada: pra
+   voltar, troque este import e o uso logo abaixo de volta pra `Sidebar`. */
+import { SidebarV2 } from "./sidebar-v2";
 
 type AppShellProps = {
   /** Titulo curto para o cabecalho no celular. */
@@ -71,7 +74,7 @@ export function AppShell({
       className="relative z-[1] flex min-h-screen"
       style={{ background: "var(--painel)" }}
     >
-      <Sidebar aberto={menuAberto} aoFechar={() => setMenuAberto(false)} />
+      <SidebarV2 aberto={menuAberto} aoFechar={() => setMenuAberto(false)} />
 
       <div className="flex min-w-0 flex-1 flex-col">
         <Header titulo={titulo} aoAbrirMenu={() => setMenuAberto(true)}>
