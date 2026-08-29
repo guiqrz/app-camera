@@ -6,12 +6,10 @@ import { EngajamentoDaTurma } from "@/components/aulas/engajamento-da-turma";
 import { ListaAulas } from "@/components/aulas/lista-aulas";
 import { NumerosDaTurma } from "@/components/aulas/numeros-da-turma";
 import { OndeParei } from "@/components/aulas/onde-parei";
-import { OQueVem } from "@/components/aulas/o-que-vem";
 import { SeletorTurma } from "@/components/aulas/seletor-turma";
 import { AppShell } from "@/components/layout/app-shell";
 import {
   ApiError,
-  buscarAtrasoDaTurma,
   buscarAulasDaTurma,
   buscarContinuidadeDaTurma,
   buscarEstatisticasDaTurma,
@@ -51,42 +49,30 @@ export default async function AulasDaTurmaPage({ params, searchParams }: Props) 
   // As chamadas sao independentes: em paralelo, nao em sequencia.
   const periodo = periodoDaAgenda(data);
 
-  const [
-    turmas,
-    aulas,
-    continuidade,
-    semana,
-    estatisticas,
-    atraso,
-    materias,
-    eventos,
-  ] = await Promise.all([
-    listarTurmas(),
-    buscarAulasDaTurma(id).catch((causa) => {
-      if (causa instanceof ApiError && causa.isNotFound) notFound();
-      throw causa;
-    }),
-    // Engole a falha em vez de propagar: esta e' a unica chamada da pagina que
-    // depende do Gemini, e a lista de aulas — o conteudo principal da tela —
-    // nao pode sumir porque o assistente esta fora do ar. O card simplesmente
-    // nao aparece.
-    buscarContinuidadeDaTurma(id).catch(() => null),
-    // Mesma logica: a grade e' contexto, nao o conteudo principal da tela.
-    buscarSemanaDaTurma(id).catch(() => null),
-    // E os numeros tambem: sem eles a tela perde a fileira do topo, mas a
-    // lista de aulas continua de pe.
-    buscarEstatisticasDaTurma(id).catch(() => null),
-    // Feature F10 — o alerta de atraso do cronograma. Consulta ao banco, sem
-    // IA: barata o bastante pra carregar junto da tela. A sugestao da proxima
-    // aula (F11), que gasta modelo, fica sob demanda dentro do componente.
-    buscarAtrasoDaTurma(id).catch(() => null),
-    // Materias pro dropdown do formulario de aula nova, dentro da agenda.
-    // Lista vazia e' valida: a aula pode ser criada sem materia.
-    listarMaterias().catch(() => []),
-    // Mesma logica das outras: a grade nao pode sumir porque os eventos
-    // falharam.
-    listarEventosDaAgenda({ ...periodo, turmaId: id }).catch(() => []),
-  ]);
+  const [turmas, aulas, continuidade, semana, estatisticas, materias, eventos] =
+    await Promise.all([
+      listarTurmas(),
+      buscarAulasDaTurma(id).catch((causa) => {
+        if (causa instanceof ApiError && causa.isNotFound) notFound();
+        throw causa;
+      }),
+      // Engole a falha em vez de propagar: esta e' a unica chamada da pagina que
+      // depende do Gemini, e a lista de aulas — o conteudo principal da tela —
+      // nao pode sumir porque o assistente esta fora do ar. O card simplesmente
+      // nao aparece.
+      buscarContinuidadeDaTurma(id).catch(() => null),
+      // Mesma logica: a grade e' contexto, nao o conteudo principal da tela.
+      buscarSemanaDaTurma(id).catch(() => null),
+      // E os numeros tambem: sem eles a tela perde a fileira do topo, mas a
+      // lista de aulas continua de pe.
+      buscarEstatisticasDaTurma(id).catch(() => null),
+      // Materias pro dropdown do formulario de aula nova, dentro da agenda.
+      // Lista vazia e' valida: a aula pode ser criada sem materia.
+      listarMaterias().catch(() => []),
+      // Mesma logica das outras: a grade nao pode sumir porque os eventos
+      // falharam.
+      listarEventosDaAgenda({ ...periodo, turmaId: id }).catch(() => []),
+    ]);
 
   // Reusa o mesmo consolidador da tela Relatorios: a media de engajamento e a
   // serie do grafico saem das aulas que TEM leitura, e a regra de quais contam
@@ -160,14 +146,9 @@ export default async function AulasDaTurmaPage({ params, searchParams }: Props) 
           />
         )}
 
-        {/* O par de futuro do "Você parou aqui", logo abaixo dele: a leitura
-            natural é "parei aqui → e agora?". Foi o furo que ele apontou em
-            24/08 — o produto inteiro respondia só o passado. */}
-        <OQueVem turmaId={id} atraso={atraso} />
-
-        {/* As telas de abertura e fechamento do bimestre. Fora do menu
-            lateral, que e' pro trabalho de todo dia, mas com porta visivel:
-            feature que so' existe pra quem sabe a URL nao existe. */}
+        {/* A tela de fechamento do bimestre. Fora do menu lateral, que e' pro
+            trabalho de todo dia, mas com porta visivel: feature que so' existe
+            pra quem sabe a URL nao existe. */}
         <AtalhosDaTurma turmaId={id} />
 
         {resumo && <EngajamentoDaTurma serie={resumo.serie} turmaId={id} />}

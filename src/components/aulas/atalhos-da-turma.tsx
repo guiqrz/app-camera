@@ -1,24 +1,17 @@
 import Link from "next/link";
 
-import { IconCalendario, IconRelatorios } from "@/components/ui/icons";
+import { IconRelatorios } from "@/components/ui/icons";
 
 /**
  * As telas da turma que nao cabem no fluxo do dia a dia.
  *
- * Cronograma (F9) e fim de periodo (F2/F3) sao trabalho de ABERTURA e de
- * FECHAMENTO do bimestre — feitos duas vezes por semestre, nao toda aula. Nao
- * merecem lugar no menu lateral, que e' pro que ele usa todo dia, mas
- * precisam de uma porta visivel: uma feature que so' existe pra quem sabe a
- * URL nao existe.
+ * Fim de periodo (F2) e' trabalho de FECHAMENTO do bimestre — feito duas vezes
+ * por semestre, nao toda aula. Nao merece lugar no menu lateral, que e' pro que
+ * ele usa todo dia, mas precisa de uma porta visivel: uma feature que so'
+ * existe pra quem sabe a URL nao existe.
  */
 
 const ATALHOS = [
-  {
-    href: "cronograma",
-    rotulo: "Cronograma",
-    descricao: "Distribua o conteúdo do bimestre pelas aulas reais.",
-    Icone: IconCalendario,
-  },
   {
     href: "relatorios-periodo",
     rotulo: "Fim de período",
@@ -29,7 +22,7 @@ const ATALHOS = [
 
 export function AtalhosDaTurma({ turmaId }: { turmaId: number }) {
   return (
-    <nav aria-label="Telas da turma" className="grid gap-3 sm:grid-cols-2">
+    <nav aria-label="Telas da turma" className="grid gap-3">
       {ATALHOS.map(({ href, rotulo, descricao, Icone }) => (
         <Link
           key={href}

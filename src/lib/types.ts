@@ -845,8 +845,8 @@ export type DiarioDaAula = {
 /*   1. Comportamento e' sempre COLETIVO. Nenhum tipo daqui liga        */
 /*      atento/desatento/usando_celular a um RA.                        */
 /*   2. "Nao sei" nunca vira zero. Os campos `observado`, `medido` e    */
-/*      `tem_cronograma` existem pra tela distinguir ausencia de dado   */
-/*      de um valor real — a mentira mais facil de cometer aqui.        */
+/*      `tem_ficha` existem pra tela distinguir ausencia de dado de um  */
+/*      valor real — a mentira mais facil de cometer aqui.              */
 /* ==================================================================== */
 
 /* --- F1 · Tempo perdido da aula ---------------------------------- */
@@ -1003,147 +1003,6 @@ export type RespostaDaFicha =
   | ({ tem_ficha: true } & FichaDoAluno)
   | { tem_ficha: false; aluno_ra: string };
 
-/* --- F9 · Cronograma do bimestre ---------------------------------- */
-
-/**
- * Um conteudo do cronograma, ja' encaixado numa data real da grade.
- *
- * `data: null` e' o achado mais importante da feature: significa que o
- * conteudo NAO CABE no bimestre. Empurrar dois conteudos pra mesma aula
- * esconderia isso ate' novembro.
- */
-export type ItemDoCronograma = {
-  ordem: number;
-  titulo: string;
-  data: string | null;
-  aula_id: number | null;
-  materia: string | null;
-};
-
-/**
- * Previa do cronograma, antes de gravar.
- *
- * `cabe: false` e' o aviso que a feature inteira existe pra dar: o professor
- * planeja "14 aulas" no papel e descobre em novembro que tinha 11, porque teve
- * feriado, jogo, conselho e semana de prova.
- */
-export type PreviaDoCronograma = {
-  turma_id: number;
-  periodo: string | null;
-  inicio: string;
-  fim: string;
-  aulas_disponiveis: number;
-  conteudos: number;
-  itens: ItemDoCronograma[];
-  cabe: boolean;
-  conteudos_sem_data: number;
-  aulas_sobrando: number;
-};
-
-/** Cronograma ja' gravado. */
-export type CronogramaSalvo = {
-  id: number;
-  turma_id: number;
-  periodo: string | null;
-  inicio: string;
-  fim: string;
-  excecoes: string[];
-  criado_em: string;
-  itens: ItemDoCronograma[];
-  conteudos: number;
-  cabe: boolean;
-  conteudos_sem_data: number;
-};
-
-/**
- * A resposta de "qual e' o cronograma desta turma".
- *
- * MEDIDO CONTRA A API REAL em 24/08/2026: a rota NUNCA devolve null nem 404
- * para turma sem cronograma — devolve `{turma_id, tem_cronograma: false}`,
- * igual as rotas de atraso (F10) e proxima aula (F11).
- *
- * Tipar isso como `CronogramaSalvo | null` compilava e passava nos testes, e
- * teria quebrado na tela: `cronograma.itens` num objeto que so' tem dois
- * campos.
- */
-export type RespostaDoCronograma =
-  | ({ tem_cronograma: true } & CronogramaSalvo)
-  | { tem_cronograma: false; turma_id: number };
-
-/* --- F10 · Alerta de atraso --------------------------------------- */
-
-/**
- * O cronograma esta em dia?
- *
- * `tem_cronograma: false` NAO e' o mesmo que estar em dia — a tela precisa
- * distinguir os dois, ou dira' "tudo certo" pra quem nunca planejou nada.
- *
- * A TRAVA: isto e' recado do app PRO PROFESSOR. Nunca vai pra coordenacao,
- * nunca vira ranking, nunca compara turmas. Foi por essa mesma razao que a F5
- * (observacao assincrona pra coordenacao) foi cortada do lote.
- */
-export type AtrasoDaTurma =
-  | {
-      tem_cronograma: true;
-      turma_id: number;
-      periodo: string | null;
-      atrasado: boolean;
-      /** Em AULAS, nao em porcentagem: e' o que o professor consegue agir. */
-      aulas_de_diferenca: number;
-      previstos_ate_hoje: number;
-      dados: number;
-      aulas_que_aconteceram: number;
-      aulas_restantes: number;
-      /** Ritmo REAL dele (conteudos por aula), nao o planejado. */
-      ritmo_por_aula: number | null;
-      /** null quando nao ha aula restante ou ritmo do qual projetar. */
-      conteudos_que_devem_sobrar: number | null;
-      mensagem: string;
-    }
-  | { turma_id: number; tem_cronograma: false };
-
-/* --- F11 · Sugestao da proxima aula ------------------------------- */
-
-/**
- * O que vem na proxima aula, e o que vale considerar antes.
- *
- * Cruza continuidade (onde parou), cronograma (onde deveria estar) e tempo de
- * aula (como a turma reagiu).
- *
- * POR QUE E' SEGURO: a trava do ia/continuidade.py existe pra impedir o modelo
- * de INVENTAR sequencia pedagogica. Com o cronograma da F9 ele nao inventa —
- * le a sequencia que o professor escreveu. Sem cronograma, a rota recusa em
- * vez de adivinhar.
- *
- * Continua sugestao, nunca ordem: o professor conhece a turma, o app conhece o
- * calendario.
- */
-export type SugestaoDaProximaAula =
-  | {
-      tem_cronograma: true;
-      tem_proxima: true;
-      turma_id: number;
-      conteudo_planejado: string;
-      data: string;
-      materia: string | null;
-      sugestao: string;
-      modelo: string;
-    }
-  | {
-      tem_cronograma: true;
-      tem_proxima: false;
-      turma_id: number;
-      /**
-       * Por que nao ha proxima aula — MEDIDO contra a API real em 24/08.
-       *
-       * O backend distingue "o periodo acabou" de "todo o conteudo ja' foi
-       * dado", e as duas coisas pedem acoes diferentes do professor. A tela
-       * deve mostrar este texto em vez de uma frase generica.
-       */
-      motivo?: string;
-    }
-  | { turma_id: number; tem_cronograma: false };
-
 /* --- F12 · Preparacao da semana ----------------------------------- */
 
 /**
@@ -1198,7 +1057,7 @@ export type NovoEventoDaAgenda = {
   aula_id?: number | null;
 };
 
-/** Uma aula da semana, com o que ela preve e o que falta anexar. */
+/** Uma aula da semana, com o plano, os anexos e o que falta preparar. */
 export type AulaDaSemana = {
   aula_id: number;
   turma_id: number;
@@ -1206,8 +1065,6 @@ export type AulaDaSemana = {
   materia: string | null;
   hora_inicio: string;
   hora_fim: string;
-  /** O que o cronograma (F9) preve pra este dia. null sem cronograma. */
-  conteudo_previsto: string | null;
   tem_plano: boolean;
   anexos: number;
   /**
@@ -1219,7 +1076,8 @@ export type AulaDaSemana = {
    */
   cancelada: boolean;
   /**
-   * Preve conteudo, mas nao tem plano nem anexo. E' a pendencia acionavel.
+   * Aula real da semana sem NADA preparado — nem plano escrito, nem anexo. E' a
+   * pendencia acionavel.
    *
    * Aula cancelada nunca marca pendencia: cobrar material de uma aula que nao
    * vai acontecer e' ruido puro.

@@ -42,16 +42,11 @@ import type {
   Conversa,
   EventoDaAgenda,
   NovoEventoDaAgenda,
-  AtrasoDaTurma,
-  CronogramaSalvo,
   FichaDoAluno,
   PeriodoDoRelatorio,
   PreparacaoDaSemana,
-  PreviaDoCronograma,
   RascunhoDePeriodo,
   RespostaDaFicha,
-  RespostaDoCronograma,
-  SugestaoDaProximaAula,
   TempoDaAula,
   TempoDaChamada,
   TempoDaTurma,
@@ -1128,10 +1123,10 @@ export async function exportarMaterial(
 /*       2026-08-24-mega-lote-features-design.md                        */
 /*                                                                      */
 /* POR QUE TANTA COISA AQUI E' POST E NAO GET:                          */
-/* as rotas de F2, F3, F7 e F11 GASTAM chamada de IA. Um GET seria      */
-/* cacheado pelo Next, pre-carregado pelo navegador e repetido a cada   */
-/* F5 — cada repeticao custando dinheiro e devolvendo um texto          */
-/* ligeiramente diferente do que o professor acabou de ler.             */
+/* as rotas de F2 e F7 GASTAM chamada de IA. Um GET seria cacheado pelo */
+/* Next, pre-carregado pelo navegador e repetido a cada F5 — cada       */
+/* repeticao custando dinheiro e devolvendo um texto ligeiramente       */
+/* diferente do que o professor acabou de ler.                          */
 /* ==================================================================== */
 
 /* --- F1 · Tempo perdido da aula ---------------------------------- */
@@ -1263,109 +1258,6 @@ export function salvarFichaDoAluno(
 export function excluirFichaDoAluno(ra: string): Promise<void> {
   return requisitar<void>(`/admin/alunos/${encodeURIComponent(ra)}/ficha`, {
     method: "DELETE",
-  });
-}
-
-/* --- F9 · Cronograma do bimestre ---------------------------------- */
-
-/**
- * Previa do cronograma, SEM gravar.
- *
- * E' aqui que o professor descobre que planejou 14 conteudos e so' tem 11
- * aulas — antes de salvar, e em fevereiro, nao em novembro.
- */
-export function preverCronograma(
-  turmaId: number,
-  dados: {
-    inicio: string;
-    fim: string;
-    itens: string[];
-    excecoes?: string[];
-    periodo?: string | null;
-  },
-): Promise<PreviaDoCronograma> {
-  return requisitar<PreviaDoCronograma>(`/turmas/${turmaId}/cronograma/previa`, {
-    method: "POST",
-    body: dados,
-  });
-}
-
-/** Grava o cronograma da turma, substituindo o do mesmo periodo. */
-export function salvarCronograma(
-  turmaId: number,
-  dados: {
-    inicio: string;
-    fim: string;
-    itens: string[];
-    excecoes?: string[];
-    periodo?: string | null;
-  },
-): Promise<CronogramaSalvo> {
-  return requisitar<CronogramaSalvo>(`/turmas/${turmaId}/cronograma`, {
-    method: "PUT",
-    body: dados,
-  });
-}
-
-/**
- * Cronograma gravado da turma.
- *
- * Turma SEM cronograma devolve `tem_cronograma: false`, nunca null nem 404 —
- * medido contra a API real. E' o estado normal de quem ainda nao montou um.
- */
-export function buscarCronograma(
-  turmaId: number,
-): Promise<RespostaDoCronograma> {
-  return requisitar<RespostaDoCronograma>(`/turmas/${turmaId}/cronograma`, {
-    revalidate: 0,
-  });
-}
-
-/** Apaga o cronograma da turma. */
-export function excluirCronograma(
-  turmaId: number,
-  inicio: string,
-  fim: string,
-): Promise<void> {
-  return requisitar<void>(
-    `/turmas/${turmaId}/cronograma?inicio=${inicio}&fim=${fim}`,
-    { method: "DELETE" },
-  );
-}
-
-/* --- F10 · Alerta de atraso --------------------------------------- */
-
-/**
- * O cronograma da turma esta em dia?
- *
- * Cache de 60 s: depende de aulas encerradas e do calendario, que mudam no
- * ritmo de dias, nao de segundos.
- *
- * A TRAVA, que vale tanto pra tela quanto pra rota: isto e' recado do app PRO
- * PROFESSOR. Nao existe, e nao pode existir, tela de coordenacao consumindo
- * esta funcao — "professor atrasado" numa tela de gestao e' exatamente o uso
- * que o PRODUCT.md proibe, e foi o que cortou a F5 do lote.
- */
-export function buscarAtrasoDaTurma(turmaId: number): Promise<AtrasoDaTurma> {
-  return requisitar<AtrasoDaTurma>(`/turmas/${turmaId}/atraso`, {
-    revalidate: 60,
-  });
-}
-
-/* --- F11 · Sugestao da proxima aula ------------------------------- */
-
-/**
- * O que vem na proxima aula, e o que vale considerar antes.
- *
- * Sem cronograma a rota RECUSA (`tem_cronograma: false`) em vez de adivinhar:
- * gerar sugestao sem plano faria o modelo inventar a sequencia pedagogica, que
- * e' exatamente o que a trava do continuidade.py existe pra impedir.
- */
-export function sugerirProximaAula(
-  turmaId: number,
-): Promise<SugestaoDaProximaAula> {
-  return requisitar<SugestaoDaProximaAula>(`/turmas/${turmaId}/proxima-aula`, {
-    method: "POST",
   });
 }
 
