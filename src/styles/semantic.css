@@ -56,11 +56,22 @@
   --veu-bloco: rgba(255, 255, 255, 0.55);
   --veu-bloco-hover: rgba(255, 255, 255, 0.85);
 
-  /* Menu lateral — a faixa de gradiente vem da atmosfera, por baixo. */
-  --sidebar-bg: transparent;
+  /* Menu lateral — DEGRADE PROPRIO desde 29/08/2026.
+     Antes era `transparent` e a faixa vinha da atmosfera por tras. O desenho
+     de referencia tem um gradiente na propria coluna: matiz constante, a
+     luminosidade subindo de cima pra baixo e a saturacao caindo junto. A curva
+     foi medida no pixel da imagem (L 37% -> 79%, S 62% -> 20%) e reaplicada no
+     ROXO da marca, e nao no azul dela — a identidade e' nossa.
+     No tema claro o sentido inverte: comeca claro e fecha de leve, senao o
+     menu ficaria mais pesado que o conteudo ao lado. */
+  --sidebar-bg: linear-gradient(180deg, #faf7fc 0%, #efe7f4 40%, #ded3e7 100%);
   --sidebar-text: #241c30;
   --sidebar-text-active: #4f2c67;
-  --sidebar-item-active: rgba(255, 255, 255, 0.38);
+  /* A pilula do item ATIVO. Viva de proposito, como no desenho: a versao
+     antiga era um veu translucido que mal se distinguia do fundo. Contraste
+     com --text-on-brand medido em 6.49:1, acima dos 4.5 do AA. */
+  --sidebar-item-active: #8b31b9;
+  --sidebar-item-hover: rgba(79, 44, 103, 0.09);
 
   /* Texto */
   --text: #241c30;
@@ -338,10 +349,12 @@
   --veu-bloco: rgba(0, 0, 0, 0.3);
   --veu-bloco-hover: rgba(0, 0, 0, 0.45);
 
-  --sidebar-bg: transparent;
+  --sidebar-bg: linear-gradient(180deg, #2f1642 0%, #4a2c60 45%, #6b4e7e 100%);
   --sidebar-text: #ddd6e8;
   --sidebar-text-active: #d9c8ee;
-  --sidebar-item-active: rgba(255, 255, 255, 0.1);
+  /* Contraste com --text-on-brand do escuro (#241536): 4.71:1, acima do AA. */
+  --sidebar-item-active: #b962da;
+  --sidebar-item-hover: rgba(255, 255, 255, 0.08);
 
   --text: #f4f1f9;
   --text-body: #ddd6e8;
@@ -522,10 +535,12 @@
     --veu-bloco: rgba(0, 0, 0, 0.3);
     --veu-bloco-hover: rgba(0, 0, 0, 0.45);
 
-    --sidebar-bg: transparent;
+    --sidebar-bg: linear-gradient(180deg, #2f1642 0%, #4a2c60 45%, #6b4e7e 100%);
     --sidebar-text: #ddd6e8;
     --sidebar-text-active: #d9c8ee;
-    --sidebar-item-active: rgba(255, 255, 255, 0.1);
+    /* Contraste com --text-on-brand do escuro (#241536): 4.71:1, acima do AA. */
+    --sidebar-item-active: #b962da;
+    --sidebar-item-hover: rgba(255, 255, 255, 0.08);
 
     --text: #f4f1f9;
     --text-body: #ddd6e8;

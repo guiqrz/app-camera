@@ -9,7 +9,6 @@ import { LogoCupcam } from "@/components/layout/logo-cupcam";
 import {
   IconAdministracao,
   IconAulas,
-  IconCalendario,
   IconCamera,
   IconChamada,
   IconConfiguracoes,
@@ -37,10 +36,6 @@ const GRUPOS: { rotulo: string; itens: ItemMenu[] }[] = [
     rotulo: "Sala de aula",
     itens: [
       { rotulo: "Minhas aulas", href: "/aulas", Icone: IconAulas },
-      // "Minha semana" (F12) vem logo depois de "Minhas aulas" e ANTES da
-      // chamada: as duas primeiras respondem preparacao, a chamada em diante e'
-      // o que acontece durante a aula.
-      { rotulo: "Minha semana", href: "/semana", Icone: IconCalendario },
       { rotulo: "Chamada", href: "/chamada", Icone: IconChamada },
       { rotulo: "Relatórios", href: "/relatorios", Icone: IconRelatorios },
       { rotulo: "Câmera", href: "/camera", Icone: IconCamera },
@@ -155,26 +150,16 @@ export function Sidebar({ aberto, aoFechar }: SidebarProps) {
           aberto ? "translate-x-0" : "-translate-x-full"
         } ${recolhida ? "lg:px-[11px]" : ""}`}
         style={{
-          background: "transparent",
+          /* O degrade proprio (--sidebar-bg) desde 29/08/2026. Antes era
+             `transparent` e a coluna so' saturava a atmosfera que passava por
+             tras — ela nao tinha cor nenhuma sua. */
+          background: "var(--sidebar-bg)",
           borderRight: "1px solid rgba(255, 255, 255, 0.07)",
-          /* saturate 125% e nao 155% (22/08/2026).
-
-             A sidebar nao tem cor propria — ela SATURA o que passa por tras.
-             Ate 22/08 o que passava por tras era a atmosfera ja' filtrada
-             pelo painel de tela cheia, que saiu daqui por travar o scroll
-             (86,9 ms/frame). Sem essa camada intermediaria ela passou a
-             saturar a faixa violeta CRUA, e a 155% o resultado ficava mais
-             saturado que o original: medido no pixel, o canal verde caiu de
-             189 para 172 no tema claro.
-
-             Reduzido de novo, de 125% para 105%, ainda em 22/08: a 125% o
-             canal azul batia no TETO de 255 dentro da sidebar (medido no
-             pixel), e cor saturada no maximo e' justamente o que le como
-             "efeito forte demais". A 105% ela para em 249, com folga.
-
-             O blur fica: a sidebar e' `sticky`, nao rola, entao nao paga o
-             custo por frame que motivou a mudanca toda. */
-          backdropFilter: "saturate(105%) blur(10px)",
+          /* SEM backdrop-filter desde 29/08/2026: ele existia porque a
+             sidebar nao tinha cor propria e SATURAVA o que passava por
+             tras. Agora ela tem o proprio degrade (--sidebar-bg), que e'
+             opaco — saturar o fundo atras de uma camada opaca nao muda
+             pixel nenhum, so' cria uma camada de composicao a toa. */
         }}
         aria-label="Menu principal"
       >
@@ -271,7 +256,12 @@ export function Sidebar({ aberto, aoFechar }: SidebarProps) {
               {grupo.rotulo}
             </p>
 
-            <nav className="flex flex-col gap-0.5">
+            {/* `-mr-3` (12px, o mesmo px-3 do <aside>): a pilula do item
+                ativo SANGRA ate' a borda direita da coluna, como no desenho de
+                referencia — la' ela vai de x=6 ate' o fim da sidebar. A
+                esquerda mantem o respiro. `gap-1` separa os itens: colados, as
+                pilulas de itens vizinhos encostariam. */}
+            <nav className="-mr-3 flex flex-col gap-1">
               {grupo.itens.map(({ rotulo, href, Icone }) => {
                 const ativo = caminho.startsWith(href);
 
@@ -285,18 +275,40 @@ export function Sidebar({ aberto, aoFechar }: SidebarProps) {
                     // o item e' — por isso ele vai em todos, nao so' nos
                     // recolhidos.
                     title={rotulo}
-                    className={`hover:bg-surface-2 flex items-center rounded-[9px] text-[13.5px] transition-colors ${
+                    /* `rounded-full` e nao 9px (29/08/2026): no desenho de
+                       referencia o item ativo e' uma PILULA, e a curva fechada
+                       e' o que faz ele ler como um objeto pousado sobre a
+                       coluna em vez de um retangulo pintado. */
+                    className={`flex items-center rounded-l-full text-[13.5px] transition-colors ${
                       recolhida
-                        ? "gap-2.5 px-2.5 py-2 lg:justify-center lg:gap-0 lg:px-0 lg:py-2.5"
-                        : "gap-2.5 px-2.5 py-2"
+                        ? "gap-2.5 px-3 py-2.5 lg:justify-center lg:gap-0 lg:rounded-full lg:px-0 lg:py-2.5"
+                        : "gap-2.5 px-3 py-2.5"
                     }`}
                     style={{
                       // 520 e' o peso do prototipo; o ativo sobe pra 600.
                       fontWeight: ativo ? 600 : 520,
-                      background: ativo ? "var(--primary)" : "transparent",
+                      // Tokens da sidebar, e nao --primary: a pilula tem cor
+                      // propria (viva) que nao acompanha os botoes do resto do
+                      // app. Ver o comentario em semantic.css.
+                      background: ativo ? "var(--sidebar-item-active)" : "transparent",
                       color: ativo
                         ? "var(--text-on-brand)"
-                        : "var(--text-body)",
+                        : "var(--sidebar-text)",
+                    }}
+                    onMouseEnter={(evento) => {
+                      // Hover no INATIVO so': o ativo ja' tem a pilula, e
+                      // pintar por cima dela apagaria o unico marcador de onde
+                      // o professor esta. Em JS e nao em `hover:` do Tailwind
+                      // porque a cor e' um token que muda com o tema.
+                      if (!ativo) {
+                        evento.currentTarget.style.background =
+                          "var(--sidebar-item-hover)";
+                      }
+                    }}
+                    onMouseLeave={(evento) => {
+                      if (!ativo) {
+                        evento.currentTarget.style.background = "transparent";
+                      }
                     }}
                   >
                     <Icone size={16} />
