@@ -1,10 +1,9 @@
 import { notFound } from "next/navigation";
 
-import { PainelFichas } from "@/components/coordenacao/painel-fichas";
 import { VistaTurma } from "@/components/coordenacao/vista-turma";
 import { AppShell } from "@/components/layout/app-shell";
 import { Breadcrumb, type EloBreadcrumb } from "@/components/layout/breadcrumb";
-import { buscarVisaoAdmin, listarFichasDaTurma } from "@/lib/api";
+import { buscarVisaoAdmin } from "@/lib/api";
 
 // A visao de administracao precisa ser sempre fresca (ver revalidate:0 em
 // buscarVisaoAdmin): o nome e a sala da turma podem ter mudado em outra aba.
@@ -41,22 +40,15 @@ export default async function TurmaPage({ params }: Props) {
   const idNumero = Number(id);
   if (!Number.isInteger(idNumero) || idNumero <= 0) notFound();
 
-  // As duas em paralelo: a visao traz turma e alunos; as fichas (F8) vem de
-  // rota propria porque sao dado SENSIVEL e nao devem viajar junto da listagem
-  // geral de administracao, que outras telas tambem consomem.
-  const [visao, fichas] = await Promise.all([
-    buscarVisaoAdmin(),
-    // Engole a falha: sem as fichas a tela perde um painel, mas os dados da
-    // turma e a grade continuam de pe.
-    listarFichasDaTurma(idNumero).catch(() => null),
-  ]);
+  // A ficha de apoio NAO e' mais buscada aqui (29/08/2026): ela passou a ser
+  // editada dentro do modal do aluno, um lugar so'. Dois lugares editando o
+  // mesmo dado sensivel saem de sincronia, e o professor tinha que descobrir
+  // que existia um segundo. Menos uma leitura de dado sensivel nesta tela.
+  const visao = await buscarVisaoAdmin();
 
   const turma = visao.turmas.find((candidata) => candidata.id === idNumero);
   if (!turma) notFound();
 
-  const alunosDaTurma = visao.alunos.filter(
-    (aluno) => aluno.turma_id === idNumero,
-  );
 
   const elos: EloBreadcrumb[] = [
     { rotulo: "Coordenação", href: "/coordenacao" },
@@ -68,14 +60,6 @@ export default async function TurmaPage({ params }: Props) {
       <div className="flex flex-col gap-[13px]">
         <VistaTurma turmaInicial={turma} />
 
-        {/* Feature F8 — as fichas de apoio. Depois dos dados da turma e da
-            grade: e' informacao sobre PESSOAS, e vem depois da estrutura. */}
-        {fichas && (
-          <PainelFichas
-            alunos={alunosDaTurma}
-            fichasIniciais={fichas.fichas}
-          />
-        )}
       </div>
     </AppShell>
   );

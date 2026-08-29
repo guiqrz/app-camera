@@ -40,17 +40,17 @@ import type {
   ContinuidadeDaTurma,
   ConteudoDaAula,
   Conversa,
+  EventoDaAgenda,
+  NovoEventoDaAgenda,
   AtrasoDaTurma,
   CronogramaSalvo,
   FichaDoAluno,
-  FormatoDoResumo,
   PeriodoDoRelatorio,
   PreparacaoDaSemana,
   PreviaDoCronograma,
   RascunhoDePeriodo,
   RespostaDaFicha,
   RespostaDoCronograma,
-  ResumoDoAluno,
   SugestaoDaProximaAula,
   TempoDaAula,
   TempoDaChamada,
@@ -449,6 +449,23 @@ export function salvarAnexoDaAula(
   return requisitar(`/admin/aulas/${aulaId}/anexo`, {
     method: "PUT",
     body: arquivo,
+  });
+}
+
+/**
+ * Guarda o material da aula como LINK, no lugar do arquivo.
+ *
+ * SUBSTITUI o que estava la', arquivo ou link: e' UM material por aula,
+ * garantido pelo indice unico em aula_id.
+ */
+export function salvarLinkDaAula(
+  aulaId: number,
+  url: string,
+  nome: string,
+): Promise<{ id: number }> {
+  return requisitar<{ id: number }>(`/admin/aulas/${aulaId}/link`, {
+    method: "PUT",
+    body: { url, nome },
   });
 }
 
@@ -1166,26 +1183,6 @@ export function gerarRascunhoDoConselho(
   });
 }
 
-/* --- F3 · Boletim da familia -------------------------------------- */
-
-/**
- * Boletim pedagogico da turma, escrito pra familia ler.
- *
- * Mesmo material do conselho, outro leitor e outro tom. NENHUM dado de aluno
- * atravessa — nem a frequencia agregada que o conselho recebe.
- *
- * Tambem nao grava nem envia: quem manda pra familia e' a escola, depois de ler.
- */
-export function gerarBoletimDaFamilia(
-  turmaId: number,
-  periodo: PeriodoDoRelatorio,
-): Promise<RascunhoDePeriodo> {
-  return requisitar<RascunhoDePeriodo>(`/turmas/${turmaId}/boletim`, {
-    method: "POST",
-    body: periodo,
-  });
-}
-
 /* --- F6 · Chamada cronometrada ------------------------------------ */
 
 /**
@@ -1199,38 +1196,6 @@ export function buscarTempoDaChamada(
 ): Promise<TempoDaChamada> {
   return requisitar<TempoDaChamada>(`/sessoes/${sessaoId}/chamada/tempo`, {
     revalidate: 0,
-  });
-}
-
-/* --- F7 · Resumo da aula pro aluno -------------------------------- */
-
-/**
- * Formatos disponiveis do resumo.
- *
- * Cache de 1 h: e' uma constante do backend, nao muda entre deploys.
- */
-export function listarFormatosDoResumo(): Promise<{
-  formatos: FormatoDoResumo[];
-}> {
-  return requisitar<{ formatos: FormatoDoResumo[] }>("/resumo-aluno/formatos", {
-    revalidate: 3600,
-  });
-}
-
-/**
- * Gera o resumo da aula no formato pedido.
- *
- * NAO publica nada — devolve a PREVIA que o professor ve do que o aluno veria.
- * A publicacao depende do login de aluno, que foi adiado; quando existir, sera'
- * decisao nova com desenho proprio.
- */
-export function gerarResumoDoAluno(
-  sessaoId: number,
-  formato: string,
-): Promise<ResumoDoAluno> {
-  return requisitar<ResumoDoAluno>(`/sessoes/${sessaoId}/resumo-aluno`, {
-    method: "POST",
-    body: { formato },
   });
 }
 
@@ -1272,13 +1237,21 @@ export function buscarFichaDoAluno(ra: string): Promise<RespostaDaFicha> {
 /**
  * Cria ou atualiza a ficha.
  *
- * `adaptacoes` e' o que funciona na pratica com o aluno ("senta na frente",
- * "prova em duas partes"). NUNCA historico clinico: o backend limita o texto
- * justamente pra desencorajar isso.
+ * `descricao` caracteriza o aluno em poucas linhas; `adaptacoes` e' o que
+ * funciona na pratica com ele ("senta na frente", "prova em duas partes").
+ * NUNCA historico clinico: o backend limita os dois textos justamente pra
+ * desencorajar isso.
+ *
+ * Os TRES campos vazios APAGAM a ficha — e' assim que a tela limpa. Guardar a
+ * linha vazia deixaria rastro de que um dia precisou.
  */
 export function salvarFichaDoAluno(
   ra: string,
-  dados: { tipos_de_apoio: TipoDeApoio[]; adaptacoes: string },
+  dados: {
+    tipos_de_apoio: TipoDeApoio[];
+    descricao: string;
+    adaptacoes: string;
+  },
 ): Promise<RespostaDaFicha> {
   return requisitar<RespostaDaFicha>(
     `/admin/alunos/${encodeURIComponent(ra)}/ficha`,
@@ -1393,6 +1366,74 @@ export function sugerirProximaAula(
 ): Promise<SugestaoDaProximaAula> {
   return requisitar<SugestaoDaProximaAula>(`/turmas/${turmaId}/proxima-aula`, {
     method: "POST",
+  });
+}
+
+/* --- Agenda · eventos com data ------------------------------------ */
+
+/**
+ * Eventos entre duas datas (inclusive).
+ *
+ * Por PERIODO e nao por dia: contra o Turso cada comando custa ~1,8 s, e sete
+ * consultas pra desenhar uma semana seriam 12 s de espera.
+ *
+ * Sem cache, como a preparacao da semana: o professor cria um evento e volta
+ * pra tela esperando ve-lo.
+ */
+export function listarEventosDaAgenda(opcoes: {
+  inicio: string;
+  fim: string;
+  turmaId?: number;
+  incluirPessoais?: boolean;
+}): Promise<EventoDaAgenda[]> {
+  const parametros = new URLSearchParams({
+    inicio: opcoes.inicio,
+    fim: opcoes.fim,
+  });
+  if (opcoes.turmaId !== undefined) {
+    parametros.set("turma_id", String(opcoes.turmaId));
+  }
+  if (opcoes.incluirPessoais === false) {
+    parametros.set("incluir_pessoais", "false");
+  }
+
+  return requisitar<EventoDaAgenda[]>(`/agenda?${parametros}`, {
+    revalidate: 0,
+  });
+}
+
+/** Cria um evento. Devolve o id. */
+export function criarEventoDaAgenda(
+  dados: NovoEventoDaAgenda,
+): Promise<{ id: number }> {
+  return requisitar<{ id: number }>("/agenda/eventos", {
+    method: "POST",
+    body: dados,
+  });
+}
+
+/**
+ * Substitui os campos do evento.
+ *
+ * Substituicao TOTAL, como os outros PUT do projeto: omitir um campo o limpa.
+ * Quem chama sempre manda tudo.
+ */
+export function editarEventoDaAgenda(
+  eventoId: number,
+  dados: NovoEventoDaAgenda,
+): Promise<{ ok: boolean }> {
+  return requisitar<{ ok: boolean }>(`/agenda/eventos/${eventoId}`, {
+    method: "PUT",
+    body: dados,
+  });
+}
+
+/** Apaga o evento e os anexos dele. */
+export function apagarEventoDaAgenda(
+  eventoId: number,
+): Promise<{ ok: boolean }> {
+  return requisitar<{ ok: boolean }>(`/agenda/eventos/${eventoId}`, {
+    method: "DELETE",
   });
 }
 

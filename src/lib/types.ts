@@ -406,12 +406,23 @@ export type Aula = {
    * grava "" por padrao, e quem le nunca precisa distinguir os dois casos.
    */
   plano: string;
-  /** Nome do arquivo anexado. Nulo quando a aula nao tem anexo. */
+  /** Nome do material: o arquivo, ou o rotulo do link. Nulo quando nao ha. */
   anexo_nome: string | null;
   anexo_tipo: string | null;
   anexo_tamanho: number | null;
+  /**
+   * Endereco, quando o material e' um LINK. Nulo quando e' arquivo (ou quando
+   * nao ha material). Ver `anexo_eh_link` — e' ele que a tela deve consultar.
+   */
+  anexo_url: string | null;
   /** Atalho para `anexo_nome !== null`, ja pronto pela API. */
   tem_anexo: boolean;
+  /**
+   * O material e' link (true) ou arquivo (false). Vem pronto do servidor em vez
+   * de a tela deduzir de `anexo_url !== null`: deduzir espalharia a mesma regra
+   * por cada tela que mostra material, e e' assim que duas telas discordam.
+   */
+  anexo_eh_link: boolean;
 };
 
 /**
@@ -881,7 +892,7 @@ export type TempoDaTurma = {
   aulas_observadas: number;
 };
 
-/* --- F2 · Conselho de classe · F3 · Boletim da familia ------------ */
+/* --- F2 · Conselho de classe ---------------------------------- */
 
 /** Periodo pedido pra um relatorio de fim de bimestre. */
 export type PeriodoDoRelatorio = {
@@ -896,7 +907,7 @@ export type PeriodoDoRelatorio = {
  * NAO grava e NAO envia nada. O texto vira documento assinado por ele, entao
  * a decisao de usar e' dele — mesmo padrao ja' provado pelo diario (feature I).
  *
- * `frequencia_media` so' existe no conselho (F2). O boletim da familia (F3)
+ * `frequencia_media` vem sempre preenchida no conselho (F2), mas o campo
  * nao carrega nenhum dado de aluno, nem agregado.
  */
 export type RascunhoDePeriodo = {
@@ -908,7 +919,7 @@ export type RascunhoDePeriodo = {
   aulas_no_periodo: number;
   aulas_com_conteudo: number;
   aulas_sem_conteudo: number;
-  /** So' no conselho (F2); ausente no boletim da familia (F3). */
+  /** Frequencia AGREGADA da turma. Nunca por aluno. */
   frequencia_media?: number | null;
 };
 
@@ -937,41 +948,6 @@ export type TempoDaChamada =
     }
   | { sessao_id: number; medido: false };
 
-/* --- F7 · Resumo da aula pro aluno -------------------------------- */
-
-/**
- * Um formato de resumo.
- *
- * `rotulo` e `descricao` nunca dizem o publico-alvo. A tela mostra "blocos
- * curtos", nunca "formato pra TDAH": assim o aluno escolhe o que funciona pra
- * ele sem precisar se declarar.
- */
-export type FormatoDoResumo = {
-  id: string;
-  rotulo: string;
-  descricao: string;
-};
-
-/**
- * Resumo da aula escrito pro aluno estudar.
- *
- * `publicado` e' sempre false hoje: a publicacao depende do login de aluno,
- * que foi adiado. Isto e' a PREVIA que o professor ve do que o aluno veria.
- *
- * A trava do botao publicar e' obrigatoria e nao e' capricho: a transcricao
- * bruta pega o professor errando e aluno citado pelo nome. Sem ela, o
- * professor perde o controle do que a turma le dele — e uma ferramenta que
- * ameaca o professor morre tao rapido quanto uma que da' trabalho.
- */
-export type ResumoDoAluno = {
-  sessao_id: number;
-  formato: string;
-  rotulo: string;
-  texto: string;
-  modelo: string;
-  publicado: boolean;
-};
-
 /* --- F8 · Ficha de apoio do aluno --------------------------------- */
 
 /**
@@ -996,12 +972,20 @@ export type TipoDeApoio =
   | "altas_habilidades"
   | "outro";
 
-/** Ficha de um aluno: de que apoio ele precisa e o que funciona com ele. */
+/** Ficha de um aluno: quem ele e', de que apoio precisa e o que funciona. */
 export type FichaDoAluno = {
   aluno_ra: string;
   /** So' vem na listagem da turma, onde a tela precisa exibir o nome. */
   nome?: string;
   tipos_de_apoio: TipoDeApoio[];
+  /**
+   * Descricao livre do aluno ("chega adiantado", "trava com barulho na sala").
+   *
+   * Independente dos outros dois: o aluno sem laudo pode ter uma
+   * particularidade que ajuda a ensinar. Nunca historico clinico — vale aqui a
+   * mesma fronteira do resto da ficha.
+   */
+  descricao: string;
   /** O que funciona na pratica. Nunca historico clinico. */
   adaptacoes: string;
   atualizada_em: string;
@@ -1162,6 +1146,58 @@ export type SugestaoDaProximaAula =
 
 /* --- F12 · Preparacao da semana ----------------------------------- */
 
+/**
+ * Os quatro tipos de evento da agenda.
+ *
+ * Cada um tem um efeito DIFERENTE na tela, e e' por isso que a lista e'
+ * fechada: um tipo que a tela nao conhece nao teria como ser desenhado.
+ *
+ *   nota       aparece no dia, nao mexe na grade      ("trazer o projetor")
+ *   prova      destaca o dia                          ("prova do 3o bimestre")
+ *   cancelada  risca a aula da grade naquele dia      (feriado, reuniao)
+ *   extra      acrescenta aula que nao esta na grade   (reposicao)
+ */
+export type TipoDeEvento = "nota" | "prova" | "cancelada" | "extra";
+
+/**
+ * Um evento com DATA da agenda (GET /agenda).
+ *
+ * POR QUE ESTA CAMADA EXISTE: a tabela `aulas` guarda dia da semana, nunca
+ * data — e' uma grade que se repete. Sem os eventos, navegar entre semanas
+ * mostraria exatamente o mesmo dado toda semana.
+ *
+ * `turma_id` null e' evento PESSOAL do professor ("reuniao 16h"): a agenda
+ * dele tambem tem o que nao e' aula.
+ *
+ * `aula_id` null significa que o evento fala do DIA, nao de uma aula. O tipo
+ * 'cancelada' sempre traz aula — o backend recusa sem ela, porque nao teria
+ * o que riscar.
+ */
+export type EventoDaAgenda = {
+  id: number;
+  turma_id: number | null;
+  aula_id: number | null;
+  /** "AAAA-MM-DD". */
+  data: string;
+  tipo: TipoDeEvento;
+  titulo: string;
+  /** String VAZIA quando nao ha descricao, nunca nula (o backend grava ""). */
+  descricao: string;
+  criado_em: string;
+  /** Quantos arquivos o evento tem. Ja' contado pela API. */
+  anexos: number;
+};
+
+/** Corpo do POST e do PUT de evento. */
+export type NovoEventoDaAgenda = {
+  data: string;
+  tipo: TipoDeEvento;
+  titulo: string;
+  descricao?: string;
+  turma_id?: number | null;
+  aula_id?: number | null;
+};
+
 /** Uma aula da semana, com o que ela preve e o que falta anexar. */
 export type AulaDaSemana = {
   aula_id: number;
@@ -1174,17 +1210,36 @@ export type AulaDaSemana = {
   conteudo_previsto: string | null;
   tem_plano: boolean;
   anexos: number;
-  /** Preve conteudo, mas nao tem plano nem anexo. E' a pendencia acionavel. */
+  /**
+   * A aula esta na grade mas NAO acontece nesta data (feriado, reuniao).
+   *
+   * Ela continua na tela, riscada: sumir faria o professor achar que errou o
+   * dia. Vale so' PARA ESTA DATA — a mesma aula acontece normalmente nas
+   * outras semanas.
+   */
+  cancelada: boolean;
+  /**
+   * Preve conteudo, mas nao tem plano nem anexo. E' a pendencia acionavel.
+   *
+   * Aula cancelada nunca marca pendencia: cobrar material de uma aula que nao
+   * vai acontecer e' ruido puro.
+   */
   falta_material: boolean;
 };
 
-/** Um dia da semana com as aulas dele. */
+/** Um dia da semana com as aulas e os eventos dele. */
 export type DiaDaPreparacao = {
   data: string;
   dia_semana: number;
   rotulo: string;
   e_hoje: boolean;
   aulas: AulaDaSemana[];
+  /**
+   * Tudo que tem data neste dia: nota, prova, reuniao pessoal, e tambem o
+   * 'cancelada' que riscou uma aula acima (a tela mostra o motivo ao lado do
+   * bloco riscado).
+   */
+  eventos: EventoDaAgenda[];
 };
 
 /**
@@ -1202,7 +1257,9 @@ export type PreparacaoDaSemana = {
   fim: string;
   turma_id: number | null;
   dias: DiaDaPreparacao[];
+  /** Aula cancelada NAO entra: a pergunta e' quantas aulas eu dou na semana. */
   total_de_aulas: number;
   aulas_sem_material: number;
   pendencias: AulaDaSemana[];
+  total_de_eventos: number;
 };

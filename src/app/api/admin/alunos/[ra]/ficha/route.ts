@@ -78,6 +78,7 @@ export async function PUT(
 
   const corpo = (await requisicao.json()) as {
     tipos_de_apoio?: unknown;
+    descricao?: unknown;
     adaptacoes?: unknown;
   };
 
@@ -89,14 +90,17 @@ export async function PUT(
 
   const adaptacoes =
     typeof corpo.adaptacoes === "string" ? corpo.adaptacoes.trim() : "";
+  const descricao =
+    typeof corpo.descricao === "string" ? corpo.descricao.trim() : "";
 
   try {
-    // Os dois campos vazios APAGAM a ficha, e isso e' de proposito: o professor
+    // Os TRES campos vazios APAGAM a ficha, e isso e' de proposito: o professor
     // que limpa tudo esta dizendo "este aluno nao precisa de ficha", e guardar
     // a linha vazia deixaria rastro de que um dia precisou.
     return NextResponse.json(
       await salvarFichaDoAluno(ra, {
         tipos_de_apoio: tipos,
+        descricao,
         adaptacoes,
       }),
     );

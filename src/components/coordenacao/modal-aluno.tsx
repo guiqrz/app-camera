@@ -2,10 +2,16 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 
+import {
+  CamposDaFicha,
+  FICHA_VAZIA,
+  fichaEstaVazia,
+  type ValoresDaFicha,
+} from "@/components/coordenacao/campos-da-ficha";
 import { useFocoPreso } from "@/components/coordenacao/usar-foco-preso";
 import { CampoComExemplo } from "@/components/ui/campo-com-exemplo";
 import { BotaoIcone } from "@/components/ui/botao-icone";
-import { IconFechar, IconFoto } from "@/components/ui/icons";
+import { IconFechar, IconFicha, IconFoto } from "@/components/ui/icons";
 import type { AlunoAdmin, TurmaAdmin } from "@/lib/types";
 
 type ModoModal = "criar" | "editar";
@@ -67,6 +73,21 @@ export function ModalAluno({
   const [erroApi, setErroApi] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
 
+  /**
+   * A ficha de apoio, editada JUNTO do cadastro (29/08/2026).
+   *
+   * Antes ela vivia num painel separado na pagina da turma. Dois lugares
+   * editando o mesmo dado sensivel saem de sincronia, e o professor tinha que
+   * saber que existia um segundo lugar.
+   *
+   * `carregandoFicha` distingue "ainda buscando" de "nao tem ficha": mostrar
+   * campos vazios enquanto carrega faria o professor achar que nao ha nada e
+   * salvar por cima.
+   */
+  const [ficha, setFicha] = useState<ValoresDaFicha>(FICHA_VAZIA);
+  const [fichaOriginal, setFichaOriginal] = useState<ValoresDaFicha>(FICHA_VAZIA);
+  const [carregandoFicha, setCarregandoFicha] = useState(false);
+
   const editando = modo === "editar";
 
   // Espelha `aberto` so' pra detectar a transicao fechado->aberto durante a
@@ -85,6 +106,13 @@ export function ModalAluno({
         setValores(VALORES_INICIAIS);
         setTurmaId(turmaInicialId !== null ? String(turmaInicialId) : "");
       }
+      setFicha(FICHA_VAZIA);
+      setFichaOriginal(FICHA_VAZIA);
+      // Ligada aqui, e nao dentro do efeito que busca: setState sincrono no
+      // corpo de um efeito dispara render em cascata. Este bloco ja' roda
+      // durante a renderizacao, que e' o lugar certo pra estado derivado.
+      // No modo criar nao ha' o que buscar, entao ja' nasce desligada.
+      setCarregandoFicha(editando && Boolean(aluno));
       setFoto(null);
       setRemoverFoto(false);
       setConfirmandoSemFoto(false);
@@ -114,6 +142,54 @@ export function ModalAluno({
     if (inputFotoRef.current) inputFotoRef.current.value = "";
     primeiroCampoRef.current?.focus();
   }, [aberto]);
+
+  /**
+   * Busca a ficha do aluno ao abrir em modo EDITAR.
+   *
+   * `cancelado` protege contra a resposta de um aluno chegar depois de o modal
+   * ter sido fechado ou reaberto em outro: sem isso, a ficha de um aluno podia
+   * aparecer no formulario de outro — que em dado sensivel e' o pior tipo de
+   * bug de corrida.
+   */
+  useEffect(() => {
+    if (!aberto || !editando || !aluno) return;
+
+    let cancelado = false;
+
+    fetch(`/api/admin/alunos/${encodeURIComponent(aluno.ra)}/ficha`)
+      .then((resposta) => (resposta.ok ? resposta.json() : null))
+      .then((corpo) => {
+        if (cancelado) return;
+        // `tem_ficha: false` e' resposta VALIDA — significa "sem ficha
+        // cadastrada", nunca "aluno sem necessidade de apoio".
+        const valores: ValoresDaFicha =
+          corpo && corpo.tem_ficha
+            ? {
+                tipos_de_apoio: corpo.tipos_de_apoio ?? [],
+                descricao: corpo.descricao ?? "",
+                adaptacoes: corpo.adaptacoes ?? "",
+              }
+            : FICHA_VAZIA;
+        setFicha(valores);
+        setFichaOriginal(valores);
+      })
+      .catch(() => {
+        // Falha na ficha nao derruba o cadastro: o professor continua podendo
+        // corrigir o nome do aluno. A ficha fica como estava no servidor,
+        // porque nada sera enviado se ele nao mexer nela.
+        if (!cancelado) {
+          setFicha(FICHA_VAZIA);
+          setFichaOriginal(FICHA_VAZIA);
+        }
+      })
+      .finally(() => {
+        if (!cancelado) setCarregandoFicha(false);
+      });
+
+    return () => {
+      cancelado = true;
+    };
+  }, [aberto, editando, aluno]);
 
   useEffect(() => {
     if (!aberto) return;
@@ -221,6 +297,39 @@ export function ModalAluno({
     setEnviando(true);
     try {
       await aoSalvar(form);
+
+      // A FICHA VAI DEPOIS DO ALUNO, e por dois motivos:
+      //   1. no modo criar o aluno precisa existir antes — a rota da ficha
+      //      responde 404 pra RA que ainda nao foi cadastrado;
+      //   2. o cadastro e' multipart (por causa da foto) e a ficha e' JSON.
+      // Enviada so' quando MUDOU: um PUT com os tres campos vazios APAGA a
+      // ficha, e mandar sempre destruiria a ficha de todo aluno que tivesse o
+      // nome corrigido.
+      const mudouFicha =
+        ficha.descricao !== fichaOriginal.descricao ||
+        ficha.adaptacoes !== fichaOriginal.adaptacoes ||
+        ficha.tipos_de_apoio.slice().sort().join() !==
+          fichaOriginal.tipos_de_apoio.slice().sort().join();
+
+      if (mudouFicha) {
+        const raDaFicha = editando ? aluno!.ra : ra.trim();
+        const resposta = await fetch(
+          `/api/admin/alunos/${encodeURIComponent(raDaFicha)}/ficha`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(ficha),
+          },
+        );
+        if (!resposta.ok) {
+          // O aluno JA' foi salvo neste ponto. Dizer isso evita o professor
+          // achar que perdeu tudo e cadastrar de novo — o que criaria um
+          // duplicado.
+          throw new Error(
+            "O aluno foi salvo, mas a ficha de apoio não. Abra de novo para tentar.",
+          );
+        }
+      }
       // Sucesso: a vista fecha e recarrega — nao mexe aqui.
     } catch (causa) {
       setErroApi(
@@ -256,9 +365,13 @@ export function ModalAluno({
         aria-modal="true"
         aria-labelledby={idTitulo}
         onClick={(evento) => evento.stopPropagation()}
-        className="flex w-full max-w-md flex-col gap-5 rounded-2xl p-6"
+        /* max-w-lg e a rolagem interna (29/08/2026): o modal ganhou os tres
+           campos da ficha de apoio, e com `max-w-md` o formulario passava da
+           altura da tela em monitor baixo — os botoes saiam de vista, e o
+           modal nao rola com a pagina porque ela esta travada. */
+        className="flex max-h-[90vh] w-full max-w-lg flex-col gap-5 overflow-y-auto rounded-2xl p-6"
         style={{
-          background: "var(--surface)",
+          background: "var(--modal)",
           border: "1px solid var(--border)",
           boxShadow: "var(--shadow-raise)",
         }}
@@ -377,6 +490,56 @@ export function ModalAluno({
               ))}
             </select>
           </Campo>
+
+          {/* FICHA DE APOIO — dado pessoal SENSIVEL (LGPD art. 5o, II).
+              Vive aqui desde 29/08/2026; antes era um painel separado na pagina
+              da turma, e dois lugares editando o mesmo dado saem de sincronia.
+              As travas continuam no backend (ver gestao/fichas.py). */}
+          <div
+            className="flex flex-col gap-3 rounded-xl p-4"
+            style={{
+              background: "var(--surface-2)",
+              border: "1px solid var(--border)",
+            }}
+          >
+            <div className="flex items-center gap-2">
+              <IconFicha size={16} className="text-text-muted flex-none" />
+              <h3 className="text-text text-[13px] font-semibold">
+                Ficha de apoio
+              </h3>
+              <span className="text-text-muted text-[11px]">tudo opcional</span>
+            </div>
+
+            {carregandoFicha ? (
+              // "Carregando" e nao campos vazios: campos vazios fariam o
+              // professor achar que nao ha ficha e salvar por cima da que
+              // existe.
+              <p className="text-text-muted text-[12.5px]">Carregando a ficha…</p>
+            ) : (
+              <CamposDaFicha
+                valores={ficha}
+                aoMudar={setFicha}
+                desabilitado={enviando}
+              />
+            )}
+
+            {/* Aviso so' quando ele esta ESVAZIANDO uma ficha que existia: o
+                PUT vazio apaga, e apagar dado sensivel sem avisar seria
+                silencioso demais. */}
+            {!carregandoFicha &&
+              fichaEstaVazia(ficha) &&
+              !fichaEstaVazia(fichaOriginal) && (
+                <p
+                  className="rounded-lg px-3 py-2 text-[12px]"
+                  style={{
+                    background: "var(--warn-bg)",
+                    color: "var(--warn-fg)",
+                  }}
+                >
+                  Ao salvar, a ficha de apoio deste aluno será apagada.
+                </p>
+              )}
+          </div>
 
           {/* Aviso de confirmacao: criar sem foto. */}
           {confirmandoSemFoto && !foto && (
