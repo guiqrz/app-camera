@@ -242,10 +242,10 @@ export function PainelConversas({
             backgroundSize: "300% 100%",
             /* 0% = so' a faixa da marca visivel. E' o estado de REPOUSO. */
             backgroundPosition: "0% 0",
-            /* 4s, o MESMO ciclo do `.cup-brilho` da xicara (globals.css): os
-               dois brilham juntos e leem como uma luz so' atravessando a tela.
-               Mudar um sem o outro dessincroniza e vira pisca-pisca. */
-            animation: "luz-passando 4s ease-in-out infinite",
+            /* 2.6s, o MESMO ciclo do `.cup-brilho` da xicara (globals.css):
+               os dois brilham juntos e leem como uma luz so' atravessando a
+               tela. Mudar um sem o outro dessincroniza e vira pisca-pisca. */
+            animation: "luz-passando 2.6s ease-in-out infinite",
           }}
         >
           O que vamos ver hoje?

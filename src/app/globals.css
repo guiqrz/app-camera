@@ -428,12 +428,12 @@ h4 {
 }
 
 /* LUZ QUE PASSA PELA XICARA — o mesmo efeito do titulo (`luz-passando`).
-   Mesmo ciclo de 4s e mesma proporcao: 35% do tempo parada fora do desenho, e
-   a travessia nos ultimos 65%. Os dois elementos brilham JUNTOS, o que le como
+   Mesmo ciclo de 2.6s e mesma proporcao: 15% do tempo parada fora do desenho,
+   e a travessia nos outros 85%. Os dois elementos brilham JUNTOS, o que le como
    uma luz so' passando pela tela — se as duracoes divergissem, viraria
    pisca-pisca. Mexer aqui exige mexer em `luz-passando` junto. */
 .cup-brilho {
-  animation: cup-luz 4s ease-in-out infinite;
+  animation: cup-luz 2.6s ease-in-out infinite;
 }
 
 /* Anima `transform` no elemento, mas a INCLINACAO mora no grupo pai (ver o
@@ -442,7 +442,7 @@ h4 {
    `px` do CSS vale uma unidade do viewBox, e o desenho escala junto. */
 @keyframes cup-luz {
   0%,
-  35% {
+  15% {
     transform: translateX(-30px);
   }
   100% {
@@ -456,14 +456,18 @@ h4 {
    truque. Como as duas pontas do gradiente sao a mesma faixa da marca, 100% e
    0% pintam igual — o salto no fim do ciclo e' invisivel.
 
-   A PAUSA (29/08): era 60% de repouso num ciclo de 7s — 4,2s parado e uma
-   travessia a cada 7s, que ele leu como "o efeito acontece uma vez so'". Agora
-   sao 35% num ciclo de 4s: 1,4s de repouso, travessia a cada 4s. Continua
-   tendo respiro entre as passadas — o brilho SEM pausa e' a "cara de IA" que o
-   redesign evita. */
+   A PAUSA (29/08): comecou em 60% de repouso num ciclo de 7s — 4,2s parado, o
+   que ele leu como "o efeito acontece uma vez so'". Passou a 35% em 4s, e
+   ainda estava pouco. Agora sao 15% num ciclo de 2.6s: 0,4s de repouso e uma
+   travessia a cada 2,6s, quase continua.
+
+   O respiro nao foi a zero de proposito. Sem pausa nenhuma a luz vira faixa
+   girando em loop — sai de "algo atravessou a tela" e entra em banner
+   animado, que e' a "cara de IA" que o redesign evita. 15% e' o minimo que
+   ainda separa uma passada da seguinte. */
 @keyframes luz-passando {
   0%,
-  35% {
+  15% {
     background-position: 0% 0;
   }
   100% {
