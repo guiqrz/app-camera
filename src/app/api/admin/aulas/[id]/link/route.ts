@@ -1,25 +1,32 @@
 import { NextResponse } from "next/server";
 
+import { lerDataDoEncontro } from "@/app/api/admin/_lib/data-do-encontro";
 import { statusSeguro } from "@/app/api/admin/_lib/status-seguro";
 import { ApiError, salvarLinkDaAula } from "@/lib/api";
 
 type Props = { params: Promise<{ id: string }> };
 
 /**
- * Ponte do material da aula quando ele e' um LINK, e nao um arquivo.
+ * Ponte do material do ENCONTRO quando ele e' um LINK, e nao um arquivo.
  *
  * Rota separada do /anexo de proposito: aquela recebe multipart e esta recebe
  * JSON. Juntar as duas obrigaria a tela a montar um FormData pra mandar uma
  * string.
  *
- * PUT substitui: e' UM material por aula (indice unico em aula_id), entao
- * mandar um link troca o arquivo que estava la', e vice-versa.
+ * PUT substitui: e' UM material por ENCONTRO (indice unico em (aula_id, data)),
+ * entao mandar um link troca o arquivo daquele DIA, e vice-versa. Outro dia nao
+ * e' tocado. `?data=AAAA-MM-DD` escolhe o encontro; sem ela, a semana corrente.
  */
 export async function PUT(requisicao: Request, { params }: Props) {
   const { id } = await params;
   const aulaId = Number(id);
   if (!Number.isInteger(aulaId) || aulaId <= 0) {
     return NextResponse.json({ erro: "Aula inválida." }, { status: 400 });
+  }
+
+  const encontro = lerDataDoEncontro(requisicao);
+  if (!encontro.ok) {
+    return NextResponse.json({ erro: encontro.erro }, { status: 422 });
   }
 
   let corpo: { url?: unknown; nome?: unknown };
@@ -38,7 +45,9 @@ export async function PUT(requisicao: Request, { params }: Props) {
   const nome = typeof corpo.nome === "string" ? corpo.nome : "";
 
   try {
-    return NextResponse.json(await salvarLinkDaAula(aulaId, corpo.url, nome));
+    return NextResponse.json(
+      await salvarLinkDaAula(aulaId, corpo.url, nome, encontro.data),
+    );
   } catch (causa) {
     if (causa instanceof ApiError) {
       if (causa.isNotFound) {

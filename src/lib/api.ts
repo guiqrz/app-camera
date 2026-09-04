@@ -355,13 +355,28 @@ export function listarTurmas(): Promise<Turma[]> {
  * e, com o banco na nuvem, cada visita pagava ~5s medidos. A tela /aulas e' a
  * porta de entrada do site, entao era o primeiro que o professor sentia.
  *
- * 10s e' o meio termo medido: cobre o vai-e-volta entre telas (o caso que
- * doia) e e' curto demais pra alguem voltar depois de mexer noutra aba e ver
- * numero velho. Os outros quatro blocos — totais, agenda, materias, alunos —
- * mudam em escala de dias, entao 10s neles e' conservador.
+ * `revalidate: 0` (sem cache): a `semana` que este endpoint devolve alimenta a
+ * grade da tela /aulas, e o professor edita plano, anexo e evento ali mesmo,
+ * esperando ver o proprio clique — um cache de 10s fazia a grade voltar com o
+ * dado velho depois de salvar, e so' o F5 (ou 10s de espera) resolvia. O custo
+ * e' uma requisicao por visita a /aulas, que nao e' um caminho repetido em
+ * loop; as telas por turma ja' usam `revalidate: 0` na grade pelo mesmo motivo.
  */
-export function buscarVisaoGeral(): Promise<VisaoGeral> {
-  return requisitar<VisaoGeral>("/visao-geral", { revalidate: 10 });
+export function buscarVisaoGeral(semana?: string): Promise<VisaoGeral> {
+  return requisitar<VisaoGeral>(`/visao-geral${daSemana(semana)}`, {
+    revalidate: 0,
+  });
+}
+
+/**
+ * Monta o "?semana=AAAA-MM-DD" das rotas de leitura da grade.
+ *
+ * A semana escolhe de qual ENCONTRO vem plano e anexo (01/09/2026) — a grade em
+ * si (horario, materia) e' a mesma toda semana. Qualquer dia da semana serve: o
+ * backend ancora no domingo.
+ */
+function daSemana(semana?: string) {
+  return semana ? `?semana=${encodeURIComponent(semana)}` : "";
 }
 
 /**
@@ -370,10 +385,16 @@ export function buscarVisaoGeral(): Promise<VisaoGeral> {
  * Turma sem grade devolve os 7 dias vazios, nunca 404: a turma pode existir
  * antes de a grade ser montada.
  */
-export function buscarSemanaDaTurma(turmaId: number): Promise<DiaDaSemana[]> {
-  return requisitar<DiaDaSemana[]>(`/turmas/${turmaId}/semana`, {
-    revalidate: 0,
-  });
+export function buscarSemanaDaTurma(
+  turmaId: number,
+  semana?: string,
+): Promise<DiaDaSemana[]> {
+  return requisitar<DiaDaSemana[]>(
+    `/turmas/${turmaId}/semana${daSemana(semana)}`,
+    {
+      revalidate: 0,
+    },
+  );
 }
 
 /* --- Lembretes ---------------------------------------------------------- */
@@ -423,51 +444,79 @@ export function removerLembrete(id: number): Promise<{ id: number }> {
   return requisitar<{ id: number }>(`/lembretes/${id}`, { method: "DELETE" });
 }
 
-/* --- Plano e anexo da aula ---------------------------------------------- */
+/* --- Plano e anexo do ENCONTRO ------------------------------------------- */
+//
+// Plano e material pertencem ao ENCONTRO — o par (aula da grade, data) —, e nao
+// a' aula sozinha (01/09/2026). A grade se repete toda semana; o que o professor
+// prepara nao. Ver o cabecalho de gestao/planos.py no backend.
+//
+// `data` e' opcional em todas: sem ela o backend usa o encontro da semana
+// corrente, que e' o que uma tela antiga faria.
 
-/** Grava o plano da aula. Texto vazio LIMPA o plano (nao ha DELETE de plano). */
+/** Monta o "?data=AAAA-MM-DD" do encontro, ou string vazia. */
+function doEncontro(data?: string) {
+  return data ? `?data=${encodeURIComponent(data)}` : "";
+}
+
+/** Grava o plano do encontro. Texto vazio LIMPA o plano (nao ha DELETE de plano). */
 export function definirPlanoDaAula(
   aulaId: number,
   texto: string,
+  data?: string,
 ): Promise<{ id: number }> {
-  return requisitar<{ id: number }>(`/admin/aulas/${aulaId}/plano`, {
-    method: "PUT",
-    body: { texto },
-  });
+  return requisitar<{ id: number }>(
+    `/admin/aulas/${aulaId}/plano${doEncontro(data)}`,
+    {
+      method: "PUT",
+      body: { texto },
+    },
+  );
 }
 
-/** Guarda (ou SUBSTITUI) o anexo da aula — um anexo por aula. */
+/** Guarda (ou SUBSTITUI) o anexo do encontro — um anexo por ENCONTRO. */
 export function salvarAnexoDaAula(
   aulaId: number,
   arquivo: FormData,
+  data?: string,
 ): Promise<{ id: number; nome: string; tamanho: number }> {
-  return requisitar(`/admin/aulas/${aulaId}/anexo`, {
+  return requisitar(`/admin/aulas/${aulaId}/anexo${doEncontro(data)}`, {
     method: "PUT",
     body: arquivo,
   });
 }
 
 /**
- * Guarda o material da aula como LINK, no lugar do arquivo.
+ * Guarda o material do encontro como LINK, no lugar do arquivo.
  *
- * SUBSTITUI o que estava la', arquivo ou link: e' UM material por aula,
- * garantido pelo indice unico em aula_id.
+ * SUBSTITUI o que estava NAQUELE DIA, arquivo ou link: e' UM material por
+ * encontro, garantido pelo indice unico em (aula_id, data). Um dia diferente
+ * nao e' tocado.
  */
 export function salvarLinkDaAula(
   aulaId: number,
   url: string,
   nome: string,
+  data?: string,
 ): Promise<{ id: number }> {
-  return requisitar<{ id: number }>(`/admin/aulas/${aulaId}/link`, {
-    method: "PUT",
-    body: { url, nome },
-  });
+  return requisitar<{ id: number }>(
+    `/admin/aulas/${aulaId}/link${doEncontro(data)}`,
+    {
+      method: "PUT",
+      body: { url, nome },
+    },
+  );
 }
 
-export function removerAnexoDaAula(aulaId: number): Promise<{ id: number }> {
-  return requisitar<{ id: number }>(`/admin/aulas/${aulaId}/anexo`, {
-    method: "DELETE",
-  });
+export function removerAnexoDaAula(
+  aulaId: number,
+  data?: string,
+): Promise<{ id: number }> {
+  return requisitar<{ id: number }>(
+    `/admin/aulas/${aulaId}/anexo${doEncontro(data)}`,
+    {
+      method: "DELETE",
+    },
+  );
 }
 
 /**
@@ -670,8 +719,14 @@ export function excluirMateria(id: number): Promise<{ id: number; nome: string }
 }
 
 /* --- Aulas --- */
-export function listarAulasDaTurma(turmaId: number): Promise<Aula[]> {
-  return requisitar<Aula[]>(`/admin/turmas/${turmaId}/aulas`, { revalidate: 0 });
+export function listarAulasDaTurma(
+  turmaId: number,
+  semana?: string,
+): Promise<Aula[]> {
+  return requisitar<Aula[]>(
+    `/admin/turmas/${turmaId}/aulas${daSemana(semana)}`,
+    { revalidate: 0 },
+  );
 }
 export function criarAula(turmaId: number, dados: NovaAula): Promise<{ id: number }> {
   return requisitar<{ id: number }>(`/admin/turmas/${turmaId}/aulas`, { method: "POST", body: dados });

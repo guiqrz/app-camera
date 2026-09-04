@@ -1,7 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState, type CSSProperties } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 
 import Link from "next/link";
 
@@ -10,8 +16,11 @@ import { EventosDoDia } from "@/components/aulas/eventos-do-dia";
 import { FormularioEvento } from "@/components/aulas/formulario-evento";
 import { ModalNovaAula } from "@/components/aulas/modal-nova-aula";
 import {
+  IconBaixar,
+  IconCalendario,
   IconClipe,
   IconLapis,
+  IconLink,
   IconLousa,
   IconMais,
   IconSetaDireita,
@@ -57,6 +66,20 @@ function comoISO(data: Date) {
   const mes = String(data.getMonth() + 1).padStart(2, "0");
   const dia = String(data.getDate()).padStart(2, "0");
   return `${data.getFullYear()}-${mes}-${dia}`;
+}
+
+/**
+ * "2026-09-03" -> "03/09". Formato curto pro selo de data no bloco da aula.
+ *
+ * Corta a string em vez de construir um `Date`: o valor ja' vem no formato
+ * certo, e passar por `Date` so' abriria a porta pro deslocamento de fuso que
+ * o `comoISO` acima existe pra evitar. Devolve `null` no formato inesperado —
+ * um selo vazio e' melhor que "NaN/NaN" no meio da grade.
+ */
+function comoDataCurta(dataISO: string) {
+  const [, mes, dia] = dataISO.split("-");
+  if (!mes || !dia) return null;
+  return `${dia}/${mes}`;
 }
 
 /** A mesma data com `dias` somados (ou subtraidos, se negativo). */
@@ -224,12 +247,23 @@ function BlocoDaAula({
   aula,
   mostrarTurma,
   aoEditar,
+  data,
   compacto = false,
   cancelada = false,
 }: {
   aula: Aula;
   mostrarTurma: boolean;
-  aoEditar: (aula: Aula) => void;
+  /** Ausente = bloco nao editavel (dia de fora do mes, que nao tem data). */
+  aoEditar?: (aula: Aula) => void;
+  /**
+   * A data "AAAA-MM-DD" do encontro que este bloco representa.
+   *
+   * A grade guarda so' o dia da semana, entao a data vem de fora, da coluna
+   * que renderiza o bloco. Fica visivel no card porque o cabecalho da coluna
+   * some da vista quando o professor rola uma semana cheia — sem ela, o bloco
+   * nao diz de que dia e'. No modo mes a celula ja e' o dia, entao la nao vai.
+   */
+  data?: string;
   /** Modo mes: a celula tem ~1/7 da largura e nao cabe plano nem anexo. */
   compacto?: boolean;
   /**
@@ -242,6 +276,7 @@ function BlocoDaAula({
   cancelada?: boolean;
 }) {
   const cor = corDaAula(aula);
+  const dataCurta = data ? comoDataCurta(data) : null;
 
   // No mes o bloco vira uma tira: materia + horario, sem o rodape de
   // preparacao. Espremer plano e anexo numa celula de 7 colunas nao os
@@ -250,15 +285,16 @@ function BlocoDaAula({
     return (
       <button
         type="button"
-        onClick={() => aoEditar(aula)}
+        onClick={aoEditar ? () => aoEditar(aula) : undefined}
+        disabled={!aoEditar}
         title={
           cancelada
             ? `${aula.materia_nome ?? "Sem matéria"} · ${aula.hora_inicio} – ${aula.hora_fim} · não acontece neste dia`
             : `${aula.materia_nome ?? "Sem matéria"} · ${aula.hora_inicio} – ${aula.hora_fim}`
         }
-        className={`w-full cursor-pointer truncate rounded-[6px] px-[6px] py-[3px] text-left text-[10px] font-semibold transition-[filter] duration-150 hover:brightness-[0.975] ${
-          cancelada ? "line-through opacity-55" : ""
-        }`}
+        className={`w-full truncate rounded-[6px] px-[6px] py-[3px] text-left text-[10px] font-semibold transition-[filter] duration-150 ${
+          aoEditar ? "cursor-pointer hover:brightness-[0.975]" : ""
+        } ${cancelada ? "line-through opacity-55" : ""}`}
         style={{
           background: `var(--materia-${cor}-bg)`,
           color: `var(--materia-${cor}-fg)`,
@@ -289,10 +325,15 @@ function BlocoDaAula({
           (toque), senao seria inalcancavel no celular. */}
       <button
         type="button"
-        onClick={() => aoEditar(aula)}
+        onClick={aoEditar ? () => aoEditar(aula) : undefined}
+        disabled={!aoEditar}
         className="absolute top-1.5 right-1.5 grid h-5 w-5 place-items-center rounded-md opacity-0 transition-opacity duration-150 group-hover/bloco:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
         style={{ background: "var(--veu-bloco)", color: "inherit" }}
-        aria-label={`Editar plano e material de ${aula.materia_nome ?? "aula sem matéria"}, ${aula.dia_semana_nome} ${aula.hora_inicio}`}
+        // A DATA entra no rotulo: plano e material sao daquele dia, e um leitor
+        // de tela que so' ouvisse "terça 14:00" nao saberia de qual terça.
+        aria-label={`Editar plano e material de ${aula.materia_nome ?? "aula sem matéria"}, ${aula.dia_semana_nome} ${aula.hora_inicio}${
+          dataCurta ? ` (${dataCurta})` : ""
+        }`}
       >
         <IconLapis size={12} />
       </button>
@@ -304,8 +345,21 @@ function BlocoDaAula({
         <span className={cancelada ? "line-through" : ""}>
           {aula.materia_nome ?? "Sem matéria"}
         </span>
-        <span className="text-[11.5px] tabular-nums">
-          {aula.hora_inicio} – {aula.hora_fim}
+        {/* Horario e data na mesma linha, a data num veu proprio: ela e' de
+            outra ordem (QUANDO o encontro cai) e sem o selo as duas leituras
+            numericas se misturariam num borrao de digitos. */}
+        <span className="flex items-center gap-[6px] text-[11.5px] tabular-nums">
+          <span>
+            {aula.hora_inicio} – {aula.hora_fim}
+          </span>
+          {dataCurta && (
+            <span
+              className="rounded-[5px] px-[5px] py-px text-[10.5px] font-bold"
+              style={{ background: "var(--veu-bloco)", color: "inherit" }}
+            >
+              {dataCurta}
+            </span>
+          )}
         </span>
       </div>
 
@@ -334,9 +388,22 @@ function BlocoDaAula({
           vazio="Sem plano"
         />
         <LinhaDoBloco
-          icone={<IconClipe size={12} />}
+          icone={
+            aula.anexo_eh_link ? <IconLink size={12} /> : <IconClipe size={12} />
+          }
           texto={aula.anexo_nome}
           vazio="Sem anexo"
+          // Link: abre o endereco em outra aba. Arquivo: abre pela rota da
+          // ponte — o LinhaDoBloco poe o ?inline=1, e o backend decide entre
+          // renderizar (PDF, imagem) e forcar baixar (o resto).
+          href={
+            aula.tem_anexo
+              ? aula.anexo_eh_link
+                ? (aula.anexo_url ?? undefined)
+                : `/api/admin/aulas/${aula.id}/anexo`
+              : undefined
+          }
+          ehLink={aula.anexo_eh_link}
         />
       </div>
     </div>
@@ -354,25 +421,214 @@ function LinhaDoBloco({
   icone,
   texto,
   vazio,
+  href,
+  ehLink = false,
 }: {
   icone: React.ReactNode;
   texto: string | null;
   vazio: string;
+  /**
+   * Endereco do material, quando esta linha e' o anexo e ha' um. Presente =
+   * a linha vira um link clicavel; ausente = texto simples (o caso do plano,
+   * e o do anexo vazio).
+   */
+  href?: string;
+  /** Anexo do tipo link (abre em nova aba) vs arquivo (baixa na mesma). */
+  ehLink?: boolean;
 }) {
   const preenchido = Boolean(texto);
-  return (
-    <span
-      className={`flex items-start gap-[5px] text-[11.5px] leading-[1.4] ${
-        preenchido ? "" : "italic opacity-[0.62]"
-      }`}
-      // 550 e' o peso do prototipo. A Montserrat carregada tem 500 e 600
-      // estaticos, entao 550 cai no mais proximo — o valor fica registrado
-      // aqui pra bater com o desenho se um dia a fonte virar variavel.
-      style={{ fontWeight: preenchido ? 550 : 500 }}
-    >
+
+  const classe = `flex items-start gap-[5px] text-[11.5px] leading-[1.4] ${
+    preenchido ? "" : "italic opacity-[0.62]"
+  }`;
+  // 550 e' o peso do prototipo. A Montserrat carregada tem 500 e 600 estaticos,
+  // entao 550 cai no mais proximo — o valor fica registrado aqui pra bater com
+  // o desenho se um dia a fonte virar variavel.
+  const estilo = { fontWeight: preenchido ? 550 : 500 } as const;
+
+  const conteudo = (
+    <>
       <span className="mt-[1.5px] flex-none opacity-80">{icone}</span>
-      <span className="min-w-0 break-words">{texto || vazio}</span>
+      <span className={`min-w-0 break-words ${href ? "underline" : ""}`}>
+        {texto || vazio}
+      </span>
+    </>
+  );
+
+  // Anexo com endereco: <a> de verdade, sempre em outra aba. Pro arquivo, o
+  // href de abrir leva ?inline=1 (o backend renderiza PDF/imagem, forca baixar
+  // o resto), e uma seta de download ao lado sempre SALVA o arquivo.
+  if (href) {
+    const hrefAbrir = ehLink
+      ? href
+      : `${href}${href.includes("?") ? "&" : "?"}inline=1`;
+
+    return (
+      <span className="flex items-start gap-[4px]">
+        <a
+          href={hrefAbrir}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`${classe} min-w-0 transition-opacity hover:opacity-80`}
+          style={estilo}
+        >
+          {conteudo}
+        </a>
+        {!ehLink && (
+          <a
+            href={href}
+            download
+            aria-label={`Baixar ${texto ?? "anexo"}`}
+            title="Baixar"
+            className="mt-[1px] flex-none opacity-70 transition-opacity hover:opacity-100"
+          >
+            <IconBaixar size={11} />
+          </a>
+        )}
+      </span>
+    );
+  }
+
+  return (
+    <span className={classe} style={estilo}>
+      {conteudo}
     </span>
+  );
+}
+
+/**
+ * Botao de calendario + popover pra pular pra qualquer mes.
+ *
+ * POR QUE ELE EXISTE: sem isto, so' as setas de semana mudavam o periodo, uma
+ * semana por clique. Um evento marcado pra tres meses a frente ficava
+ * inalcancavel — a pagina nunca chegava a buscar aquele mes, e o professor
+ * concluia que o evento nao tinha sido salvo.
+ *
+ * O `<input type="month">` nativo carrega o seletor de mes/ano do proprio
+ * sistema, que ja' e' acessivel e localizado. Os tres botoes rapidos cobrem o
+ * pulo curto (mes a mes) sem abrir o seletor.
+ */
+function SaltoDeMes({
+  base,
+  referencia,
+}: {
+  /** "/aulas" ou "/aulas/{id}". */
+  base: string;
+  /** O mes/ano em exibicao. */
+  referencia: Date;
+}) {
+  const router = useRouter();
+  const [aberto, setAberto] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Fecha ao clicar fora ou apertar Escape: um popover que so' fecha pelo
+  // proprio botao vira um painel preso na tela.
+  useEffect(() => {
+    if (!aberto) return;
+
+    function aoClicarFora(evt: MouseEvent) {
+      if (!containerRef.current?.contains(evt.target as Node)) setAberto(false);
+    }
+    function aoTeclar(evt: KeyboardEvent) {
+      if (evt.key === "Escape") setAberto(false);
+    }
+
+    document.addEventListener("mousedown", aoClicarFora);
+    document.addEventListener("keydown", aoTeclar);
+    return () => {
+      document.removeEventListener("mousedown", aoClicarFora);
+      document.removeEventListener("keydown", aoTeclar);
+    };
+  }, [aberto]);
+
+  const anoMesAtual = `${referencia.getFullYear()}-${String(
+    referencia.getMonth() + 1,
+  ).padStart(2, "0")}`;
+
+  /** Navega pro dia 1 do mes/ano pedido — a pagina recalcula o periodo dali. */
+  function irPara(ano: number, mes0: number) {
+    const alvo = `${ano}-${String(mes0 + 1).padStart(2, "0")}-01`;
+    router.push(`${base}?data=${alvo}`);
+    setAberto(false);
+  }
+
+  return (
+    <div ref={containerRef} className="relative flex-none">
+      <button
+        type="button"
+        onClick={() => setAberto((v) => !v)}
+        aria-label="Escolher mês"
+        aria-expanded={aberto}
+        className="border-border-default bg-surface-2 text-text-body hover:text-text grid size-[26px] cursor-pointer place-items-center rounded-full border transition-colors"
+      >
+        <IconCalendario size={13} />
+      </button>
+
+      {aberto && (
+        /* ⚠️ FUNDO OPACO (--painel-solido), nao --surface: este popover flutua
+           sobre os blocos da agenda, e --surface e' translucido de proposito
+           (30% no claro, 5,5% no escuro) — as aulas passavam por baixo e o
+           painel quase sumia. Fundo opaco nao tem o que borrar, entao tambem
+           nao leva blur. E --shadow-raise, nao --shadow-card: no tema escuro o
+           segundo e' `none`, e sem sombra nada separa o painel do fundo. */
+        <div
+          role="dialog"
+          aria-label="Ir para um mês"
+          className="border-border-default absolute right-0 top-[32px] z-20 flex w-[220px] flex-col gap-[10px] rounded-[12px] border p-[12px]"
+          style={{
+            background: "var(--painel-solido)",
+            boxShadow: "var(--shadow-raise)",
+          }}
+        >
+          <label className="text-text-muted text-[10px] font-bold tracking-[0.1em] uppercase">
+            Mês e ano
+          </label>
+          <input
+            type="month"
+            value={anoMesAtual}
+            onChange={(e) => {
+              const [ano, mes] = e.target.value.split("-").map(Number);
+              if (ano && mes) irPara(ano, mes - 1);
+            }}
+            className="bg-surface-2 border-border-default text-text w-full rounded-[9px] border px-[10px] py-[8px] text-[13px] outline-none focus:outline-2 focus:-outline-offset-1 focus:outline-[var(--primary-hover)]"
+          />
+
+          <div className="flex items-center gap-[6px]">
+            <button
+              type="button"
+              onClick={() =>
+                irPara(referencia.getFullYear(), referencia.getMonth() - 1)
+              }
+              className="border-border-default bg-surface-2 text-text-body hover:text-text flex-1 rounded-[8px] border px-[8px] py-[6px] text-[11px] transition-colors"
+              style={{ fontWeight: 550 }}
+            >
+              ‹ Mês
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const agora = new Date();
+                irPara(agora.getFullYear(), agora.getMonth());
+              }}
+              className="border-border-default bg-surface-2 text-text-body hover:text-text flex-1 rounded-[8px] border px-[8px] py-[6px] text-[11px] transition-colors"
+              style={{ fontWeight: 550 }}
+            >
+              Hoje
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                irPara(referencia.getFullYear(), referencia.getMonth() + 1)
+              }
+              className="border-border-default bg-surface-2 text-text-body hover:text-text flex-1 rounded-[8px] border px-[8px] py-[6px] text-[11px] transition-colors"
+              style={{ fontWeight: 550 }}
+            >
+              Mês ›
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -436,7 +692,18 @@ export function AgendaSemana({
   data,
 }: Props) {
   const router = useRouter();
-  const [emEdicao, setEmEdicao] = useState<Aula | null>(null);
+  /**
+   * A aula aberta no editor E o dia dela.
+   *
+   * A data anda junto porque plano e material pertencem ao ENCONTRO, nao a'
+   * aula da grade (01/09/2026): sem ela, editar o bloco de uma semana gravaria
+   * na semana corrente. A aula sozinha nao sabe o dia — a grade guarda so'
+   * `dia_semana`, e quem sabe a data e' a coluna que desenhou o bloco.
+   */
+  const [emEdicao, setEmEdicao] = useState<{
+    aula: Aula;
+    data: string;
+  } | null>(null);
   const [modo, setModo] = useState<"semana" | "mes">("semana");
 
   /** Dia cujo formulario de aula nova esta aberto. Um por vez. */
@@ -503,6 +770,16 @@ export function AgendaSemana({
   const domingoExibido = datas.get(0) ?? referencia;
   const semanaAnterior = comoISO(somarDias(domingoExibido, -7));
   const semanaSeguinte = comoISO(somarDias(domingoExibido, 7));
+
+  // Enderecos de mes anterior/seguinte, pras setas do modo mes: dia 1 do mes
+  // vizinho. `getMonth() +/- 1` rola o ano sozinho (mes -1 de janeiro = dez do
+  // ano anterior).
+  const mesAnterior = comoISO(
+    new Date(referencia.getFullYear(), referencia.getMonth() - 1, 1),
+  );
+  const mesSeguinte = comoISO(
+    new Date(referencia.getFullYear(), referencia.getMonth() + 1, 1),
+  );
 
   // A semana de hoje ja' esta na tela? Entao o botao "hoje" nao tem pra onde
   // levar — some, em vez de virar um clique que nao faz nada.
@@ -697,41 +974,43 @@ export function AgendaSemana({
             : periodo}
         </span>
 
-        {/* As setas de semana.
+        {/* As setas de navegacao + o salto de mes, todos encostados a' direita.
 
-            <Link> e nao botao com estado: a semana vive no ENDERECO (?data=),
+            <Link> e nao botao com estado: o periodo vive no ENDERECO (?data=),
             entao o link certo ja' e' navegavel, salvavel e funciona com o
             botao voltar do navegador. Um setState local perderia tudo isso.
 
-            Elas so' aparecem no modo semana — no mes, "semana anterior" nao
-            tem significado. */}
-        {modo === "semana" && (
-          <div className="ml-auto flex flex-none items-center gap-[6px]">
-            {!naSemanaDeHoje && (
-              <Link
-                href={base}
-                className="border-border-default bg-surface-2 text-text-body hover:text-text cursor-pointer rounded-full border px-[11px] py-[5px] text-[11.5px] transition-colors"
-                style={{ fontWeight: 550 }}
-              >
-                Hoje
-              </Link>
-            )}
+            No modo semana as setas pulam 7 dias; no modo mes, um mes inteiro —
+            "semana anterior" nao tem significado quando a tela mostra o mes. */}
+        <div className="ml-auto flex flex-none items-center gap-[6px]">
+          {modo === "semana" && !naSemanaDeHoje && (
             <Link
-              href={`${base}?data=${semanaAnterior}`}
-              aria-label="Semana anterior"
-              className="border-border-default bg-surface-2 text-text-body hover:text-text grid size-[26px] cursor-pointer place-items-center rounded-full border transition-colors"
+              href={base}
+              className="border-border-default bg-surface-2 text-text-body hover:text-text cursor-pointer rounded-full border px-[11px] py-[5px] text-[11.5px] transition-colors"
+              style={{ fontWeight: 550 }}
             >
-              <IconSetaDireita size={13} className="rotate-180" />
+              Hoje
             </Link>
-            <Link
-              href={`${base}?data=${semanaSeguinte}`}
-              aria-label="Próxima semana"
-              className="border-border-default bg-surface-2 text-text-body hover:text-text grid size-[26px] cursor-pointer place-items-center rounded-full border transition-colors"
-            >
-              <IconSetaDireita size={13} />
-            </Link>
-          </div>
-        )}
+          )}
+          <Link
+            href={`${base}?data=${modo === "mes" ? mesAnterior : semanaAnterior}`}
+            aria-label={modo === "mes" ? "Mês anterior" : "Semana anterior"}
+            className="border-border-default bg-surface-2 text-text-body hover:text-text grid size-[26px] cursor-pointer place-items-center rounded-full border transition-colors"
+          >
+            <IconSetaDireita size={13} className="rotate-180" />
+          </Link>
+          <Link
+            href={`${base}?data=${modo === "mes" ? mesSeguinte : semanaSeguinte}`}
+            aria-label={modo === "mes" ? "Próximo mês" : "Próxima semana"}
+            className="border-border-default bg-surface-2 text-text-body hover:text-text grid size-[26px] cursor-pointer place-items-center rounded-full border transition-colors"
+          >
+            <IconSetaDireita size={13} />
+          </Link>
+
+          {/* O salto direto pra qualquer mes — resolve o evento marcado meses
+              a frente, que as setas so' alcancariam a muitos cliques. */}
+          <SaltoDeMes base={base} referencia={referencia} />
+        </div>
 
         {/* `.filtro-mes` do prototipo: pastilha redonda de 999px, 5px 11px,
             11.5px/550. Alterna a MESMA grade entre semana e mes — a aula da
@@ -745,9 +1024,7 @@ export function AgendaSemana({
               ? "Ver o mês inteiro"
               : "Ver só a semana"
           }
-          className={`border-border-default bg-surface-2 text-text-body hover:text-text flex-none cursor-pointer rounded-full border px-[11px] py-[5px] text-[11.5px] transition-colors ${
-            modo === "semana" ? "" : "ml-auto"
-          }`}
+          className="border-border-default bg-surface-2 text-text-body hover:text-text flex-none cursor-pointer rounded-full border px-[11px] py-[5px] text-[11.5px] transition-colors"
           style={{ fontWeight: 550 }}
         >
           {modo === "semana" ? "Semana ▾" : "Mês ▾"}
@@ -817,7 +1094,17 @@ export function AgendaSemana({
                           key={`${celula.chave}-${aula.id}`}
                           aula={aula}
                           mostrarTurma={!nomeDaTurma}
-                          aoEditar={setEmEdicao}
+                          // Dia de fora do mes nao tem data e nao abre o
+                          // editor: sem ela nao ha' encontro pra gravar.
+                          aoEditar={
+                            celula.data
+                              ? (clicada) =>
+                                  setEmEdicao({
+                                    aula: clicada,
+                                    data: celula.data as string,
+                                  })
+                              : undefined
+                          }
                           compacto
                           cancelada={canceladas.has(
                             `${aula.id}|${celula.data}`,
@@ -923,7 +1210,10 @@ export function AgendaSemana({
                   key={aula.id}
                   aula={aula}
                   mostrarTurma={!nomeDaTurma}
-                  aoEditar={setEmEdicao}
+                  aoEditar={(clicada) =>
+                    setEmEdicao({ aula: clicada, data: chaveDoDia })
+                  }
+                  data={chaveDoDia}
                   cancelada={canceladas.has(`${aula.id}|${chaveDoDia}`)}
                 />
               ))}
@@ -950,8 +1240,9 @@ export function AgendaSemana({
           quem tem que reler e' ele. Mexer so' no estado daqui deixaria a
           tela mostrando um valor que o banco talvez nao tenha aceitado. */}
       <EditorAula
-        aula={emEdicao}
+        aula={emEdicao?.aula ?? null}
         materias={materias}
+        data={emEdicao?.data}
         aoFechar={() => setEmEdicao(null)}
         aoSalvar={() => {
           setEmEdicao(null);

@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 
-import { ApiError, excluirFichaDoAluno, salvarFichaDoAluno } from "@/lib/api";
+import {
+  ApiError,
+  buscarFichaDoAluno,
+  excluirFichaDoAluno,
+  salvarFichaDoAluno,
+} from "@/lib/api";
 import type { TipoDeApoio } from "@/lib/types";
 
 /**
@@ -64,6 +69,36 @@ function traduzirFalha(causa: ApiError): { mensagem: string; status: number } {
         mensagem: "Não foi possível falar com a API do CUPCAM.",
         status: 504,
       };
+  }
+}
+
+/**
+ * Le a ficha do aluno.
+ *
+ * O modal do aluno chama isto ao abrir em modo editar: sem esta rota o GET
+ * batia em 405 e a tela mostrava a ficha vazia mesmo quando havia uma salva —
+ * o professor concluia que o salvamento nao tinha funcionado.
+ *
+ * `tem_ficha: false` e' resposta 200 VALIDA (aluno sem ficha), nao um erro.
+ * So' 404 (aluno inexistente) e falha de rede viram status de erro.
+ */
+export async function GET(
+  _requisicao: Request,
+  { params }: { params: Promise<{ ra: string }> },
+) {
+  const { ra } = await params;
+  if (!ra) {
+    return NextResponse.json({ erro: "Aluno inválido." }, { status: 422 });
+  }
+
+  try {
+    return NextResponse.json(await buscarFichaDoAluno(ra));
+  } catch (causa) {
+    if (causa instanceof ApiError) {
+      const { mensagem, status } = traduzirFalha(causa);
+      return NextResponse.json({ erro: mensagem }, { status });
+    }
+    throw causa;
   }
 }
 

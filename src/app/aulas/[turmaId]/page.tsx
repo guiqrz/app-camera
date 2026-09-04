@@ -21,6 +21,13 @@ import {
 import { consolidarTurma } from "@/lib/consolidar";
 import { periodoDaAgenda } from "@/lib/semana";
 
+// A grade e a agenda desta turma mudam a cada plano escrito, aula criada ou
+// evento marcado — e o professor volta pra ca' esperando ver o proprio clique.
+// Sem isto o Next serve a rota do cache (Full Route Cache) e so' o F5 traz o
+// dado novo. Mesma decisao da tela /aulas consolidada e das telas de chamada,
+// relatorios e coordenacao.
+export const dynamic = "force-dynamic";
+
 type Props = {
   // No App Router os parametros de rota chegam como Promise.
   params: Promise<{ turmaId: string }>;
@@ -62,7 +69,10 @@ export default async function AulasDaTurmaPage({ params, searchParams }: Props) 
       // nao aparece.
       buscarContinuidadeDaTurma(id).catch(() => null),
       // Mesma logica: a grade e' contexto, nao o conteudo principal da tela.
-      buscarSemanaDaTurma(id).catch(() => null),
+      //
+      // `data` (a semana exibida) escolhe de qual ENCONTRO vem plano e anexo —
+      // a grade se repete toda semana, o que foi preparado nao (01/09/2026).
+      buscarSemanaDaTurma(id, data).catch(() => null),
       // E os numeros tambem: sem eles a tela perde a fileira do topo, mas a
       // lista de aulas continua de pe.
       buscarEstatisticasDaTurma(id).catch(() => null),

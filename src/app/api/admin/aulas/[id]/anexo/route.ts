@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { lerDataDoEncontro } from "@/app/api/admin/_lib/data-do-encontro";
 import { statusSeguro } from "@/app/api/admin/_lib/status-seguro";
 import {
   ApiError,
@@ -17,15 +18,22 @@ async function lerAulaId(params: Props["params"]) {
 }
 
 /**
- * Ponte do anexo da aula (o material que o professor pendura na agenda).
+ * Ponte do anexo do ENCONTRO (o material que o professor pendura na agenda).
  *
- * PUT substitui: o indice unico em aula_id permite UM anexo por aula, entao
- * enviar outro troca o que estava la'.
+ * PUT substitui: o indice unico em (aula_id, data) permite UM anexo por
+ * ENCONTRO, entao enviar outro NO MESMO DIA troca o que estava la'. Um dia
+ * diferente nao e' tocado. `?data=AAAA-MM-DD` escolhe o encontro; sem ela, a
+ * semana corrente.
  */
 export async function PUT(requisicao: Request, { params }: Props) {
   const aulaId = await lerAulaId(params);
   if (aulaId === null) {
     return NextResponse.json({ erro: "Aula inválida." }, { status: 400 });
+  }
+
+  const encontro = lerDataDoEncontro(requisicao);
+  if (!encontro.ok) {
+    return NextResponse.json({ erro: encontro.erro }, { status: 422 });
   }
 
   let form: FormData;
@@ -39,7 +47,9 @@ export async function PUT(requisicao: Request, { params }: Props) {
   }
 
   try {
-    return NextResponse.json(await salvarAnexoDaAula(aulaId, form));
+    return NextResponse.json(
+      await salvarAnexoDaAula(aulaId, form, encontro.data),
+    );
   } catch (causa) {
     if (causa instanceof ApiError) {
       if (causa.isNotFound) {
@@ -73,22 +83,40 @@ export async function PUT(requisicao: Request, { params }: Props) {
  * Baixa o anexo. Repassa os BYTES, nao JSON — por isso nao usa `requisitar`,
  * que faz `.json()` da resposta e engasgaria num PDF.
  *
- * O Content-Disposition vem da API ja sanitizado (aspas, CRLF e ".." mortos —
- * ver _nome_do_anexo em web/api.py). Ele e' repassado como veio, e o
- * `attachment` que ele carrega e' o que impede o navegador de RENDERIZAR um
- * HTML/SVG vindo de upload no nosso dominio.
+ * `?inline=1` e' REPASSADO pro backend: com ele, a API responde
+ * `Content-Disposition: inline` pros tipos que o navegador renderiza sem risco
+ * (PDF, imagem raster) e o professor VE o material numa aba, em vez de baixar.
+ * Sem o parametro, ou pra tipo perigoso (HTML, SVG), a API mantem `attachment`
+ * — o que impede o navegador de RENDERIZAR upload no nosso dominio.
+ *
+ * O Content-Disposition da resposta vem da API ja sanitizado (aspas, CRLF e
+ * ".." mortos — ver _nome_do_anexo em web/api.py) e e' repassado como veio.
  */
-export async function GET(_requisicao: Request, { params }: Props) {
+export async function GET(requisicao: Request, { params }: Props) {
   const aulaId = await lerAulaId(params);
   if (aulaId === null) {
     return NextResponse.json({ erro: "Aula inválida." }, { status: 400 });
   }
 
+  const encontro = lerDataDoEncontro(requisicao);
+  if (!encontro.ok) {
+    return NextResponse.json({ erro: encontro.erro }, { status: 422 });
+  }
+
   const { baseUrl, apiKey } = lerConfiguracao();
+
+  // So' `inline` e `data` atravessam: sao os unicos parametros que a rota do
+  // backend conhece, e repassar a query inteira levaria lixo do cliente pra API.
+  const parametros = new URLSearchParams();
+  if (new URL(requisicao.url).searchParams.get("inline") === "1") {
+    parametros.set("inline", "1");
+  }
+  if (encontro.data) parametros.set("data", encontro.data);
+  const query = parametros.size > 0 ? `?${parametros}` : "";
 
   let resposta: Response;
   try {
-    resposta = await fetch(`${baseUrl}/admin/aulas/${aulaId}/anexo`, {
+    resposta = await fetch(`${baseUrl}/admin/aulas/${aulaId}/anexo${query}`, {
       headers: { "X-API-Key": apiKey },
       cache: "no-store",
     });
@@ -121,14 +149,19 @@ export async function GET(_requisicao: Request, { params }: Props) {
   });
 }
 
-export async function DELETE(_requisicao: Request, { params }: Props) {
+export async function DELETE(requisicao: Request, { params }: Props) {
   const aulaId = await lerAulaId(params);
   if (aulaId === null) {
     return NextResponse.json({ erro: "Aula inválida." }, { status: 400 });
   }
 
+  const encontro = lerDataDoEncontro(requisicao);
+  if (!encontro.ok) {
+    return NextResponse.json({ erro: encontro.erro }, { status: 422 });
+  }
+
   try {
-    return NextResponse.json(await removerAnexoDaAula(aulaId));
+    return NextResponse.json(await removerAnexoDaAula(aulaId, encontro.data));
   } catch (causa) {
     if (causa instanceof ApiError) {
       if (causa.isNotFound) {

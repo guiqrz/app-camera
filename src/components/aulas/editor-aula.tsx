@@ -43,6 +43,14 @@ type Props = {
   aula: Aula | null;
   /** Materias da escola, pro seletor. */
   materias?: Materia[];
+  /**
+   * A data "AAAA-MM-DD" do ENCONTRO sendo editado — o dia do bloco clicado.
+   *
+   * Plano e material pertencem a este dia, nao a' aula da grade (ver a nota do
+   * componente). Ausente = o backend usa o encontro da semana corrente, que e'
+   * o que uma tela antiga faria.
+   */
+  data?: string;
   aoFechar: () => void;
   /** Chamado depois de salvar, pra tela recarregar os dados do servidor. */
   aoSalvar: () => void;
@@ -57,11 +65,22 @@ type Props = {
  * editaveis a gaveta ficou apertada, e o pedido foi explicito — abrir no meio,
  * grande, com mais coisa editavel.
  *
- * O plano e o material pertencem a' AULA DA GRADE, nao a' sessao gravada: sao
- * preparacao, existem antes de a camera ligar e valem em toda repeticao semanal
- * daquela aula (ver o docstring de gestao/planos.py no backend).
+ * DUAS COISAS DE ALCANCE DIFERENTE no mesmo modal (01/09/2026):
+ *
+ * - Materia, dia e horario sao da GRADE: mudam a aula em TODAS as semanas.
+ * - Plano e material sao do ENCONTRO (`data`): valem so' naquele dia.
+ *
+ * Ate 01/09 tudo era da grade, entao o que o professor escrevia numa terca
+ * reaparecia em todas as tercas — e o material da terca seguinte apagava o da
+ * anterior. Ver o cabecalho de gestao/planos.py no backend.
  */
-export function EditorAula({ aula, materias = [], aoFechar, aoSalvar }: Props) {
+export function EditorAula({
+  aula,
+  materias = [],
+  data,
+  aoFechar,
+  aoSalvar,
+}: Props) {
   const [plano, setPlano] = useState("");
   const [materiaId, setMateriaId] = useState<number | null>(null);
   const [diaSemana, setDiaSemana] = useState(1);
@@ -69,6 +88,13 @@ export function EditorAula({ aula, materias = [], aoFechar, aoSalvar }: Props) {
   const [horaFim, setHoraFim] = useState("");
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [link, setLink] = useState<{ url: string; nome: string } | null>(null);
+  // O que esta' digitado no campo de link mas ainda NAO foi "adicionado". Sem
+  // guardar isto, o professor que cola a URL e clica direto em Salvar perde o
+  // link em silencio — ver aoMudarRascunhoDeLink em campo-anexo.tsx.
+  const [rascunhoDeLink, setRascunhoDeLink] = useState<{
+    url: string;
+    nome: string;
+  } | null>(null);
   const [removerAnexo, setRemoverAnexo] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
@@ -89,6 +115,7 @@ export function EditorAula({ aula, materias = [], aoFechar, aoSalvar }: Props) {
     setHoraFim(aula?.hora_fim ?? "");
     setArquivo(null);
     setLink(null);
+    setRascunhoDeLink(null);
     setRemoverAnexo(false);
     setErro(null);
     setEnviando(false);
@@ -171,6 +198,23 @@ export function EditorAula({ aula, materias = [], aoFechar, aoSalvar }: Props) {
       return;
     }
 
+    // Um link digitado mas nao "adicionado" ainda: comita agora, senao ele
+    // some sem aviso. So' vale quando nao ha' arquivo escolhido (arquivo
+    // ganha do link) e o rascunho parece um endereco de verdade.
+    let linkParaSalvar = link;
+    if (!arquivo && rascunhoDeLink) {
+      const u = rascunhoDeLink.url.trim().toLowerCase();
+      if (u.startsWith("http://") || u.startsWith("https://")) {
+        linkParaSalvar = {
+          url: rascunhoDeLink.url.trim(),
+          nome: rascunhoDeLink.nome.trim(),
+        };
+      } else {
+        setErro("O link precisa começar com http:// ou https://");
+        return;
+      }
+    }
+
     setEnviando(true);
     try {
       const mudouIdentidade =
@@ -214,31 +258,45 @@ export function EditorAula({ aula, materias = [], aoFechar, aoSalvar }: Props) {
         }
       }
 
+      // `?data=` prende plano e material AO DIA do bloco clicado. Sem ele o
+      // backend grava no encontro da semana corrente — o que salvaria no dia
+      // errado sempre que o professor estivesse olhando outra semana.
+      const doEncontro = data ? `?data=${data}` : "";
+
       // O plano vai sempre que muda: texto vazio LIMPA o plano, que e' como a
       // tela apaga.
       if (plano !== aula.plano) {
-        const resposta = await fetch(`/api/admin/aulas/${aula.id}/plano`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ texto: plano }),
-        });
+        const resposta = await fetch(
+          `/api/admin/aulas/${aula.id}/plano${doEncontro}`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ texto: plano }),
+          },
+        );
         if (!resposta.ok) throw new Error("Não foi possível salvar o plano.");
       }
 
       if (arquivo) {
         const form = new FormData();
         form.append("arquivo", arquivo);
-        const resposta = await fetch(`/api/admin/aulas/${aula.id}/anexo`, {
-          method: "PUT",
-          body: form,
-        });
+        const resposta = await fetch(
+          `/api/admin/aulas/${aula.id}/anexo${doEncontro}`,
+          {
+            method: "PUT",
+            body: form,
+          },
+        );
         if (!resposta.ok) throw new Error("Não foi possível enviar o arquivo.");
-      } else if (link) {
-        const resposta = await fetch(`/api/admin/aulas/${aula.id}/link`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(link),
-        });
+      } else if (linkParaSalvar) {
+        const resposta = await fetch(
+          `/api/admin/aulas/${aula.id}/link${doEncontro}`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(linkParaSalvar),
+          },
+        );
         if (!resposta.ok) {
           const corpo = await resposta.json().catch(() => null);
           throw new Error(
@@ -248,9 +306,12 @@ export function EditorAula({ aula, materias = [], aoFechar, aoSalvar }: Props) {
           );
         }
       } else if (removerAnexo && aula.tem_anexo) {
-        const resposta = await fetch(`/api/admin/aulas/${aula.id}/anexo`, {
-          method: "DELETE",
-        });
+        const resposta = await fetch(
+          `/api/admin/aulas/${aula.id}/anexo${doEncontro}`,
+          {
+            method: "DELETE",
+          },
+        );
         if (!resposta.ok) throw new Error("Não foi possível remover o material.");
       }
 
@@ -430,6 +491,7 @@ export function EditorAula({ aula, materias = [], aoFechar, aoSalvar }: Props) {
               maximoBytes={MAXIMO_ANEXO_BYTES}
               desabilitado={enviando}
               aoEscolher={escolherAnexo}
+              aoMudarRascunhoDeLink={setRascunhoDeLink}
             />
           )}
 

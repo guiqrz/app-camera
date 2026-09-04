@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { lerDataDoEncontro } from "@/app/api/admin/_lib/data-do-encontro";
 import { statusSeguro } from "@/app/api/admin/_lib/status-seguro";
 import { ApiError, definirPlanoDaAula } from "@/lib/api";
 
@@ -9,14 +10,21 @@ type Props = { params: Promise<{ id: string }> };
 const MAXIMO_CARACTERES = 200;
 
 /**
- * Ponte do plano da aula (o texto que o professor escreve pra si mesmo na
+ * Ponte do plano do ENCONTRO (o texto que o professor escreve pra si mesmo na
  * agenda). Texto vazio LIMPA o plano — nao ha DELETE separado.
+ *
+ * `?data=AAAA-MM-DD` escolhe o encontro; sem ela, o da semana corrente.
  */
 export async function PUT(requisicao: Request, { params }: Props) {
   const { id } = await params;
   const aulaId = Number(id);
   if (!Number.isInteger(aulaId) || aulaId <= 0) {
     return NextResponse.json({ erro: "Aula inválida." }, { status: 400 });
+  }
+
+  const encontro = lerDataDoEncontro(requisicao);
+  if (!encontro.ok) {
+    return NextResponse.json({ erro: encontro.erro }, { status: 422 });
   }
 
   let corpo: unknown;
@@ -44,7 +52,9 @@ export async function PUT(requisicao: Request, { params }: Props) {
   }
 
   try {
-    return NextResponse.json(await definirPlanoDaAula(aulaId, texto));
+    return NextResponse.json(
+      await definirPlanoDaAula(aulaId, texto, encontro.data),
+    );
   } catch (causa) {
     if (causa instanceof ApiError) {
       if (causa.isNotFound) {

@@ -2,7 +2,13 @@
 
 import { useRef, useState } from "react";
 
-import { IconClipe, IconLink, IconLixeira, IconSubir } from "@/components/ui/icons";
+import {
+  IconBaixar,
+  IconClipe,
+  IconLink,
+  IconLixeira,
+  IconSubir,
+} from "@/components/ui/icons";
 
 /**
  * Escolha de anexo: UM ARQUIVO OU UM LINK.
@@ -40,9 +46,24 @@ type Props = {
   desabilitado?: boolean;
   /** Chamado quando o professor escolhe um arquivo ou confirma um link. */
   aoEscolher: (escolha: EscolhaDeAnexo) => void;
+  /**
+   * Chamado a cada tecla no campo de link, com o que esta' digitado ali AGORA
+   * (ou null quando o campo esta' vazio / fechado).
+   *
+   * POR QUE EXISTE: sem isto, um link digitado mas nao "adicionado" — o
+   * professor cola a URL e clica direto em Salvar — some em silencio, porque
+   * `aoEscolher` so' dispara no botao "Adicionar link". Quem usa este componente
+   * guarda o rascunho e o confirma no proprio salvar. Ver editor-aula.tsx.
+   */
+  aoMudarRascunhoDeLink?: (rascunho: { url: string; nome: string } | null) => void;
 };
 
-export function CampoAnexo({ maximoBytes, desabilitado = false, aoEscolher }: Props) {
+export function CampoAnexo({
+  maximoBytes,
+  desabilitado = false,
+  aoEscolher,
+  aoMudarRascunhoDeLink,
+}: Props) {
   // null = ainda escolhendo entre as duas formas.
   const [modo, setModo] = useState<"arquivo" | "link" | null>(null);
   const [url, setUrl] = useState("");
@@ -74,6 +95,19 @@ export function CampoAnexo({ maximoBytes, desabilitado = false, aoEscolher }: Pr
     setUrl("");
     setNome("");
     setModo(null);
+    aoMudarRascunhoDeLink?.(null);
+  }
+
+  /** Atualiza um campo do link e avisa o rascunho pro componente pai. */
+  function mexerNoLink(campo: "url" | "nome", valor: string) {
+    const proximaUrl = campo === "url" ? valor : url;
+    const proximoNome = campo === "nome" ? valor : nome;
+    if (campo === "url") setUrl(valor);
+    else setNome(valor);
+    const urlLimpa = proximaUrl.trim();
+    aoMudarRascunhoDeLink?.(
+      urlLimpa ? { url: urlLimpa, nome: proximoNome.trim() } : null,
+    );
   }
 
   if (modo === "link") {
@@ -81,7 +115,7 @@ export function CampoAnexo({ maximoBytes, desabilitado = false, aoEscolher }: Pr
       <div className="flex flex-col gap-2">
         <input
           value={url}
-          onChange={(evento) => setUrl(evento.target.value)}
+          onChange={(evento) => mexerNoLink("url", evento.target.value)}
           onKeyDown={(evento) => {
             // Enter confirma o link em vez de submeter o formulario inteiro:
             // o anexo e' um passo dentro do formulario, nao o fim dele.
@@ -98,7 +132,7 @@ export function CampoAnexo({ maximoBytes, desabilitado = false, aoEscolher }: Pr
         />
         <input
           value={nome}
-          onChange={(evento) => setNome(evento.target.value)}
+          onChange={(evento) => mexerNoLink("nome", evento.target.value)}
           placeholder="Nome (opcional — sem ele, mostramos o site)"
           aria-label="Nome do link"
           disabled={desabilitado}
@@ -124,6 +158,9 @@ export function CampoAnexo({ maximoBytes, desabilitado = false, aoEscolher }: Pr
             onClick={() => {
               setModo(null);
               setErro(null);
+              setUrl("");
+              setNome("");
+              aoMudarRascunhoDeLink?.(null);
             }}
             disabled={desabilitado}
             className="text-text-muted hover:text-text rounded-full px-[14px] py-[6px] text-[12px]"
@@ -208,7 +245,19 @@ export function CampoAnexo({ maximoBytes, desabilitado = false, aoEscolher }: Pr
   );
 }
 
-/** Linha de um anexo ja' escolhido ou ja' gravado. */
+/**
+ * Linha de um anexo ja' escolhido ou ja' gravado.
+ *
+ * ACOES, conforme o tipo:
+ *  - LINK: um botao "Abrir", que leva ao endereco em outra aba.
+ *  - ARQUIVO: "Abrir" (PDF/imagem renderizam numa aba; outros tipos o backend
+ *    forca baixar) E "Baixar" (sempre salva o arquivo, com o nome certo).
+ *
+ * POR QUE OS DOIS pro arquivo: um <a> unico apontando pra rota de download
+ * respondia `Content-Disposition: attachment` — o navegador baixava em
+ * silencio e a pagina nao ia a lugar nenhum, entao parecia que o clique nao
+ * fez nada. Separar deixa claro o que cada acao faz.
+ */
 export function LinhaDeAnexo({
   nome,
   detalhe,
@@ -220,11 +269,23 @@ export function LinhaDeAnexo({
   nome: string;
   detalhe: string;
   ehLink: boolean;
-  /** Endereco do link, ou rota de download do arquivo. Ausente = nada a abrir. */
+  /**
+   * LINK: o endereco. ARQUIVO: a rota de download da ponte (sem query). De
+   * ausente, a linha nao oferece acao (anexo recem-escolhido, ainda sem id).
+   */
   href?: string;
   aoRemover: () => void;
   desabilitado?: boolean;
 }) {
+  // Pro arquivo, "Abrir" pede a mesma rota com ?inline=1: o backend responde
+  // inline pros tipos que o navegador renderiza sem risco (PDF, imagem raster)
+  // e attachment pro resto.
+  const hrefAbrir = href
+    ? ehLink
+      ? href
+      : `${href}${href.includes("?") ? "&" : "?"}inline=1`
+    : undefined;
+
   return (
     <div className="bg-surface border-border-default flex items-center gap-3 rounded-xl border px-3.5 py-3">
       {ehLink ? (
@@ -233,22 +294,37 @@ export function LinhaDeAnexo({
         <IconClipe size={16} className="text-text-muted flex-none" />
       )}
       <div className="min-w-0 flex-1">
-        {href ? (
-          <a
-            href={href}
-            // Link de terceiro abre em outra aba, e `noreferrer` impede que a
-            // pagina de destino alcance esta pela window.opener.
-            target={ehLink ? "_blank" : undefined}
-            rel={ehLink ? "noopener noreferrer" : undefined}
-            className="text-text-body hover:text-primary block truncate text-sm"
-          >
-            {nome}
-          </a>
-        ) : (
-          <p className="text-text-body truncate text-sm">{nome}</p>
-        )}
+        <p className="text-text-body truncate text-sm">{nome}</p>
         <p className="text-text-muted text-[11px]">{detalhe}</p>
       </div>
+
+      {hrefAbrir && (
+        <a
+          href={hrefAbrir}
+          // `noreferrer` impede que a pagina de destino alcance esta pela
+          // window.opener. Vale pro link e pro arquivo aberto na aba.
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-text-body hover:text-primary flex-none rounded-lg px-2.5 py-1.5 text-[12px] font-semibold"
+        >
+          Abrir
+        </a>
+      )}
+
+      {href && !ehLink && (
+        <a
+          href={href}
+          // `download` forca o SAVE-AS com o nome do arquivo, sem navegar. O
+          // atributo so' vale em same-origin — e a ponte /api e' same-origin.
+          download={nome}
+          className="text-text-muted hover:text-text flex-none rounded-lg p-1.5"
+          aria-label={`Baixar ${nome}`}
+          title="Baixar"
+        >
+          <IconBaixar size={16} />
+        </a>
+      )}
+
       <button
         type="button"
         onClick={aoRemover}
