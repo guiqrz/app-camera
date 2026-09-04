@@ -324,10 +324,12 @@ export function VistaChat({
 
         {/* Mesma estrutura de uma resposta (avatar + nome + texto): a espera
             ocupa o lugar onde a resposta vai nascer, entao a lista nao "pula"
-            quando ela chega. */}
+            quando ela chega. O espacamento acompanha o da BolhaMensagem
+            (gap-5, sem `-mr`): um vao diferente faria o mascote saltar de lado
+            no instante em que a resposta chega. */}
         {pensando && (
-          <div className="flex items-start gap-3" role="status">
-            <span className="-my-2 -mr-1 flex-none">
+          <div className="flex items-start gap-5" role="status">
+            <span className="-my-2 flex-none">
               <MascoteCup size={38} animado />
             </span>
             <div className="min-w-0 flex-1">

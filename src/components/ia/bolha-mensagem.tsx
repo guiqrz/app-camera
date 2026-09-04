@@ -68,12 +68,16 @@ export function BolhaMensagem({ mensagem, conversaId }: BolhaMensagemProps) {
 
   if (!doProfessor) {
     return (
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-5">
         {/* Sem disco de fundo: o mascote ja' tem silhueta propria, e um circulo
             atras so' somaria um contorno competindo com a xicara. A margem
-            negativa corta o vao vazio do viewBox pro desenho alinhar com o
-            nome em vez de flutuar acima dele. */}
-        <span className="-my-2 -mr-1 flex-none">
+            negativa VERTICAL corta o vao vazio do viewBox pro desenho alinhar
+            com o nome em vez de flutuar acima dele.
+
+            Sem `-mr`: a margem negativa horizontal comia parte do gap e colava
+            o desenho no texto (01/09/2026). O afastamento agora e' so' o gap,
+            num numero so' — dois valores brigando escondem qual manda. */}
+        <span className="-my-2 flex-none">
           <MascoteCup size={38} />
         </span>
 

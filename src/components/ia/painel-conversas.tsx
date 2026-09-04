@@ -216,8 +216,10 @@ export function PainelConversas({
         <MascoteCup size={185} animado titulo="Cup, o assistente" />
       </span>
 
+      {/* mt-5, nao mt-1: o mascote e a saudacao sao dois blocos distintos, e
+          colados o desenho parecia parte do titulo (01/09/2026). */}
       <h1
-        className="text-text mt-1 text-center text-[27px] leading-tight font-semibold tracking-tight sm:text-[33px]"
+        className="text-text mt-5 text-center text-[27px] leading-tight font-semibold tracking-tight sm:text-[33px]"
         style={{ fontFamily: "var(--font-display)" }}
       >
         {saudacao}, professor.
