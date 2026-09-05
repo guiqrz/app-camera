@@ -717,8 +717,34 @@ export function excluirTurma(id: number): Promise<{ id: number; nome: string }> 
 }
 
 /* --- Materias --- */
-export function listarMaterias(): Promise<Materia[]> {
-  return requisitar<Materia[]>("/admin/materias", { revalidate: 0 });
+
+/**
+ * Segundos de cache pra lista de materias nas TELAS que so' a leem.
+ *
+ * POR QUE EXISTE (04/09/2026): a lista alimenta o dropdown do modal de "aula
+ * nova" em /aulas e /aulas/[turmaId], e nao muda com a semana exibida. Sem
+ * cache, cada troca de semana (`?data=`) refazia esta ida a' rede junto das
+ * outras — e no Turso cada COMANDO custa ~1,8s de handshake TLS, entao metade
+ * do custo do clique era buscar de novo uma lista identica.
+ *
+ * 300s espelha o de `listarTurmas`, pelo mesmo motivo: materia e' cadastro raro
+ * e so' o professor mexe. O atraso maximo e' ver uma materia recem-criada
+ * faltando no dropdown ate' o cache virar — e esse caso NAO acontece, porque
+ * quem acaba de criar passa pela ponte /api/admin/materias, que le sem cache.
+ */
+export const CACHE_MATERIAS_S = 300;
+
+/**
+ * Lista de materias.
+ *
+ * `revalidate` e' parametro de proposito: a ponte /api/admin/materias precisa da
+ * lista SEM cache (a tela a chama logo depois de criar uma materia e tem que ver
+ * a nova), enquanto as paginas que so' desenham o dropdown se beneficiam do
+ * cache. Ate 04/09/2026 o valor era fixo em 0 e as paginas pagavam rede a cada
+ * troca de semana.
+ */
+export function listarMaterias(revalidate = 0): Promise<Materia[]> {
+  return requisitar<Materia[]>("/admin/materias", { revalidate });
 }
 export function criarMateria(dados: NovaMateria): Promise<{ id: number }> {
   return requisitar<{ id: number }>("/admin/materias", { method: "POST", body: dados });

@@ -8,6 +8,7 @@ import { IconPessoas, IconRelogio } from "@/components/ui/icons";
 import {
   buscarVisaoGeral,
   listarEventosDaAgenda,
+  CACHE_MATERIAS_S,
   listarMaterias,
   listarTurmas,
 } from "@/lib/api";
@@ -59,7 +60,7 @@ export default async function AulasPage({ searchParams }: Props) {
     listarEventosDaAgenda(periodo).catch(() => []),
     // Alimentam o dropdown do modal de aula nova. Falha vira lista vazia: o
     // modal continua abrindo, so' com "Sem materia" como unica opcao.
-    listarMaterias().catch(() => []),
+    listarMaterias(CACHE_MATERIAS_S).catch(() => []),
   ]);
 
   if (turmas.length === 0) {

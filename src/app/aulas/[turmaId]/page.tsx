@@ -15,6 +15,7 @@ import {
   buscarEstatisticasDaTurma,
   buscarSemanaDaTurma,
   listarEventosDaAgenda,
+  CACHE_MATERIAS_S,
   listarMaterias,
   listarTurmas,
 } from "@/lib/api";
@@ -78,7 +79,7 @@ export default async function AulasDaTurmaPage({ params, searchParams }: Props) 
       buscarEstatisticasDaTurma(id).catch(() => null),
       // Materias pro dropdown do formulario de aula nova, dentro da agenda.
       // Lista vazia e' valida: a aula pode ser criada sem materia.
-      listarMaterias().catch(() => []),
+      listarMaterias(CACHE_MATERIAS_S).catch(() => []),
       // Mesma logica das outras: a grade nao pode sumir porque os eventos
       // falharam.
       listarEventosDaAgenda({ ...periodo, turmaId: id }).catch(() => []),
