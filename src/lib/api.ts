@@ -217,15 +217,27 @@ type OpcoesRequisicao = {
  *           nuvem. Ele esta na mesma rede local ou a um tunel de distancia:
  *           quando responde, responde em menos de 1s.
  *
- *   nuvem   20s. O plano gratuito do Render hiberna depois de 15 min sem uso e
- *           leva 30-60s pra acordar, mas a pagina nao pode ficar refem disso:
- *           20s da' folga pra uma resposta normal (medida em 0,4s ja' acordado)
- *           e ainda entrega a tela de erro antes de o professor desistir. O
- *           retry de quem chega na tela acorda o servico.
+ *   nuvem   75s. Era 20s ate' 04/09/2026, e 20s NAO COBRIA o caso mais comum:
+ *           o plano gratuito do Render hiberna depois de 15 min sem uso e leva
+ *           30-60s pra acordar. A aposta antiga era que o professor prefere um
+ *           erro rapido a uma espera longa — na pratica ele so' via o erro
+ *           ("nao foi possivel falar com a API do CUPCAM na nuvem"), porque a
+ *           PRIMEIRA visita depois de um tempo parado sempre cai na hibernacao.
+ *           Uma tela que demora e chega vence uma tela que falha rapido.
+ *
+ *           O numero vem de medicao, nao de chute: 60s e' o teto do cold start
+ *           documentado no proprio `render.yaml`, e a tela /aulas leva 8-9s ja'
+ *           com a API acordada (medido em producao em 04/09/2026) porque sao 4
+ *           chamadas em paralelo contra o Turso, que cobra ~1,8s de handshake
+ *           TLS por COMANDO. 60 + 9 = 69; 75 fecha com folga.
+ *
+ *           Nao ha teto da Vercel por cima disso: com fluid compute (ligado por
+ *           padrao) o plano Hobby permite 300s, entao quem corta e' so' este
+ *           numero aqui.
  */
 const TEMPO_LIMITE_MS: Record<DestinoApi, number> = {
   camera: 4_000,
-  nuvem: 20_000,
+  nuvem: 75_000,
 };
 
 async function requisitar<T>(
