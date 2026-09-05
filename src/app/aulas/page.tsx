@@ -6,7 +6,8 @@ import { SeletorTurma } from "@/components/aulas/seletor-turma";
 import { AppShell } from "@/components/layout/app-shell";
 import { IconPessoas, IconRelogio } from "@/components/ui/icons";
 import {
-  buscarVisaoGeral,
+  buscarNumerosGerais,
+  buscarSemanaConsolidada,
   listarEventosDaAgenda,
   CACHE_MATERIAS_S,
   listarMaterias,
@@ -48,12 +49,18 @@ export default async function AulasPage({ searchParams }: Props) {
   const { data } = await searchParams;
   const periodo = periodoDaAgenda(data);
 
-  const [turmas, visao, eventos, materias] = await Promise.all([
+  const [turmas, numeros, semana, eventos, materias] = await Promise.all([
     listarTurmas(),
+    // Os NUMEROS do topo vem separados da GRADE desde 05/09/2026, porque tem
+    // vida util diferente: eles sao historicos e nao mudam quando o professor
+    // clica nas setas da semana. Juntos, cada troca de semana repagava 3,0s
+    // (medidos contra o Turso) pra receber numero identico — 77% do custo da
+    // tela. Separados, esta metade fica em cache e a troca paga so' a grade.
+    buscarNumerosGerais(),
     // `data` (a semana que a tela esta mostrando) escolhe de qual ENCONTRO vem
     // plano e anexo — a grade em si e' a mesma toda semana, o que o professor
     // preparou nao (01/09/2026). Sem ela, o backend usa a semana corrente.
-    buscarVisaoGeral(data),
+    buscarSemanaConsolidada(data),
     // Engole a falha: a agenda continua de pe sem os eventos, so' sem as
     // marcacoes daquela semana. Perder a grade inteira por causa deles seria
     // pior do que mostrar a grade sem eles.
@@ -91,7 +98,7 @@ export default async function AulasPage({ searchParams }: Props) {
             turma no topo pra herdar, o modal de aula nova e o de evento
             precisam perguntar em qual turma criar (29/08/2026). */}
         <AgendaSemana
-          semana={visao.semana}
+          semana={semana}
           turmas={turmas}
           materias={materias}
           eventos={eventos}
@@ -103,29 +110,29 @@ export default async function AulasPage({ searchParams }: Props) {
             atualiza a contagem do card na hora. Os outros tres numeros sao
             dado de servidor e entram como `children`, sem virar cliente. */}
         <SecaoLembretes
-          lembretesIniciais={visao.lembretes}
+          lembretesIniciais={numeros.lembretes}
           outrosNumeros={
             <>
               <DistribuicaoMaterias
-                aulasPorMateria={visao.aulas_por_materia}
-                total={visao.total_aulas}
-                nota={`em ${visao.total_turmas} ${visao.total_turmas === 1 ? "turma" : "turmas"} · ${visao.total_materias} ${visao.total_materias === 1 ? "matéria" : "matérias"}`}
+                aulasPorMateria={numeros.aulas_por_materia}
+                total={numeros.total_aulas}
+                nota={`em ${numeros.total_turmas} ${numeros.total_turmas === 1 ? "turma" : "turmas"} · ${numeros.total_materias} ${numeros.total_materias === 1 ? "matéria" : "matérias"}`}
               />
               <CartaoNumero
                 rotulo="Alunos"
-                valor={visao.total_alunos}
+                valor={numeros.total_alunos}
                 nota="cadastrados"
                 icone={<IconPessoas size={21} />}
                 cor="azul"
               />
               <CartaoNumero
                 rotulo="Horas em sala"
-                valor={formatarHoras(visao.horas_em_sala)}
+                valor={formatarHoras(numeros.horas_em_sala)}
                 nota={
                   // Sessao que nunca encerrou fica de FORA da soma. Dizer isso
                   // e' obrigatorio: um numero que exclui algo em silencio mente.
-                  visao.sessoes_em_aberto > 0
-                    ? `${visao.sessoes_em_aberto} ${visao.sessoes_em_aberto === 1 ? "aula sem encerrar não entra" : "aulas sem encerrar não entram"} na conta`
+                  numeros.sessoes_em_aberto > 0
+                    ? `${numeros.sessoes_em_aberto} ${numeros.sessoes_em_aberto === 1 ? "aula sem encerrar não entra" : "aulas sem encerrar não entram"} na conta`
                     : "somando as aulas encerradas"
                 }
                 icone={<IconRelogio size={21} />}

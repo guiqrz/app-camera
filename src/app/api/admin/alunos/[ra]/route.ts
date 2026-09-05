@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { statusSeguro } from "@/app/api/admin/_lib/status-seguro";
 import { ApiError, editarAluno, excluirAluno, mudarTurmaDoAluno } from "@/lib/api";
+import { invalidarNumerosGerais } from "@/app/api/admin/_lib/invalidar-numeros";
 
 /**
  * Ponte de escrita "Mudar turma" e "Excluir aluno" da tela "Administracao".
@@ -42,6 +43,10 @@ export async function POST(requisicao: Request, { params }: Params) {
 
   try {
     const resposta = await mudarTurmaDoAluno(ra, turmaId);
+    // O total de alunos/turmas do topo de "Minhas Aulas" acabou de ficar velho.
+    // Depois do sucesso, nunca antes: invalidar e a escrita falhar em seguida
+    // jogaria fora um cache bom por nada.
+    invalidarNumerosGerais();
     return NextResponse.json(resposta);
   } catch (causa) {
     if (causa instanceof ApiError) {
@@ -84,6 +89,10 @@ export async function PUT(requisicao: Request, { params }: Params) {
 
   try {
     const resposta = await editarAluno(ra, form);
+    // O total de alunos/turmas do topo de "Minhas Aulas" acabou de ficar velho.
+    // Depois do sucesso, nunca antes: invalidar e a escrita falhar em seguida
+    // jogaria fora um cache bom por nada.
+    invalidarNumerosGerais();
     return NextResponse.json(resposta);
   } catch (causa) {
     if (causa instanceof ApiError) {
@@ -122,6 +131,10 @@ export async function DELETE(requisicao: Request, { params }: Params) {
 
   try {
     const resposta = await excluirAluno(ra, confirmarHistorico);
+    // O total de alunos/turmas do topo de "Minhas Aulas" acabou de ficar velho.
+    // Depois do sucesso, nunca antes: invalidar e a escrita falhar em seguida
+    // jogaria fora um cache bom por nada.
+    invalidarNumerosGerais();
     return NextResponse.json(resposta);
   } catch (causa) {
     if (causa instanceof ApiError) {

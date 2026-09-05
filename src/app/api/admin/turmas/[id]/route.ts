@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { statusSeguro } from "@/app/api/admin/_lib/status-seguro";
 import { validarNovaTurma } from "@/app/api/admin/_lib/validar-turma";
 import { ApiError, editarTurma, excluirTurma } from "@/lib/api";
+import { invalidarNumerosGerais } from "@/app/api/admin/_lib/invalidar-numeros";
 
 /**
  * Ponte de "Editar turma" (PUT) e "Excluir turma" (DELETE) da tela
@@ -42,6 +43,10 @@ export async function PUT(requisicao: Request, { params }: Params) {
 
   try {
     const resposta = await editarTurma(idNum, dados);
+    // O total de alunos/turmas do topo de "Minhas Aulas" acabou de ficar velho.
+    // Depois do sucesso, nunca antes: invalidar e a escrita falhar em seguida
+    // jogaria fora um cache bom por nada.
+    invalidarNumerosGerais();
     return NextResponse.json(resposta);
   } catch (causa) {
     if (causa instanceof ApiError) {
@@ -74,6 +79,10 @@ export async function DELETE(_requisicao: Request, { params }: Params) {
 
   try {
     const resposta = await excluirTurma(idNum);
+    // O total de alunos/turmas do topo de "Minhas Aulas" acabou de ficar velho.
+    // Depois do sucesso, nunca antes: invalidar e a escrita falhar em seguida
+    // jogaria fora um cache bom por nada.
+    invalidarNumerosGerais();
     return NextResponse.json(resposta);
   } catch (causa) {
     if (causa instanceof ApiError) {

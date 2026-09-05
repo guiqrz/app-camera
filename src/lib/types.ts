@@ -477,6 +477,17 @@ export type VisaoGeral = {
 };
 
 /**
+ * A metade de VisaoGeral que NAO muda com a semana — o que /visao-geral/numeros
+ * devolve.
+ *
+ * Derivado por Omit, e nao escrito a mao: os campos tem que ser exatamente os
+ * mesmos da rota gorda, senao a tela mostraria numeros diferentes conforme
+ * viessem de uma ou de outra. Uma copia manual divergiria no primeiro campo
+ * novo que alguem acrescentasse so' de um lado.
+ */
+export type NumerosGerais = Omit<VisaoGeral, "semana">;
+
+/**
  * Recado do professor pra si mesmo na tela Minhas Aulas.
  *
  * Sem turma, sem prioridade e sem categoria DE PROPOSITO (ver o comentario da

@@ -65,6 +65,7 @@ import type {
   NovaMateria,
   NovaTurma,
   RelatorioDaSessao,
+  NumerosGerais,
   RespostaDoAssistente,
   Transcricao,
   Turma,
@@ -198,6 +199,15 @@ type OpcoesRequisicao = {
   destino?: DestinoApi;
   /** Teto em ms. Padrao por destino (ver TEMPO_LIMITE_MS). */
   tempoLimiteMs?: number;
+  /**
+   * Etiquetas do cache do Next, pra invalidacao EXATA em vez de por tempo.
+   *
+   * Uma rota etiquetada aqui e' derrubada na hora por `revalidateTag(...)` na
+   * ponte de escrita que a torna velha — cadastrar um aluno atualiza o total na
+   * tela imediatamente, em vez de esperar o `revalidate` vencer. Ver
+   * TAG_NUMEROS_GERAIS.
+   */
+  tags?: string[];
 };
 
 /**
@@ -248,6 +258,7 @@ async function requisitar<T>(
     body,
     destino = "nuvem",
     tempoLimiteMs,
+    tags,
   }: OpcoesRequisicao = {},
 ): Promise<T> {
   const { baseUrl, apiKey } = lerConfiguracao(destino);
@@ -273,7 +284,7 @@ async function requisitar<T>(
         ...(body && !eFormData ? { "Content-Type": "application/json" } : {}),
       },
       body: body ? (eFormData ? body : JSON.stringify(body)) : undefined,
-      next: eEscrita ? undefined : { revalidate },
+      next: eEscrita ? undefined : { revalidate, ...(tags ? { tags } : {}) },
       cache: eEscrita ? "no-store" : undefined,
       // AbortSignal.timeout aborta o fetch e cai no catch abaixo como qualquer
       // falha de rede — que e' o tratamento certo: uma ponta que nao respondeu
@@ -376,6 +387,52 @@ export function listarTurmas(): Promise<Turma[]> {
  */
 export function buscarVisaoGeral(semana?: string): Promise<VisaoGeral> {
   return requisitar<VisaoGeral>(`/visao-geral${daSemana(semana)}`, {
+    revalidate: 0,
+  });
+}
+
+/**
+ * A etiqueta de cache dos numeros historicos do topo de "Minhas Aulas".
+ *
+ * Toda ponte de escrita que torna algum desses numeros velho chama
+ * `revalidateTag(TAG_NUMEROS_GERAIS)` — e' o que permite cachear por muito tempo
+ * SEM mostrar numero desatualizado. Sao poucos os pontos, e todos passam pelo
+ * servidor: cadastrar/apagar aluno, criar/apagar turma.
+ */
+export const TAG_NUMEROS_GERAIS = "numeros-gerais";
+
+/**
+ * So' os numeros do topo de "Minhas Aulas" — sem a grade da semana.
+ *
+ * POR QUE EXISTE (medido em 05/09/2026 contra o Turso real): /visao-geral custa
+ * 3,9s, e 3,0s deles sao estes numeros, que NAO mudam quando o professor clica
+ * nas setas. Cada troca de semana repagava os 3,0s pra receber numero
+ * identico. Buscando as duas metades em paralelo, com esta cacheada, a troca de
+ * semana passa a custar so' a grade (1,6s medidos).
+ *
+ * O cache e' longo E exato ao mesmo tempo: os 300s sao rede de seguranca, e a
+ * etiqueta derruba o cache na hora em que um aluno ou turma muda. Sem a
+ * etiqueta seria preciso escolher entre rapido e correto — ver a LACUNA
+ * CONHECIDA anotada em listarTurmas, que ainda vale pra ela.
+ */
+export function buscarNumerosGerais(): Promise<NumerosGerais> {
+  return requisitar<NumerosGerais>("/visao-geral/numeros", {
+    revalidate: 300,
+    tags: [TAG_NUMEROS_GERAIS],
+  });
+}
+
+/**
+ * A grade consolidada de todas as turmas — o par de buscarNumerosGerais.
+ *
+ * `revalidate: 0` aqui e' deliberado, e pelo mesmo motivo de buscarVisaoGeral: o
+ * professor edita plano, anexo e evento nesta grade e espera ver o proprio
+ * clique. Um cache faria a grade voltar com o dado velho depois de salvar.
+ *
+ * E' esta metade — e so' ela — que a troca de semana precisa refazer.
+ */
+export function buscarSemanaConsolidada(semana?: string): Promise<DiaDaSemana[]> {
+  return requisitar<DiaDaSemana[]>(`/visao-geral/semana${daSemana(semana)}`, {
     revalidate: 0,
   });
 }

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { statusSeguro } from "@/app/api/admin/_lib/status-seguro";
 import { validarNovaTurma } from "@/app/api/admin/_lib/validar-turma";
 import { ApiError, criarTurma } from "@/lib/api";
+import { invalidarNumerosGerais } from "@/app/api/admin/_lib/invalidar-numeros";
 
 /**
  * Ponte de escrita "Nova turma" da tela "Administracao".
@@ -33,6 +34,10 @@ export async function POST(requisicao: Request) {
 
   try {
     const criada = await criarTurma(dados);
+    // O total de alunos/turmas do topo de "Minhas Aulas" acabou de ficar velho.
+    // Depois do sucesso, nunca antes: invalidar e a escrita falhar em seguida
+    // jogaria fora um cache bom por nada.
+    invalidarNumerosGerais();
     return NextResponse.json(criada, { status: 201 });
   } catch (causa) {
     if (causa instanceof ApiError) {

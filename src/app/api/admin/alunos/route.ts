@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { statusSeguro } from "@/app/api/admin/_lib/status-seguro";
 import { ApiError, criarAluno } from "@/lib/api";
+import { invalidarNumerosGerais } from "@/app/api/admin/_lib/invalidar-numeros";
 
 /**
  * Ponte de escrita "Novo aluno" da tela "Administracao".
@@ -27,6 +28,10 @@ export async function POST(requisicao: Request) {
 
   try {
     const criado = await criarAluno(form);
+    // O total de alunos/turmas do topo de "Minhas Aulas" acabou de ficar velho.
+    // Depois do sucesso, nunca antes: invalidar e a escrita falhar em seguida
+    // jogaria fora um cache bom por nada.
+    invalidarNumerosGerais();
     return NextResponse.json(criado, { status: 201 });
   } catch (causa) {
     if (causa instanceof ApiError) {

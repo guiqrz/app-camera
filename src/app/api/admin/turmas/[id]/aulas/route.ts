@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { statusSeguro } from "@/app/api/admin/_lib/status-seguro";
 import { ApiError, criarAula, listarAulasDaTurma } from "@/lib/api";
 import type { NovaAula } from "@/lib/types";
+import { invalidarNumerosGerais } from "@/app/api/admin/_lib/invalidar-numeros";
 
 /**
  * Ponte da grade de aulas de uma turma na tela "Coordenacao": listar (GET) e
@@ -102,6 +103,10 @@ export async function POST(requisicao: Request, { params }: Params) {
 
   try {
     const criada = await criarAula(idNum, dados);
+    // O total de alunos/turmas do topo de "Minhas Aulas" acabou de ficar velho.
+    // Depois do sucesso, nunca antes: invalidar e a escrita falhar em seguida
+    // jogaria fora um cache bom por nada.
+    invalidarNumerosGerais();
     return NextResponse.json(criada, { status: 201 });
   } catch (causa) {
     if (causa instanceof ApiError) {

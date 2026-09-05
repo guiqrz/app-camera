@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { statusSeguro } from "@/app/api/admin/_lib/status-seguro";
 import { validarNovaMateria } from "@/app/api/admin/_lib/validar-materia";
 import { ApiError, criarMateria, listarMaterias } from "@/lib/api";
+import { invalidarNumerosGerais } from "@/app/api/admin/_lib/invalidar-numeros";
 
 /**
  * Ponte de "Materias" da tela "Coordenacao": listar (GET) e cadastrar (POST).
@@ -55,6 +56,10 @@ export async function POST(requisicao: Request) {
 
   try {
     const criada = await criarMateria(dados);
+    // O total de alunos/turmas do topo de "Minhas Aulas" acabou de ficar velho.
+    // Depois do sucesso, nunca antes: invalidar e a escrita falhar em seguida
+    // jogaria fora um cache bom por nada.
+    invalidarNumerosGerais();
     return NextResponse.json(criada, { status: 201 });
   } catch (causa) {
     if (causa instanceof ApiError) {
