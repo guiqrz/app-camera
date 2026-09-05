@@ -15,6 +15,37 @@ function comoISO(data: Date) {
 }
 
 /**
+ * O fuso em que "hoje" e' decidido, cravado de proposito.
+ *
+ * POR QUE EXISTE (04/09/2026): `new Date()` le o relogio de QUEM ESTA
+ * CALCULANDO, e servidor e navegador nao sao a mesma maquina. A Vercel roda em
+ * **UTC**; o professor esta em **UTC-3**. Entre 21h e meia-noite no horario
+ * dele ja' e' o dia seguinte em UTC — o servidor montava a semana de um dia, o
+ * navegador re-hidratava com a de outro, o HTML nao batia e o React abortava a
+ * hidratacao (erro #441). Na tela isso aparecia como "Algo deu errado ...
+ * verifique se a API do CUPCAM esta respondendo", culpando a API — que tinha
+ * respondido 200 nas duas requisicoes.
+ *
+ * `Intl` com `timeZone` fixo devolve a MESMA data em qualquer fuso do processo
+ * (conferido em UTC, America/Sao_Paulo e Asia/Tokyo: os tres deram 2026-09-04),
+ * e funciona igual no servidor e no navegador — diferente de `process.env.TZ`,
+ * que nao existe no cliente.
+ *
+ * Quando o CUPCAM atender escola fora deste fuso, a correcao certa deixa de ser
+ * uma constante: o servidor decide a semana uma vez e manda pronta, e o cliente
+ * nunca recalcula.
+ */
+const FUSO_DA_ESCOLA = "America/Sao_Paulo";
+
+/** "AAAA-MM-DD" de hoje no fuso da escola, independente de onde o codigo roda. */
+function hojeNoFusoDaEscola(): string {
+  // "en-CA" formata como AAAA-MM-DD, que e' o mesmo ISO que o resto do app usa.
+  return new Intl.DateTimeFormat("en-CA", { timeZone: FUSO_DA_ESCOLA }).format(
+    new Date(),
+  );
+}
+
+/**
  * Domingo e sabado da semana em que `data` cai.
  *
  * Comeca no DOMINGO, e nao na segunda, porque a grade da agenda e' indexada
@@ -36,7 +67,10 @@ export function periodoDaSemana(data?: string): {
   inicio: string;
   fim: string;
 } {
-  let referencia = new Date();
+  // Hoje SEMPRE vem do fuso da escola, nunca do relogio da maquina: e' o que
+  // faz servidor e navegador chegarem na mesma semana (ver FUSO_DA_ESCOLA).
+  const [anoHoje, mesHoje, diaHoje] = hojeNoFusoDaEscola().split("-").map(Number);
+  let referencia = new Date(anoHoje, mesHoje - 1, diaHoje);
 
   if (data) {
     const [ano, mes, dia] = data.split("-").map(Number);
