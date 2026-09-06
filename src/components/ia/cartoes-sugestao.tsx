@@ -3,13 +3,15 @@
 import type { ReactNode } from "react";
 
 import {
+  IconCalendario,
+  IconCheck,
   IconLousa,
   IconInterrogacao,
   IconTranscricao,
 } from "@/components/ui/icons";
 
 /**
- * Os tres cartoes de acao da abertura do Cup AI.
+ * Os cartoes de acao da abertura do Cup AI.
  *
  * Eles PREENCHEM o campo de pergunta com um rascunho editavel — nao disparam a
  * pergunta. A diferenca importa: mandar sem o professor ler gastaria uma
@@ -55,6 +57,28 @@ const CARTOES: Cartao[] = [
     titulo: "Tirar uma dúvida",
     texto: "Pergunte qualquer coisa sobre uma aula sua",
     rascunho: "Sobre a aula de |, queria entender ",
+  },
+  // Os dois abaixo entraram em 06/09/2026, quando o assistente ganhou agenda,
+  // plano e lembretes. Eles existem porque a capacidade nova e' INVISIVEL: o
+  // professor nao tem como adivinhar que agora da' pra marcar uma prova
+  // conversando, e uma ferramenta que ninguem descobre e' o mesmo que nao ter.
+  {
+    id: "agenda",
+    icone: <IconCalendario size={15} />,
+    tom: "azul",
+    titulo: "Marcar na agenda",
+    texto: "Prova, recado ou aula cancelada, num dia certo",
+    // O dia fica por ultimo e o cursor para nele: e' o campo que muda a cada
+    // uso, e o resto da frase ja diz ao modelo qual ferramenta usar.
+    rascunho: "Marca uma prova de | para a turma ",
+  },
+  {
+    id: "lembrete",
+    icone: <IconCheck size={15} />,
+    tom: "roxo",
+    titulo: "Anotar um lembrete",
+    texto: "Um recado seu, sem turma nem data",
+    rascunho: "Lembra de eu |",
   },
 ];
 
