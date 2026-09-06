@@ -7,7 +7,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { IconPessoas, IconRelogio } from "@/components/ui/icons";
 import {
   buscarNumerosGerais,
-  buscarSemanaConsolidada,
+  buscarSemanaDoMes,
   listarEventosDaAgenda,
   CACHE_MATERIAS_S,
   listarMaterias,
@@ -60,7 +60,11 @@ export default async function AulasPage({ searchParams }: Props) {
     // `data` (a semana que a tela esta mostrando) escolhe de qual ENCONTRO vem
     // plano e anexo — a grade em si e' a mesma toda semana, o que o professor
     // preparou nao (01/09/2026). Sem ela, o backend usa a semana corrente.
-    buscarSemanaConsolidada(data),
+    //
+    // Vem do bloco do MES desde 06/09/2026: a rota da semana custava 1.132 ms
+    // por clique na seta, dos quais ~536 ms eram so' o handshake da conexao. O
+    // mes inteiro sai em UM comando por 683 ms — 4-6 semanas por menos que uma.
+    buscarSemanaDoMes(data),
     // Engole a falha: a agenda continua de pe sem os eventos, so' sem as
     // marcacoes daquela semana. Perder a grade inteira por causa deles seria
     // pior do que mostrar a grade sem eles.
