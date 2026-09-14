@@ -437,6 +437,74 @@ export function buscarSemanaConsolidada(semana?: string): Promise<DiaDaSemana[]>
   });
 }
 
+/** Uma semana dentro do bloco do mes, ancorada no domingo dela. */
+export type SemanaDoMes = {
+  domingo: string;
+  dias: DiaDaSemana[];
+};
+
+export type MesConsolidado = {
+  referencia: string;
+  turma_id: number | null;
+  semanas: SemanaDoMes[];
+};
+
+/**
+ * O mes inteiro da grade numa requisicao so'.
+ *
+ * POR QUE EXISTE (medido em 06/09/2026 contra o Turso real): cada troca de
+ * semana custava 1.132 ms, e ~536 ms disso era so' o handshake da conexao. O
+ * mes inteiro sai em UM comando por 683 ms — as 4-6 semanas juntas custam menos
+ * que UMA semana sozinha custava.
+ *
+ * `revalidate: 0` pelo mesmo motivo de buscarSemanaConsolidada: o professor
+ * edita plano e anexo nesta grade e precisa ver o proprio clique.
+ */
+export function buscarMesConsolidado(mes?: string): Promise<MesConsolidado> {
+  return requisitar<MesConsolidado>(`/visao-geral/mes${daMes(mes)}`, {
+    revalidate: 0,
+  });
+}
+
+/**
+ * A semana pedida, servida a partir do bloco do MES.
+ *
+ * O ganho nao esta em cachear no navegador — a tela e' Server Component e a
+ * seta troca a URL —, e sim em o servidor buscar 4-6 semanas pelo preco de
+ * menos de uma, numa ida so' ao banco em vez de uma por clique.
+ *
+ * Cai pra rota da semana se o mes nao trouxer o domingo pedido: nunca deixar a
+ * grade vazia por causa de uma borda de calendario.
+ */
+export async function buscarSemanaDoMes(semana?: string): Promise<DiaDaSemana[]> {
+  const mes = await buscarMesConsolidado(semana);
+  const alvo = domingoDaSemana(semana);
+  const bloco = mes.semanas.find((s) => s.domingo === alvo);
+  return bloco ? bloco.dias : buscarSemanaConsolidada(semana);
+}
+
+/**
+ * O domingo "AAAA-MM-DD" da semana em que a data cai.
+ *
+ * Mesma ancora do backend (`domingo_da_semana`): `dia_semana` e' 0=domingo na
+ * convencao do projeto. Em UTC de proposito — "2026-09-15" lido no fuso local
+ * viraria o dia anterior a oeste de Greenwich, e a grade deslizaria uma semana.
+ */
+function domingoDaSemana(data?: string): string {
+  const base = data ? new Date(`${data}T00:00:00Z`) : new Date();
+  if (Number.isNaN(base.getTime())) return domingoDaSemana();
+  const dia = new Date(
+    Date.UTC(base.getUTCFullYear(), base.getUTCMonth(), base.getUTCDate()),
+  );
+  dia.setUTCDate(dia.getUTCDate() - dia.getUTCDay());
+  return dia.toISOString().slice(0, 10);
+}
+
+/** Monta o "?mes=AAAA-MM-DD" da rota do mes. Qualquer dia do mes serve. */
+function daMes(mes?: string) {
+  return mes ? `?mes=${encodeURIComponent(mes)}` : "";
+}
+
 /**
  * Monta o "?semana=AAAA-MM-DD" das rotas de leitura da grade.
  *

@@ -507,9 +507,13 @@ h4 {
    Tres cartoes que preenchem o campo de pergunta com um rascunho editavel, em
    vez de disparar a pergunta direto: mandar sem o professor ler gastaria uma
    chamada ao modelo por engano de clique. */
+/* auto-fit, e nao `repeat(3, ...)` fixo: os cartoes passaram de 3 para 5 em
+   06/09/2026, quando o Cup AI ganhou agenda, plano e lembretes. Com 3 colunas
+   fixas o quarto e o quinto cairiam sozinhos numa linha torta; com auto-fit a
+   grade se reorganiza sozinha na proxima vez que a lista mudar. */
 .rec-grade {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(196px, 1fr));
   gap: 11px;
   width: 100%;
   max-width: 680px;
