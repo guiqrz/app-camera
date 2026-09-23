@@ -1573,3 +1573,43 @@ export function buscarPreparacaoDaSemana(opcoes?: {
     revalidate: 0,
   });
 }
+
+/**
+ * Troca o token de uso unico (vindo da URL apos o login.html redirecionar)
+ * por uma sessao real.
+ *
+ * Diferente de toda outra funcao deste arquivo: NAO usa `requisitar()` nem
+ * `lerConfiguracao()`, porque a rota /auth/trocar-token da API nao exige
+ * X-API-Key (ver spec 2026-09-22) -- mandar a chave aqui seria trabalho
+ * inutil e um lugar a mais pra errar se a chave mudar.
+ */
+export async function trocarTokenDeLogin(token: string): Promise<{
+  sessao: string;
+  usuario: { id: number; email: string; papel: string };
+}> {
+  const baseUrl = process.env.CUPCAM_API_URL;
+  if (!baseUrl) {
+    throw new ConfiguracaoAusenteError(
+      "CUPCAM_API_URL nao esta definida. Copie .env.example para .env.local.",
+      "nuvem",
+    );
+  }
+
+  const resposta = await fetch(`${baseUrl.replace(/\/$/, "")}/auth/trocar-token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token }),
+    cache: "no-store",
+  });
+
+  if (!resposta.ok) {
+    const bruto = await resposta.text().catch(() => "");
+    throw new ApiError(
+      `Falha ao trocar token de login: ${resposta.status}. ${bruto}`.trim(),
+      resposta.status,
+      "/auth/trocar-token",
+    );
+  }
+
+  return resposta.json();
+}
