@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/layout/app-shell";
+import { AvisoServidorLigando } from "@/components/ui/aviso-servidor-ligando";
 
 /**
  * Esqueleto da tela do Cup AI enquanto as conversas chegam.
@@ -10,6 +11,7 @@ import { AppShell } from "@/components/layout/app-shell";
 export default function CarregandoIa() {
   return (
     <AppShell titulo="Cup AI">
+      <AvisoServidorLigando />
       <div className="mx-auto flex max-w-3xl animate-pulse flex-col gap-6">
         <div className="bg-surface-2 h-28 rounded-xl" />
         <div className="flex flex-col gap-2">

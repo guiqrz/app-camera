@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/layout/app-shell";
+import { AvisoServidorLigando } from "@/components/ui/aviso-servidor-ligando";
 
 /**
  * Esqueleto da tela "Minhas aulas" (visao consolidada, todas as turmas).
@@ -21,6 +22,7 @@ import { AppShell } from "@/components/layout/app-shell";
 export default function CarregandoAulas() {
   return (
     <AppShell titulo="Minhas aulas">
+      <AvisoServidorLigando />
       <div className="flex animate-pulse flex-col gap-[13px]">
         {/* A linha de apoio embaixo do titulo */}
         <div className="bg-surface-2 h-[21px] w-96 max-w-full rounded" />

@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/layout/app-shell";
+import { AvisoServidorLigando } from "@/components/ui/aviso-servidor-ligando";
 
 /**
  * Esqueleto da tela "Camera".
@@ -18,6 +19,7 @@ import { AppShell } from "@/components/layout/app-shell";
 export default function CarregandoCamera() {
   return (
     <AppShell titulo="Câmera">
+      <AvisoServidorLigando />
       <div className="flex animate-pulse flex-col gap-7">
         {/* O titulo da tela e a linha de apoio abaixo dele */}
         <div className="flex flex-col gap-1.5">

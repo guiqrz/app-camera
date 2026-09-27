@@ -1,9 +1,11 @@
 import { AppShell } from "@/components/layout/app-shell";
+import { AvisoServidorLigando } from "@/components/ui/aviso-servidor-ligando";
 
 /** Esqueleto da tela de fim de período enquanto a API responde. */
 export default function CarregandoRelatoriosPeriodo() {
   return (
     <AppShell titulo="Fim de período">
+      <AvisoServidorLigando />
       <div className="flex animate-pulse flex-col gap-[13px]">
         <div className="bg-surface-2 ml-[17px] h-4 w-96 max-w-full rounded" />
 

@@ -1,9 +1,11 @@
 import { AppShell } from "@/components/layout/app-shell";
+import { AvisoServidorLigando } from "@/components/ui/aviso-servidor-ligando";
 
 /** Esqueleto do relatorio geral enquanto a API responde. */
 export default function CarregandoRelatorioGeral() {
   return (
     <AppShell titulo="Relatórios">
+      <AvisoServidorLigando />
       <div className="flex animate-pulse flex-col gap-7">
         <div className="flex flex-col gap-2">
           <div className="bg-surface-2 h-8 w-72 rounded-lg" />

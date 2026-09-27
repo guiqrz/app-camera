@@ -487,6 +487,183 @@ h4 {
   }
 }
 
+/* === Aviso "Servidor ligando" (components/ui/aviso-servidor-ligando) =======
+   Tudo em CSS, sem JavaScript: o esqueleto do carregamento de pagina inteira
+   nao e' hidratado pelo React enquanto os dados nao chegam (ver o componente),
+   entao timer em JS nunca rodaria. Todo relogio aqui comeca quando o elemento
+   entra na pagina. Fica DEPOIS do bloco de prefers-reduced-motion acima de
+   proposito: as regras de movimento reduzido daqui precisam vencer aquele *. */
+
+/* Contador m:ss com contadores CSS animados. @property faz o navegador
+   interpolar como NUMERO INTEIRO (sem ele, variavel CSS troca seca no fim).
+   Tres relogios sincronizados: minutos, dezena e unidade dos segundos. */
+@property --aviso-min {
+  syntax: "<integer>";
+  inherits: false;
+  initial-value: 0;
+}
+@property --aviso-dezena {
+  syntax: "<integer>";
+  inherits: false;
+  initial-value: 0;
+}
+@property --aviso-unidade {
+  syntax: "<integer>";
+  inherits: false;
+  initial-value: 0;
+}
+
+/* Flutua no topo da tela, por cima do esqueleto: surgir aos 3 s nao empurra
+   nada. pointer-events: none pra nao roubar clique de quem estiver usando o
+   menu enquanto espera. */
+.aviso-servidor-ligando {
+  position: fixed;
+  z-index: 60;
+  /* Abaixo do cabecalho: no celular, colado no topo, cobria o botao do menu. */
+  top: 4.5rem;
+  left: 50%;
+  width: min(34rem, calc(100vw - 2rem));
+  translate: -50% 0;
+  pointer-events: none;
+  visibility: hidden;
+  /* 3 s de atraso: com a API acordada as telas carregam bem antes (medido
+     ~0,3 s), entao o aviso so' surge na espera de verdade. */
+  animation: aviso-servidor-aparecer 320ms cubic-bezier(0.2, 0.8, 0.2, 1) 3s both;
+}
+
+@keyframes aviso-servidor-aparecer {
+  from {
+    visibility: hidden;
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    visibility: visible;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes aviso-servidor-aparecer-sem-movimento {
+  from {
+    visibility: hidden;
+    opacity: 0;
+  }
+  to {
+    visibility: visible;
+    opacity: 1;
+  }
+}
+
+/* --warn-bg e' translucido (feito pra card sobre o fundo lilas): flutuando
+   por cima do cabecalho, o titulo aparecia atras do texto. O tom de aviso vai
+   por cima do --bg, que e' opaco nos dois temas. */
+.aviso-servidor-cartao {
+  background: linear-gradient(var(--warn-bg), var(--warn-bg)), var(--bg);
+}
+
+/* A barra enche nos 60 s esperados e para cheia depois. */
+.aviso-servidor-barra {
+  width: 0;
+  animation: aviso-servidor-encher 60s linear both;
+}
+
+@keyframes aviso-servidor-encher {
+  to {
+    width: 100%;
+  }
+}
+
+.aviso-servidor-contador::after {
+  counter-reset: aviso-min var(--aviso-min) aviso-dezena var(--aviso-dezena)
+    aviso-unidade var(--aviso-unidade);
+  content: counter(aviso-min) ":" counter(aviso-dezena) counter(aviso-unidade);
+  /* steps(N, end) faz cada relogio andar em degraus inteiros: minutos sobem
+     1 a cada 60 s, a dezena 1 a cada 10 s (0-5), a unidade 1 por segundo. */
+  animation:
+    aviso-servidor-minutos 3600s steps(60, end) both,
+    aviso-servidor-dezena 60s steps(6, end) infinite,
+    aviso-servidor-unidade 10s steps(10, end) infinite;
+}
+
+@keyframes aviso-servidor-minutos {
+  from {
+    --aviso-min: 0;
+  }
+  to {
+    --aviso-min: 60;
+  }
+}
+@keyframes aviso-servidor-dezena {
+  from {
+    --aviso-dezena: 0;
+  }
+  to {
+    --aviso-dezena: 6;
+  }
+}
+@keyframes aviso-servidor-unidade {
+  from {
+    --aviso-unidade: 0;
+  }
+  to {
+    --aviso-unidade: 10;
+  }
+}
+
+/* Os dois textos dividem a mesma celula; aos 60 s um some e o outro entra. */
+.aviso-servidor-textos > span {
+  grid-area: 1 / 1;
+}
+
+/* O texto que SAI some so' por opacidade: no Chromium, animar `visibility`
+   ATE' `hidden` nao esconde (medido: aos 62 s os dois textos estavam
+   visiveis, um por cima do outro). O sentido contrario, hidden -> visible,
+   funciona, e e' o que o texto que ENTRA usa. */
+.aviso-servidor-texto-normal {
+  animation: aviso-servidor-esconder 400ms ease 60s both;
+}
+
+.aviso-servidor-texto-demorando {
+  animation: aviso-servidor-mostrar 400ms ease 60s both;
+}
+
+@keyframes aviso-servidor-esconder {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@keyframes aviso-servidor-mostrar {
+  from {
+    visibility: hidden;
+    opacity: 0;
+  }
+  to {
+    visibility: visible;
+    opacity: 1;
+  }
+}
+
+/* Movimento reduzido: o bloco global zera a DURACAO de toda animacao, o que
+   aqui quebraria a funcao (a barra encheria na hora e o contador pularia pro
+   fim). Barra e contador sao relogio, nao enfeite: mantem o tempo real. So' a
+   entrada perde o deslizar e vira aparecer simples. */
+@media (prefers-reduced-motion: reduce) {
+  .aviso-servidor-ligando {
+    animation-name: aviso-servidor-aparecer-sem-movimento !important;
+  }
+  .aviso-servidor-barra {
+    animation-duration: 60s !important;
+  }
+  .aviso-servidor-contador::after {
+    animation-duration: 3600s, 60s, 10s !important;
+    animation-iteration-count: 1, infinite, infinite !important;
+  }
+}
+
 /* Cards de aula (tela Relatorios): quadrados no computador, 4/3 no celular.
 
    Abaixo de 620px a coluna fica estreita e o quadrado deixaria o card alto

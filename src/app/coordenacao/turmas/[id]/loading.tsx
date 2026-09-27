@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/layout/app-shell";
+import { AvisoServidorLigando } from "@/components/ui/aviso-servidor-ligando";
 
 /**
  * Esqueleto da pagina de UMA turma dentro da Coordenacao.
@@ -10,6 +11,7 @@ import { AppShell } from "@/components/layout/app-shell";
 export default function CarregandoTurma() {
   return (
     <AppShell titulo="Coordenação">
+      <AvisoServidorLigando />
       <div className="flex animate-pulse flex-col gap-4">
         {/* Cabecalho da turma: nome e a linha de apoio */}
         <div className="flex flex-col gap-2">

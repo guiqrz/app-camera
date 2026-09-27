@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/layout/app-shell";
+import { AvisoServidorLigando } from "@/components/ui/aviso-servidor-ligando";
 
 /**
  * Esqueleto da tela "Coordenacao".
@@ -14,6 +15,7 @@ import { AppShell } from "@/components/layout/app-shell";
 export default function CarregandoCoordenacao() {
   return (
     <AppShell titulo="Coordenação">
+      <AvisoServidorLigando />
       <div className="flex animate-pulse flex-col gap-4">
         {/* A fileira de abas do topo (Turmas, Materias, Alunos...) */}
         <div className="flex flex-wrap gap-2">

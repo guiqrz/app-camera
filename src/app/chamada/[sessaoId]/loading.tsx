@@ -1,9 +1,11 @@
 import { AppShell } from "@/components/layout/app-shell";
+import { AvisoServidorLigando } from "@/components/ui/aviso-servidor-ligando";
 
 /** Esqueleto da chamada: cards de resumo + lista de alunos. */
 export default function CarregandoChamada() {
   return (
     <AppShell titulo="Chamada">
+      <AvisoServidorLigando />
       <div className="flex animate-pulse flex-col gap-7">
         <div className="flex flex-col gap-2">
           <div className="bg-surface-2 h-8 w-52 rounded-lg" />

@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/layout/app-shell";
+import { AvisoServidorLigando } from "@/components/ui/aviso-servidor-ligando";
 
 /**
  * Esqueleto da tela "Configuracoes".
@@ -16,6 +17,7 @@ import { AppShell } from "@/components/layout/app-shell";
 export default function CarregandoConfiguracoes() {
   return (
     <AppShell titulo="Configurações">
+      <AvisoServidorLigando />
       <div className="flex animate-pulse flex-col gap-4">
         {/* As duas abas do topo: Geral e Privacidade */}
         <div className="flex gap-2">
