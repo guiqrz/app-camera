@@ -1585,7 +1585,7 @@ export function buscarPreparacaoDaSemana(opcoes?: {
  */
 export async function trocarTokenDeLogin(token: string): Promise<{
   sessao: string;
-  usuario: { id: number; email: string; papel: string };
+  usuario: UsuarioDaSessao;
 }> {
   const baseUrl = process.env.CUPCAM_API_URL;
   if (!baseUrl) {
@@ -1595,12 +1595,26 @@ export async function trocarTokenDeLogin(token: string): Promise<{
     );
   }
 
-  const resposta = await fetch(`${baseUrl.replace(/\/$/, "")}/auth/trocar-token`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ token }),
-    cache: "no-store",
-  });
+  let resposta: Response;
+  try {
+    resposta = await fetch(`${baseUrl.replace(/\/$/, "")}/auth/trocar-token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token }),
+      cache: "no-store",
+      // Mesmo teto das demais chamadas a nuvem (ver TEMPO_LIMITE_MS), e nao os
+      // 5 s da revalidacao: o login costuma ser a PRIMEIRA requisicao do dia,
+      // justo a que pega o Render hibernando. Sem teto nenhum, uma API travada
+      // deixava o professor olhando pra uma aba carregando pra sempre.
+      signal: AbortSignal.timeout(TEMPO_LIMITE_MS.nuvem),
+    });
+  } catch {
+    throw new ApiError(
+      "Nao foi possivel falar com a API do CUPCAM na nuvem.",
+      0,
+      "/auth/trocar-token",
+    );
+  }
 
   if (!resposta.ok) {
     const bruto = await resposta.text().catch(() => "");
@@ -1612,4 +1626,97 @@ export async function trocarTokenDeLogin(token: string): Promise<{
   }
 
   return resposta.json();
+}
+
+/** Quem esta logado, como a API devolve em /conta/sessao e /auth/trocar-token. */
+export type UsuarioDaSessao = { id: number; email: string; papel: string };
+
+/**
+ * Teto das chamadas de sessao feitas pelo PROXY (revalidacao periodica) e pelo
+ * logout. Bem menor que os 75 s da nuvem de proposito: aqui o professor esta
+ * esperando a navegacao de uma tela qualquer, e o proxy deixa passar quando a
+ * API nao responde (ver src/proxy.ts) — esperar 75 s pra depois deixar passar
+ * de qualquer jeito seria so' atraso.
+ */
+const TEMPO_LIMITE_SESSAO_MS = 5_000;
+
+/**
+ * Chamada crua as rotas /conta/* (sessao). Nao usa `requisitar()` porque
+ * precisa do header X-Sessao e de ler 204 sem corpo — mas reaproveita
+ * `lerConfiguracao()` e o mesmo contrato de erro: falha de rede/timeout vira
+ * `ApiError` status 0.
+ *
+ * Prefixo /conta, e nao /auth: no backend, tudo sob /auth fica FORA da
+ * checagem da X-API-Key (e' o login publico). Estas rotas exigem a chave.
+ */
+async function requisitarRotaDeSessao(
+  rota: string,
+  method: "GET" | "POST",
+  sessao: string,
+): Promise<Response> {
+  const { baseUrl, apiKey } = lerConfiguracao("nuvem");
+  try {
+    return await fetch(`${baseUrl}${rota}`, {
+      method,
+      headers: { "X-API-Key": apiKey, "X-Sessao": sessao },
+      // Nunca cachear: a resposta e' por sessao, e um "200" guardado manteria
+      // viva uma sessao ja' encerrada.
+      cache: "no-store",
+      signal: AbortSignal.timeout(TEMPO_LIMITE_SESSAO_MS),
+    });
+  } catch {
+    throw new ApiError("Nao foi possivel falar com a API do CUPCAM na nuvem.", 0, rota);
+  }
+}
+
+/**
+ * Confere com o backend se a sessao ainda vale.
+ *
+ * A API responde 200 nos dois casos: `{"usuario": {...}}` ou
+ * `{"usuario": null}`. So' o `null` significa "sessao caiu". Um 401 aqui e'
+ * a X-API-Key do SERVIDOR errada, nao a sessao do professor — tratar os dois
+ * igual deslogaria a escola inteira por causa de uma variavel da Vercel.
+ *
+ * @returns o usuario, ou `null` quando a sessao expirou, foi encerrada ou
+ *          nao existe.
+ * @throws ApiError em qualquer resposta que nao seja 200 (status 0 =
+ *         rede/timeout, 401/403 = chave do servidor, 5xx = API com problema).
+ *         Quem chama decide o que fazer com isso; o proxy, por exemplo,
+ *         deixa passar.
+ */
+export async function validarSessao(sessao: string): Promise<UsuarioDaSessao | null> {
+  const rota = "/conta/sessao";
+  const resposta = await requisitarRotaDeSessao(rota, "GET", sessao);
+
+  if (!resposta.ok) {
+    const bruto = await resposta.text().catch(() => "");
+    throw new ApiError(
+      `API respondeu ${resposta.status} em ${rota}. ${bruto}`.trim(),
+      resposta.status,
+      rota,
+    );
+  }
+  const corpo = (await resposta.json()) as { usuario: UsuarioDaSessao | null };
+  return corpo.usuario;
+}
+
+/**
+ * Encerra a sessao no backend (logout). A API responde 204 sempre, ate' pra
+ * sessao que ja' nao existia (e' idempotente).
+ *
+ * @throws ApiError se a API nao respondeu ou respondeu erro. Um 401 aqui e'
+ *         a X-API-Key do servidor errada: a sessao continua viva no backend,
+ *         entao isso E' erro e precisa aparecer no log.
+ */
+export async function encerrarSessao(sessao: string): Promise<void> {
+  const rota = "/conta/sair";
+  const resposta = await requisitarRotaDeSessao(rota, "POST", sessao);
+
+  if (resposta.ok) return;
+  const bruto = await resposta.text().catch(() => "");
+  throw new ApiError(
+    `API respondeu ${resposta.status} em ${rota}. ${bruto}`.trim(),
+    resposta.status,
+    rota,
+  );
 }

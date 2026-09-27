@@ -802,3 +802,25 @@ export function IconSubir({ size = 18, className }: IconProps) {
     </svg>
   );
 }
+
+/** Porta com seta saindo — encerrar a sessao (sair). */
+export function IconSair({ size = 18, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <path
+        d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M16 17l5-5-5-5M21 12H9"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}

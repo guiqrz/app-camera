@@ -8,6 +8,14 @@ export default function ErroDeEntrada() {
         <p className="text-text-body mt-2">
           O link expirou ou já foi usado. Volte ao login e tente novamente.
         </p>
+        {/* /entrar/iniciar gera um state novo: voltar pelo historico do
+            navegador reusaria o state antigo, ja descartado no primeiro uso. */}
+        <a
+          href="/entrar/iniciar"
+          className="text-text-brand mt-6 inline-block font-semibold underline underline-offset-4"
+        >
+          Voltar ao login
+        </a>
       </div>
     </main>
   );

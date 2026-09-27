@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ComponentType } from "react";
 
+import { BotaoSair } from "@/components/layout/botao-sair";
 import { LogoCupcam } from "@/components/layout/logo-cupcam";
 import {
   IconAdministracao,
@@ -312,7 +313,7 @@ export function SidebarV2({ aberto, aoFechar }: SidebarProps) {
         <div className="mt-auto">
           <div
             className={`flex items-center gap-[9px] rounded-[12px] p-[9px] ${
-              recolhida ? "lg:justify-center lg:px-0 lg:py-[7px]" : ""
+              recolhida ? "lg:flex-col lg:justify-center lg:px-0 lg:py-[7px]" : ""
             }`}
             style={{ background: "var(--sidebar-v2-cartao)" }}
           >
@@ -323,7 +324,7 @@ export function SidebarV2({ aberto, aoFechar }: SidebarProps) {
             >
               GQ
             </span>
-            <div className={`min-w-0 ${recolhida ? "lg:hidden" : ""}`}>
+            <div className={`min-w-0 flex-1 ${recolhida ? "lg:hidden" : ""}`}>
               <div
                 className="truncate text-[12.5px] leading-[1.25] font-semibold"
                 style={{ color: "var(--sidebar-v2-text)" }}
@@ -337,6 +338,10 @@ export function SidebarV2({ aberto, aoFechar }: SidebarProps) {
                 Professor
               </div>
             </div>
+            {/* Recolhida, o cartao vira coluna (avatar em cima, sair
+                embaixo) em vez de esconder o botao: sair nao pode depender
+                de expandir o menu primeiro. */}
+            <BotaoSair className="text-[color:var(--sidebar-v2-text-muted)] hover:bg-[var(--sidebar-v2-item-hover)] hover:text-[color:var(--sidebar-v2-text)]" />
           </div>
 
         </div>

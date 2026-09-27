@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ComponentType } from "react";
 
+import { BotaoSair } from "@/components/layout/botao-sair";
 import { LogoCupcam } from "@/components/layout/logo-cupcam";
 import {
   IconAdministracao,
@@ -328,7 +329,7 @@ export function Sidebar({ aberto, aoFechar }: SidebarProps) {
         <div className="mt-auto">
           <div
             className={`border-border-default flex items-center gap-[9px] rounded-[12px] border ${
-              recolhida ? "p-[9px] lg:justify-center lg:px-0 lg:py-[7px]" : "p-[9px]"
+              recolhida ? "p-[9px] lg:flex-col lg:justify-center lg:px-0 lg:py-[7px]" : "p-[9px]"
             }`}
             style={{ background: "var(--surface)" }}
           >
@@ -339,7 +340,7 @@ export function Sidebar({ aberto, aoFechar }: SidebarProps) {
             >
               GQ
             </span>
-            <div className={`min-w-0 ${recolhida ? "lg:hidden" : ""}`}>
+            <div className={`min-w-0 flex-1 ${recolhida ? "lg:hidden" : ""}`}>
               <div className="text-text truncate text-[12.5px] leading-[1.25] font-semibold">
                 Guilherme
               </div>
@@ -347,6 +348,8 @@ export function Sidebar({ aberto, aoFechar }: SidebarProps) {
                 Professor
               </div>
             </div>
+            {/* Mesma classe de cor do botao de recolher desta sidebar. */}
+            <BotaoSair className="text-text-muted hover:bg-surface-2 hover:text-text" />
           </div>
         </div>
       </aside>
