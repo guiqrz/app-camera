@@ -7,6 +7,7 @@ import { useEffect, useState, type ComponentType } from "react";
 
 import { BotaoSair } from "@/components/layout/botao-sair";
 import { LogoCupcam } from "@/components/layout/logo-cupcam";
+import { useCartaoDoUsuario } from "@/components/layout/usuario-logado";
 import {
   IconAdministracao,
   IconAulas,
@@ -66,6 +67,7 @@ type SidebarProps = {
 
 export function Sidebar({ aberto, aoFechar }: SidebarProps) {
   const caminho = usePathname();
+  const cartao = useCartaoDoUsuario();
 
   // Recolhida = so' os icones, 62px. A largura vive em `--sidebar-w`, que o
   // grid do AppShell E a faixa lateral da atmosfera ja' consomem — trocar a
@@ -338,14 +340,14 @@ export function Sidebar({ aberto, aoFechar }: SidebarProps) {
               style={{ background: "var(--violet-800)", fontWeight: 620 }}
               aria-hidden
             >
-              GQ
+              {cartao.iniciais}
             </span>
             <div className={`min-w-0 flex-1 ${recolhida ? "lg:hidden" : ""}`}>
               <div className="text-text truncate text-[12.5px] leading-[1.25] font-semibold">
-                Guilherme
+                {cartao.nome}
               </div>
               <div className="text-text-muted truncate text-[11.5px]">
-                Professor
+                {cartao.papel}
               </div>
             </div>
             {/* Mesma classe de cor do botao de recolher desta sidebar. */}

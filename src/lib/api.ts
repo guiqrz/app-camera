@@ -1629,7 +1629,13 @@ export async function trocarTokenDeLogin(token: string): Promise<{
 }
 
 /** Quem esta logado, como a API devolve em /conta/sessao e /auth/trocar-token. */
-export type UsuarioDaSessao = { id: number; email: string; papel: string };
+export type UsuarioDaSessao = {
+  id: number;
+  email: string;
+  papel: string;
+  /** Nome de exibicao; "" quando a conta ainda nao tem nome. */
+  nome: string;
+};
 
 /**
  * Teto das chamadas de sessao feitas pelo PROXY (revalidacao periodica) e pelo

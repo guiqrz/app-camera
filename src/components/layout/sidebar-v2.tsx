@@ -7,6 +7,7 @@ import { useEffect, useState, type ComponentType } from "react";
 
 import { BotaoSair } from "@/components/layout/botao-sair";
 import { LogoCupcam } from "@/components/layout/logo-cupcam";
+import { useCartaoDoUsuario } from "@/components/layout/usuario-logado";
 import {
   IconAdministracao,
   IconAulas,
@@ -74,6 +75,7 @@ type SidebarProps = {
 
 export function SidebarV2({ aberto, aoFechar }: SidebarProps) {
   const caminho = usePathname();
+  const cartao = useCartaoDoUsuario();
 
   // Mesma logica de recolhimento da v1: 62px, persistida no MESMO
   // localStorage (`CHAVE_RECOLHIDA`) — trocar de v1 pra v2 nao perde a
@@ -322,20 +324,20 @@ export function SidebarV2({ aberto, aoFechar }: SidebarProps) {
               style={{ background: "var(--violet-800)", fontWeight: 620 }}
               aria-hidden
             >
-              GQ
+              {cartao.iniciais}
             </span>
             <div className={`min-w-0 flex-1 ${recolhida ? "lg:hidden" : ""}`}>
               <div
                 className="truncate text-[12.5px] leading-[1.25] font-semibold"
                 style={{ color: "var(--sidebar-v2-text)" }}
               >
-                Guilherme
+                {cartao.nome}
               </div>
               <div
                 className="truncate text-[11.5px]"
                 style={{ color: "var(--sidebar-v2-text-muted)" }}
               >
-                Professor
+                {cartao.papel}
               </div>
             </div>
             {/* Recolhida, o cartao vira coluna (avatar em cima, sair

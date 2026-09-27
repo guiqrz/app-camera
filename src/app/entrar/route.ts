@@ -52,11 +52,19 @@ export async function GET(request: NextRequest) {
     // Le o segredo antes da troca pelo mesmo motivo: se faltar configuracao,
     // melhor falhar sem ter consumido o token.
     lerSegredoDaSessao();
-    const { sessao } = await trocarTokenDeLogin(token);
+    const { sessao, usuario } = await trocarTokenDeLogin(token);
 
     const resposta = NextResponse.redirect(new URL("/", request.url));
     apagarCookieDeState(resposta);
-    await gravarCookieDeSessao(resposta, sessao, agoraEmSegundos());
+    await gravarCookieDeSessao(resposta, {
+      sessao,
+      validadoEm: agoraEmSegundos(),
+      // `?? ""`: API anterior a 27/09/2026 nao manda `nome`. Sem isso o
+      // cookie nasceria sem o campo e seria recusado na leitura seguinte.
+      nome: usuario.nome ?? "",
+      email: usuario.email,
+      papel: usuario.papel,
+    });
     return resposta;
   } catch (causa) {
     console.error("[entrar] falha ao concluir o login:", causa);

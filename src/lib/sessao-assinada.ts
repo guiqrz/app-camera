@@ -9,12 +9,22 @@
  * que ESTE servidor gravou (depois de um login real) e' aceito, sem precisar
  * perguntar ao backend a cada clique.
  *
- * Formato do valor: `<sessao>.<validadoEm>.<assinatura>`
- *   sessao      o id de sessao que o backend devolveu no /auth/trocar-token
- *   validadoEm  epoch em SEGUNDOS da ultima vez que o backend confirmou a
- *               sessao. Vai dentro da assinatura de proposito: sem isso,
- *               bastaria editar o numero pra fugir da revalidacao periodica.
- *   assinatura  HMAC-SHA256, base64url sem padding, de "<sessao>.<validadoEm>"
+ * Formato do valor: `<conteudo>.<assinatura>`
+ *   conteudo    JSON em base64url com {sessao, validadoEm, nome, email, papel}
+ *     sessao      o id de sessao que o backend devolveu no /auth/trocar-token
+ *     validadoEm  epoch em SEGUNDOS da ultima vez que o backend confirmou a
+ *                 sessao. Vai dentro da assinatura de proposito: sem isso,
+ *                 bastaria editar o numero pra fugir da revalidacao periodica.
+ *     nome, email, papel  quem esta logado, pra barra lateral e (depois) pras
+ *                 permissoes por papel. Assinados pelo mesmo motivo: trocar
+ *                 "professor" por "admin" no cookie tem que invalidar tudo.
+ *   assinatura  HMAC-SHA256, base64url sem padding, do `<conteudo>` codificado
+ *
+ * Por que JSON codificado (27/09/2026), e nao mais `sessao.validadoEm.assinatura`:
+ * nome e email tem ponto, acento e espaco, e separar campos por "." deixaria
+ * de funcionar. base64url nunca tem ".", entao o ponto volta a ser separador
+ * seguro. Cookie no formato antigo falha no parse e o professor so' loga de
+ * novo uma vez.
  *
  * Por que "puro": roda igual no proxy (Node), nos Route Handlers e no
  * `node --test` (ver sessao-assinada.test.ts) — os testes importam este
@@ -27,7 +37,13 @@ const codificador = new TextEncoder();
 export type SessaoAssinada = {
   sessao: string;
   validadoEm: number;
+  /** Nome de exibicao; "" quando a conta ainda nao tem nome. */
+  nome: string;
+  email: string;
+  papel: string;
 };
+
+const decodificador = new TextDecoder();
 
 /**
  * De quanto em quanto tempo (s) o proxy volta a perguntar ao backend se a
@@ -36,9 +52,8 @@ export type SessaoAssinada = {
  */
 export const INTERVALO_REVALIDACAO_S = 300;
 
-// validadoEm e' um inteiro nao negativo, sem sinal nem expoente. Ate' 12
-// digitos cobre qualquer epoch razoavel e barra numeros absurdos logo no parse.
-const FORMATO_VALIDADO_EM = /^\d{1,12}$/;
+// O conteudo codificado: so' caracteres de base64url, sem padding.
+const FORMATO_BASE64URL = /^[A-Za-z0-9_-]+$/;
 
 // HMAC-SHA256 tem 32 bytes = 43 caracteres em base64url sem padding.
 const FORMATO_ASSINATURA = /^[A-Za-z0-9_-]{43}$/;
@@ -79,36 +94,66 @@ function importarChave(segredo: string, uso: "sign" | "verify"): Promise<CryptoK
   );
 }
 
-/**
- * Monta o valor do cookie: `<sessao>.<validadoEm>.<assinatura>`.
- *
- * @throws se a sessao vier vazia, se validadoEm nao for inteiro >= 0 ou se o
- *         segredo estiver vazio — tudo erro de programacao, nao de usuario.
- */
-export async function assinarSessao(
-  sessao: string,
-  validadoEm: number,
-  segredo: string,
-): Promise<string> {
-  if (!sessao) throw new Error("Sessao vazia nao pode ser assinada.");
-  if (!Number.isSafeInteger(validadoEm) || validadoEm < 0) {
-    throw new Error(`validadoEm invalido: ${validadoEm}`);
-  }
-
-  const conteudo = `${sessao}.${validadoEm}`;
+/** Assina um conteudo ja' codificado: `<conteudo>.<assinatura>`. */
+async function assinarConteudo(conteudo: string, segredo: string): Promise<string> {
   const chave = await importarChave(segredo, "sign");
   const assinatura = await crypto.subtle.sign("HMAC", chave, codificador.encode(conteudo));
   return `${conteudo}.${paraBase64Url(new Uint8Array(assinatura))}`;
 }
 
 /**
+ * So' pros testes: assina um conteudo arbitrario, pra provar que a leitura
+ * recusa JSON bem assinado mas com forma errada. Nada no app chama isto.
+ */
+export const assinarConteudoParaTeste = assinarConteudo;
+
+/**
+ * Monta o valor do cookie: `<conteudo>.<assinatura>`.
+ *
+ * @throws se a sessao vier vazia, se validadoEm nao for inteiro >= 0 ou se o
+ *         segredo estiver vazio — tudo erro de programacao, nao de usuario.
+ */
+export async function assinarSessao(dados: SessaoAssinada, segredo: string): Promise<string> {
+  if (!dados.sessao) throw new Error("Sessao vazia nao pode ser assinada.");
+  if (!Number.isSafeInteger(dados.validadoEm) || dados.validadoEm < 0) {
+    throw new Error(`validadoEm invalido: ${dados.validadoEm}`);
+  }
+
+  // Monta o objeto campo a campo, e nao com `JSON.stringify(dados)`: assim um
+  // campo extra que alguem passe por engano nunca vai parar no cookie.
+  const { sessao, validadoEm, nome, email, papel } = dados;
+  const json = JSON.stringify({ sessao, validadoEm, nome, email, papel });
+  return assinarConteudo(paraBase64Url(codificador.encode(json)), segredo);
+}
+
+/**
+ * Confere a FORMA do JSON ja' autenticado. A assinatura prova que fomos nos
+ * que gravamos; isto garante que o que gravamos esta' inteiro — defesa contra
+ * um bug nosso na gravacao virar sessao com campo faltando.
+ */
+function comoSessao(valor: unknown): SessaoAssinada | null {
+  if (typeof valor !== "object" || valor === null || Array.isArray(valor)) return null;
+  const { sessao, validadoEm, nome, email, papel } = valor as Record<string, unknown>;
+  if (typeof sessao !== "string" || !sessao) return null;
+  if (typeof validadoEm !== "number" || !Number.isSafeInteger(validadoEm) || validadoEm < 0) {
+    return null;
+  }
+  if (typeof nome !== "string" || typeof email !== "string" || typeof papel !== "string") {
+    return null;
+  }
+  return { sessao, validadoEm, nome, email, papel };
+}
+
+/**
  * Confere o valor do cookie e devolve a sessao, ou `null` se o formato estiver
- * quebrado ou a assinatura nao bater (adulterado, forjado ou gravado com outro
- * segredo). Nunca lanca por causa do VALOR — so' por segredo vazio.
+ * quebrado ou a assinatura nao bater (adulterado, forjado, gravado com outro
+ * segredo ou no formato antigo). Nunca lanca por causa do VALOR — so' por
+ * segredo vazio.
  *
  * A comparacao da assinatura e' do proprio `crypto.subtle.verify`, que e' em
  * tempo constante; comparar strings com `===` vazaria, pelo tempo de resposta,
- * quantos caracteres do inicio estao certos.
+ * quantos caracteres do inicio estao certos. E a assinatura e' conferida
+ * ANTES de decodificar o JSON: conteudo nao autenticado nunca chega ao parse.
  */
 export async function verificarSessaoAssinada(
   valor: string,
@@ -118,19 +163,10 @@ export async function verificarSessaoAssinada(
   // depender de o cookie da vez estar bem formado pra o defeito aparecer.
   if (!segredo) throw new Error("Segredo da sessao vazio.");
 
-  // Parse pela DIREITA: a assinatura e o validadoEm nunca tem ".", entao isso
-  // funciona mesmo se um dia o id de sessao do backend passar a ter ponto.
-  const fimConteudo = valor.lastIndexOf(".");
-  if (fimConteudo <= 0) return null;
-  const conteudo = valor.slice(0, fimConteudo);
-  const assinaturaTexto = valor.slice(fimConteudo + 1);
-
-  const fimSessao = conteudo.lastIndexOf(".");
-  if (fimSessao <= 0) return null;
-  const sessao = conteudo.slice(0, fimSessao);
-  const validadoEmTexto = conteudo.slice(fimSessao + 1);
-
-  if (!FORMATO_VALIDADO_EM.test(validadoEmTexto)) return null;
+  const partes = valor.split(".");
+  if (partes.length !== 2) return null;
+  const [conteudo, assinaturaTexto] = partes as [string, string];
+  if (!FORMATO_BASE64URL.test(conteudo)) return null;
   if (!FORMATO_ASSINATURA.test(assinaturaTexto)) return null;
 
   const assinatura = deBase64Url(assinaturaTexto);
@@ -145,7 +181,13 @@ export async function verificarSessaoAssinada(
   );
   if (!confere) return null;
 
-  return { sessao, validadoEm: Number(validadoEmTexto) };
+  const bytes = deBase64Url(conteudo);
+  if (!bytes) return null;
+  try {
+    return comoSessao(JSON.parse(decodificador.decode(bytes)));
+  } catch {
+    return null;
+  }
 }
 
 /**

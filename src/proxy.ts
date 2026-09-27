@@ -68,8 +68,16 @@ export async function proxy(request: NextRequest) {
 
   if (!usuario) return negarAcesso(request);
 
+  // Regrava com os dados que o backend acabou de confirmar: nome ou papel
+  // trocados no banco chegam ao cookie (e a barra lateral) em ate' 5 min.
   const resposta = NextResponse.next();
-  await gravarCookieDeSessao(resposta, lida.sessao, agora);
+  await gravarCookieDeSessao(resposta, {
+    sessao: lida.sessao,
+    validadoEm: agora,
+    nome: usuario.nome ?? "",
+    email: usuario.email,
+    papel: usuario.papel,
+  });
   return resposta;
 }
 

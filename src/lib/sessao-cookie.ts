@@ -13,6 +13,7 @@
 
 import "server-only";
 
+import { cookies } from "next/headers";
 import type { NextRequest, NextResponse } from "next/server";
 
 import {
@@ -112,13 +113,26 @@ export async function lerSessaoDoCookie(
   return verificarSessaoAssinada(valor, lerSegredoDaSessao());
 }
 
+/**
+ * Le o cookie de sessao de dentro de um Server Component (o layout raiz), onde
+ * nao ha `request` — so' `cookies()`. `null` sem cookie ou com assinatura que
+ * nao confere.
+ *
+ * Nao valida com o backend: quem garante que a sessao ainda vale e' o proxy,
+ * que ja' rodou antes desta pagina (ver src/proxy.ts). Aqui so' se le quem e'.
+ */
+export async function lerSessaoDoServidor(): Promise<SessaoAssinada | null> {
+  const valor = (await cookies()).get(COOKIE_SESSAO)?.value;
+  if (!valor) return null;
+  return verificarSessaoAssinada(valor, lerSegredoDaSessao());
+}
+
 /** Grava (ou regrava) o cookie de sessao assinado na resposta. */
 export async function gravarCookieDeSessao(
   resposta: NextResponse,
-  sessao: string,
-  validadoEm: number,
+  dados: SessaoAssinada,
 ): Promise<void> {
-  const valor = await assinarSessao(sessao, validadoEm, lerSegredoDaSessao());
+  const valor = await assinarSessao(dados, lerSegredoDaSessao());
   resposta.cookies.set(COOKIE_SESSAO, valor, {
     httpOnly: true,
     secure: emProducao,

@@ -1,8 +1,13 @@
 import type { Metadata } from "next";
 import { Montserrat } from "next/font/google";
 
+import {
+  ProvedorUsuarioLogado,
+  type UsuarioLogado,
+} from "@/components/layout/usuario-logado";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { ThemeScript } from "@/components/theme/theme-script";
+import { lerSessaoDoServidor } from "@/lib/sessao-cookie";
 
 import "./globals.css";
 
@@ -27,11 +32,33 @@ export const metadata: Metadata = {
     "Painel do professor: chamada automatica e indicadores de engajamento da turma.",
 };
 
-export default function RootLayout({
+/**
+ * Quem esta logado, lido do cookie assinado. So' leitura local (HMAC), sem ir
+ * a API: quem confere com o backend se a sessao ainda vale e' o proxy, que ja'
+ * rodou antes daqui.
+ *
+ * Falha de configuracao (segredo ausente) NAO derruba o layout: ele tambem
+ * desenha a tela de erro do login, que precisa abrir justamente quando algo
+ * esta mal configurado. O proxy ja' barra as telas protegidas nesse caso.
+ */
+async function lerUsuarioLogado(): Promise<UsuarioLogado | null> {
+  try {
+    const lida = await lerSessaoDoServidor();
+    // Copia so' o que a tela mostra: o id da sessao nao pode ir pro navegador.
+    return lida ? { nome: lida.nome, email: lida.email, papel: lida.papel } : null;
+  } catch (causa) {
+    console.error("[layout] nao foi possivel ler o usuario logado:", causa);
+    return null;
+  }
+}
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const usuario = await lerUsuarioLogado();
+
   return (
     <html
       lang="pt-BR"
@@ -51,7 +78,9 @@ export default function RootLayout({
             passam pelo AppShell — sem isso o fundo "piscaria" chapado
             durante a navegacao. aria-hidden: e' decoracao pura. */}
         <div className="atmosfera" aria-hidden="true" />
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <ProvedorUsuarioLogado usuario={usuario}>{children}</ProvedorUsuarioLogado>
+        </ThemeProvider>
       </body>
     </html>
   );
