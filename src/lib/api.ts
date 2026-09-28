@@ -826,6 +826,32 @@ export function editarAluno(
   );
 }
 
+/** Rosto ja' calculado: embedding facial + miniatura JPEG, ambos em base64. */
+export type RostoCalculado = { embedding: string; thumb: string };
+
+/**
+ * Calcula o rosto de uma foto NO NOTEBOOK da sala (POST /camera/rosto).
+ *
+ * A API da nuvem roda sem insightface (o Render instala so'
+ * requirements-nuvem.txt), entao foto enviada pra ela dava erro 500. Quem sabe
+ * reconhecer rosto e' o notebook: ele devolve o embedding + miniatura e nao
+ * grava nada; quem grava e' a nuvem, recebendo o resultado pronto.
+ *
+ * 30s de teto, e nao os 4s padrao da camera: a PRIMEIRA foto depois de ligar a
+ * API carrega os modelos do insightface do disco, o que leva alguns segundos
+ * antes do calculo em si.
+ */
+export function calcularRostoNoNotebook(foto: File): Promise<RostoCalculado> {
+  const form = new FormData();
+  form.append("foto", foto);
+  return requisitar<RostoCalculado>("/camera/rosto", {
+    method: "POST",
+    body: form,
+    destino: "camera",
+    tempoLimiteMs: 30_000,
+  });
+}
+
 /** Edita todos os campos de uma turma. A API recusa com 409 em conflito de horario. */
 export function editarTurma(id: number, dados: NovaTurma): Promise<{ id: number }> {
   return requisitar<{ id: number }>(`/admin/turmas/${id}`, {
