@@ -623,6 +623,16 @@ export type EstadoCamera =
        * nao traz o campo; ausente e' tratado como false (nao gravando).
        */
       audio_ativo?: boolean;
+
+      /**
+       * true = ao ligar, a camera nao conseguiu atualizar o cadastro pela
+       * internet e esta usando a ultima copia do notebook. Aluno cadastrado
+       * pelo site ha' pouco pode nao ser reconhecido.
+       *
+       * Opcional porque backend anterior a 27/09/2026 nao manda; ausente =
+       * cadastro em dia.
+       */
+      cadastro_desatualizado?: boolean;
     };
 
 /* ------------------------------------------------------------------ */
