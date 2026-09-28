@@ -830,8 +830,9 @@ function VistaRodando({
 
       {estado.cadastro_desatualizado === true && (
         <p className="text-text-muted text-xs font-semibold" role="status">
-          Sem internet ao ligar: a câmera está usando o último cadastro salvo neste
-          computador. Alunos cadastrados há pouco podem não ser reconhecidos.
+          Não deu pra atualizar o cadastro pela nuvem ao ligar a câmera. Ela está
+          usando o último cadastro salvo neste computador — alunos cadastrados há
+          pouco podem não ser reconhecidos.
         </p>
       )}
 
