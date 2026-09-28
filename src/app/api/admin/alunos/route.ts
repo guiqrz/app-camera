@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { statusSeguro } from "@/app/api/admin/_lib/status-seguro";
 import { ApiError, criarAluno } from "@/lib/api";
 import { invalidarNumerosGerais } from "@/app/api/admin/_lib/invalidar-numeros";
+import { trocarFotoPeloRosto } from "@/app/api/admin/_lib/rosto-pelo-notebook";
 
 /**
  * Ponte de escrita "Novo aluno" da tela "Administracao".
@@ -14,17 +15,21 @@ import { invalidarNumerosGerais } from "@/app/api/admin/_lib/invalidar-numeros";
  */
 
 export async function POST(requisicao: Request) {
-  // Le como FormData e repassa cru — validacao de rosto/tipo/tamanho de
-  // arquivo e' responsabilidade da API, nao desta ponte.
-  let form: FormData;
+  // Le como FormData e repassa — validacao de rosto/tipo/tamanho de arquivo
+  // e' responsabilidade da API, nao desta ponte. A foto, se veio, vira rosto
+  // pronto no notebook antes (a nuvem nao tem insightface).
+  let recebido: FormData;
   try {
-    form = await requisicao.formData();
+    recebido = await requisicao.formData();
   } catch {
     return NextResponse.json(
       { erro: "Corpo da requisição inválido." },
       { status: 400 },
     );
   }
+
+  const form = await trocarFotoPeloRosto(recebido);
+  if (form instanceof NextResponse) return form;
 
   try {
     const criado = await criarAluno(form);

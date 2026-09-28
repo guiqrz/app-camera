@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { statusSeguro } from "@/app/api/admin/_lib/status-seguro";
 import { ApiError, editarAluno, excluirAluno, mudarTurmaDoAluno } from "@/lib/api";
 import { invalidarNumerosGerais } from "@/app/api/admin/_lib/invalidar-numeros";
+import { trocarFotoPeloRosto } from "@/app/api/admin/_lib/rosto-pelo-notebook";
 
 /**
  * Ponte de escrita "Mudar turma" e "Excluir aluno" da tela "Administracao".
@@ -77,15 +78,19 @@ export async function PUT(requisicao: Request, { params }: Params) {
     return NextResponse.json({ erro: "RA inválido." }, { status: 400 });
   }
 
-  let form: FormData;
+  let recebido: FormData;
   try {
-    form = await requisicao.formData();
+    recebido = await requisicao.formData();
   } catch {
     return NextResponse.json(
       { erro: "Corpo da requisição inválido." },
       { status: 400 },
     );
   }
+
+  // Foto nova vira rosto pronto no notebook antes (a nuvem nao tem insightface).
+  const form = await trocarFotoPeloRosto(recebido);
+  if (form instanceof NextResponse) return form;
 
   try {
     const resposta = await editarAluno(ra, form);
