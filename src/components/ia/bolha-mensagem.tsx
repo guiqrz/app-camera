@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { AcoesDaResposta } from "@/components/ia/acoes-da-resposta";
+import { CartaoListaExercicios } from "@/components/ia/cartao-lista-exercicios";
 import { MascoteCup } from "@/components/ia/mascote-cup";
 import { TextoFormatado } from "@/components/ia/texto-formatado";
 import { IconCalendario } from "@/components/ui/icons";
@@ -86,6 +87,13 @@ export function BolhaMensagem({ mensagem, conversaId }: BolhaMensagemProps) {
           <div className="text-text-body text-sm leading-[1.75]">
             <TextoFormatado texto={mensagem.texto} />
           </div>
+
+          {/* A lista de exercicios que esta resposta montou. So' o id fica na
+              mensagem: o cartao busca a lista atual, entao os ✕ do professor
+              continuam valendo quando ele reabre a conversa. */}
+          {mensagem.lista_exercicios_id ? (
+            <CartaoListaExercicios listaId={mensagem.lista_exercicios_id} />
+          ) : null}
 
           {/* So' quando ha texto de fato: copiar/baixar o vazio nao faz nada, e
               um par de botoes embaixo de uma resposta em branco parece defeito.
