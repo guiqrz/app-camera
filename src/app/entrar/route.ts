@@ -1,5 +1,3 @@
-import { timingSafeEqual } from "node:crypto";
-
 import { NextRequest, NextResponse } from "next/server";
 
 import { trocarTokenDeLogin } from "@/lib/api";
@@ -10,6 +8,7 @@ import {
   gravarCookieDeSessao,
   lerSegredoDaSessao,
 } from "@/lib/sessao-cookie";
+import { statesIguais } from "@/lib/state-login";
 
 /**
  * Destino do redirect vindo do login.html (site Strix). Le ?token= e ?state=,
@@ -77,15 +76,4 @@ function irParaErro(request: NextRequest): NextResponse {
   const resposta = NextResponse.redirect(new URL("/entrar/erro", request.url));
   apagarCookieDeState(resposta);
   return resposta;
-}
-
-/**
- * Compara os dois states em tempo constante. `===` pararia no primeiro
- * caractere diferente, e o tempo de resposta revelaria quanto do inicio
- * esta certo. O comprimento pode vazar sem problema (e' sempre 43).
- */
-function statesIguais(recebido: string, esperado: string): boolean {
-  const a = Buffer.from(recebido);
-  const b = Buffer.from(esperado);
-  return a.length === b.length && timingSafeEqual(a, b);
 }

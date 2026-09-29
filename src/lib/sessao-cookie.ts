@@ -16,6 +16,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import type { NextRequest, NextResponse } from "next/server";
 
+import { DURACAO_LOGIN_PENDENTE_S } from "./login-pendente";
 import {
   assinarSessao,
   verificarSessaoAssinada,
@@ -169,6 +170,35 @@ export function gravarCookieDeState(resposta: NextResponse, state: string): void
 /** Apaga o `state` — ele e' de uso unico, com ou sem sucesso no login. */
 export function apagarCookieDeState(resposta: NextResponse): void {
   resposta.cookies.set(COOKIE_STATE_LOGIN, "", {
+    httpOnly: true,
+    secure: emProducao,
+    sameSite: "lax",
+    path: PATH_STATE,
+    maxAge: 0,
+  });
+}
+
+/**
+ * Cookie com as credenciais cifradas enquanto a API acorda (ver
+ * login-pendente.ts). `path` /entrar pelo mesmo motivo do state: so' as rotas
+ * de login o leem, e ele nao deve viajar em toda requisicao do app.
+ */
+export const COOKIE_LOGIN_PENDENTE = "cupcam_login_pendente";
+
+/** Grava o pendente ja' cifrado. HttpOnly: o JavaScript da pagina nunca o le. */
+export function gravarCookieDeLoginPendente(resposta: NextResponse, valor: string): void {
+  resposta.cookies.set(COOKIE_LOGIN_PENDENTE, valor, {
+    httpOnly: true,
+    secure: emProducao,
+    sameSite: "lax",
+    path: PATH_STATE,
+    maxAge: DURACAO_LOGIN_PENDENTE_S,
+  });
+}
+
+/** Apaga o pendente: no sucesso, na senha errada e em qualquer desistencia. */
+export function apagarCookieDeLoginPendente(resposta: NextResponse): void {
+  resposta.cookies.set(COOKIE_LOGIN_PENDENTE, "", {
     httpOnly: true,
     secure: emProducao,
     sameSite: "lax",

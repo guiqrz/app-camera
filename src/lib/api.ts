@@ -1735,6 +1735,51 @@ export async function trocarTokenDeLogin(token: string): Promise<{
   return resposta.json();
 }
 
+const TEMPO_LIMITE_TENTATIVA_DE_LOGIN_MS = 25_000;
+
+/**
+ * Login feito pelo SERVIDOR do app em nome do professor (tela "servidores
+ * ligando"). Devolve o token de uso unico, que segue pro `trocarTokenDeLogin`.
+ *
+ * Vai por /conta/entrar, e nao /auth/login: la' todo professor apareceria com
+ * o IP da Vercel e 5 senhas erradas de qualquer um bloqueariam a escola
+ * inteira. Aqui o app informa o IP real do navegador — a rota aceita porque
+ * exige a X-API-Key, que so' este servidor tem.
+ *
+ * Teto de 25 s por tentativa, e nao os 75 s da nuvem: quem chama tenta de novo
+ * sozinho, e uma tentativa curta deixa a tela atualizar o estado mais vezes.
+ *
+ * @throws ApiError com o status da API (0 = rede/timeout: servidor ligando).
+ */
+export async function entrarPeloApp(credenciais: {
+  email: string;
+  senha: string;
+  ip: string;
+}): Promise<string> {
+  const { baseUrl, apiKey } = lerConfiguracao("nuvem");
+  let resposta: Response;
+  try {
+    resposta = await fetch(`${baseUrl}/conta/entrar`, {
+      method: "POST",
+      headers: { "X-API-Key": apiKey, "Content-Type": "application/json" },
+      body: JSON.stringify(credenciais),
+      cache: "no-store",
+      signal: AbortSignal.timeout(TEMPO_LIMITE_TENTATIVA_DE_LOGIN_MS),
+    });
+  } catch {
+    throw new ApiError("Nao foi possivel falar com a API do CUPCAM na nuvem.", 0, "/conta/entrar");
+  }
+  if (!resposta.ok) {
+    // O corpo NAO entra na mensagem: nada da resposta de login deve ir pro log.
+    throw new ApiError(`Login recusado: ${resposta.status}.`, resposta.status, "/conta/entrar");
+  }
+  const { token } = (await resposta.json()) as { token?: unknown };
+  if (typeof token !== "string" || token === "") {
+    throw new ApiError("Login sem token na resposta.", 502, "/conta/entrar");
+  }
+  return token;
+}
+
 /** Quem esta logado, como a API devolve em /conta/sessao e /auth/trocar-token. */
 export type UsuarioDaSessao = {
   id: number;
