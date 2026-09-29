@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { TextoFormatado } from "@/components/ia/texto-formatado";
 import {
   IconCheckSimples,
+  IconIA,
   IconInfo,
   IconLapis,
 } from "@/components/ui/icons";
@@ -38,6 +39,12 @@ export function ConteudoDaAula({ sessaoId }: ConteudoDaAulaProps) {
   const [rascunhoAteOnde, setRascunhoAteOnde] = useState("");
   const [rascunhoTopicos, setRascunhoTopicos] = useState<string[]>([]);
   const [topicoNovo, setTopicoNovo] = useState("");
+
+  // "Gerar resumo": o registro vazio pode ser falta de fonte OU a IA que
+  // estava fora do ar no fim da aula. So' o backend sabe qual; o 409 dele
+  // confirma que nao ha fonte, e ai' o botao some.
+  const [gerando, setGerando] = useState(false);
+  const [semFonteConfirmada, setSemFonteConfirmada] = useState(false);
 
   useEffect(() => {
     let cancelado = false;
@@ -132,6 +139,29 @@ export function ConteudoDaAula({ sessaoId }: ConteudoDaAulaProps) {
     }
   };
 
+  const gerarResumo = async () => {
+    setGerando(true);
+    setErro(null);
+    try {
+      const resposta = await fetch(`/api/conteudo/${sessaoId}/gerar`, {
+        method: "POST",
+      });
+      if (!resposta.ok) {
+        const dados = (await resposta.json().catch(() => null)) as {
+          erro?: string;
+        } | null;
+        if (resposta.status === 409) setSemFonteConfirmada(true);
+        setErro(dados?.erro ?? "Não foi possível gerar o resumo. Tente de novo.");
+        return;
+      }
+      setConteudo((await resposta.json()) as Conteudo);
+    } catch {
+      setErro("Não foi possível gerar o resumo. Verifique a conexão.");
+    } finally {
+      setGerando(false);
+    }
+  };
+
   // Os tres estados abaixo NAO desenham card proprio: quem desenha e' o
   // `BlocoColapsavel` em volta. Antes cada um trazia sua `<section>` com borda
   // e titulo, o que empilhava um card dentro do outro.
@@ -178,9 +208,8 @@ export function ConteudoDaAula({ sessaoId }: ConteudoDaAulaProps) {
     );
   }
 
-  // Registro existe mas nasceu vazio: nao houve audio nem quadro capturado.
-  // O botao continua aparecendo — e' justamente o caso em que ele precisa
-  // escrever o conteudo a mao.
+  // Registro existe mas nasceu vazio: sem audio nem quadro, ou a IA falhou no
+  // fim da aula. Os dois botoes (gerar e escrever) vivem no ramo `semFonte`.
   const semFonte = conteudo.fonte === "nenhuma";
 
   // SEM `<section>` nem cabecalho proprios: este componente agora mora dentro
@@ -298,10 +327,42 @@ export function ConteudoDaAula({ sessaoId }: ConteudoDaAulaProps) {
           </div>
         </>
       ) : semFonte ? (
-        <p className="text-text-muted text-sm leading-relaxed">
-          Esta aula não teve áudio gravado nem quadro capturado, então não houve
-          o que registrar automaticamente. Você pode escrever o conteúdo à mão.
-        </p>
+        <>
+          {/* Registro vazio tem duas causas que a tela nao distingue sozinha:
+              aula sem audio nem quadro, ou a IA fora do ar no fim da aula (o
+              caso das aulas 63-67, 28/09/2026). O texto nao afirma nenhuma das
+              duas ate' o backend responder. */}
+          <p className="text-text-muted text-sm leading-relaxed">
+            {semFonteConfirmada
+              ? "Esta aula não teve áudio gravado nem quadro capturado. Você pode escrever o conteúdo à mão."
+              : "O resumo desta aula não foi gerado. Se ela teve áudio ou quadro capturado, gere agora; senão, escreva à mão."}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {!semFonteConfirmada && (
+              <button
+                type="button"
+                onClick={gerarResumo}
+                disabled={gerando}
+                aria-busy={gerando}
+                className="text-text-on-brand inline-flex items-center gap-[7px] rounded-[9px] px-[13px] py-2 text-[12.5px] font-semibold transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                style={{ background: "var(--primary)" }}
+              >
+                <IconIA size={13} />
+                {gerando ? "Gerando… pode levar até 1 min" : "Gerar resumo"}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={abrirEdicao}
+              disabled={gerando}
+              className="border-border-default text-text hover:bg-surface-2 inline-flex items-center gap-[7px] rounded-[9px] border px-[13px] py-2 text-[12.5px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+              style={{ background: "var(--surface-2)" }}
+            >
+              <IconLapis size={13} />
+              Escrever conteúdo
+            </button>
+          </div>
+        </>
       ) : (
         <>
           {conteudo.topicos.length > 0 && (
@@ -377,7 +438,7 @@ export function ConteudoDaAula({ sessaoId }: ConteudoDaAulaProps) {
               style={{ background: "var(--surface-2)" }}
             >
               <IconLapis size={13} />
-              {semFonte ? "Escrever conteúdo" : "Editar"}
+              Editar
             </button>
           </p>
         </>

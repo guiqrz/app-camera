@@ -1287,6 +1287,22 @@ export function editarConteudoDaAula(
   });
 }
 
+/**
+ * Gera (de novo) o resumo da aula quando o automatico nao saiu.
+ *
+ * CUSTA chamada ao modelo e pode levar ~40s: o backend insiste quando o Gemini
+ * esta sobrecarregado (foi o que deixou as aulas 63-67 sem resumo). So' por
+ * clique do professor, nunca em polling.
+ *
+ * Lanca ApiError 409 (aula sem transcricao nem quadro, ou ja editada), 503 (IA
+ * segue indisponivel) ou 404 (sessao inexistente).
+ */
+export function gerarConteudoDaAula(sessaoId: number): Promise<ConteudoDaAula> {
+  return requisitar<ConteudoDaAula>(`/sessoes/${sessaoId}/conteudo/gerar`, {
+    method: "POST",
+  });
+}
+
 /** Arquivo exportado: os bytes e os dois headers que o navegador precisa pra baixar. */
 export type MaterialExportado = {
   bytes: Blob;
