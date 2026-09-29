@@ -56,18 +56,25 @@ export async function GET(
     });
   } catch (causa) {
     if (causa instanceof ApiError) {
-      // 404: a lista foi apagada. 400: lista vazia (o cartão esconde os
+      // 404: a lista foi apagada. 409: lista vazia (o cartão esconde os
       // botões nesse caso, então só chega aqui com a aba desatualizada).
-      // 401/403/5xx: problema nosso — nunca vaza detalhe de infraestrutura.
+      // 400: uma figura da questão não abriu — a mensagem não afirma causa
+      // que não sabe. 401/403/5xx: problema nosso, sem detalhe de infra.
       if (causa.status === 404) {
         return NextResponse.json(
           { erro: "Esta lista de exercícios não existe mais." },
           { status: 404 },
         );
       }
-      if (causa.status === 400) {
+      if (causa.status === 409) {
         return NextResponse.json(
           { erro: "A lista está vazia. Peça ao Cup AI novas questões." },
+          { status: 409 },
+        );
+      }
+      if (causa.status === 400) {
+        return NextResponse.json(
+          { erro: "Não foi possível gerar o arquivo desta lista." },
           { status: 400 },
         );
       }

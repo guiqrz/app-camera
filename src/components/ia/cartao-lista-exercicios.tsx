@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { IconBaixar, IconFechar } from "@/components/ui/icons";
+import { baixarBlob, nomeDoArquivoDoCabecalho } from "@/lib/baixar-arquivo";
 import {
   rotuloDaContagem,
   semQuestao,
@@ -46,6 +47,12 @@ type CartaoListaExerciciosProps = { listaId: number };
 export function CartaoListaExercicios({ listaId }: CartaoListaExerciciosProps) {
   const [estado, setEstado] = useState<Estado>({ tipo: "carregando" });
   const [aviso, setAviso] = useState<string | null>(null);
+  // Um ✕ de cada vez, e nada de download no meio: dois PATCH concorrentes
+  // podiam deixar o cartão com questões que o arquivo não tem — e a regra da
+  // feature é que o professor vê exatamente o que vai pro aluno.
+  const [salvando, setSalvando] = useState(false);
+  // Qual arquivo está sendo gerado, pro botão dele virar "Gerando…".
+  const [gerando, setGerando] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelado = false;
@@ -78,7 +85,8 @@ export function CartaoListaExercicios({ listaId }: CartaoListaExerciciosProps) {
 
   const remover = useCallback(
     async (questaoId: number) => {
-      if (estado.tipo !== "pronto") return;
+      if (estado.tipo !== "pronto" || salvando) return;
+      setSalvando(true);
       const anterior = estado.lista;
       const ids = semQuestao(
         anterior.questoes.map((q) => q.id),
@@ -123,9 +131,42 @@ export function CartaoListaExercicios({ listaId }: CartaoListaExerciciosProps) {
         setAviso(
           erro instanceof Error ? erro.message : "Não foi possível remover a questão. Tente de novo.",
         );
+      } finally {
+        setSalvando(false);
       }
     },
-    [estado, listaId],
+    [estado, listaId, salvando],
+  );
+
+  // fetch + blob, e nao <a download>: com o link cru, um erro (lista apagada,
+  // figura que não abre, sessão expirada) virava download falho ou um .json
+  // salvo, e a mensagem da ponte nunca chegava ao professor. Mesmo desenho do
+  // "Baixar" das respostas (acoes-da-resposta.tsx).
+  const baixar = useCallback(
+    async (formato: FormatoDaLista, parte: ParteDaLista, padrao: string) => {
+      const chave = `${formato}-${parte}`;
+      setGerando(chave);
+      setAviso(null);
+      try {
+        const resposta = await fetch(urlDoArquivo(listaId, formato, parte));
+        if (!resposta.ok) {
+          const corpo = (await resposta.json().catch(() => null)) as { erro?: string } | null;
+          throw new Error(corpo?.erro ?? "Não foi possível gerar o arquivo. Tente de novo.");
+        }
+        const blob = await resposta.blob();
+        baixarBlob(
+          blob,
+          nomeDoArquivoDoCabecalho(resposta.headers.get("content-disposition"), padrao),
+        );
+      } catch (erro) {
+        setAviso(
+          erro instanceof Error ? erro.message : "Não foi possível gerar o arquivo. Tente de novo.",
+        );
+      } finally {
+        setGerando(null);
+      }
+    },
+    [listaId],
   );
 
   if (estado.tipo === "carregando") {
@@ -187,11 +228,14 @@ export function CartaoListaExercicios({ listaId }: CartaoListaExerciciosProps) {
                   )}
                   <p className="text-text-body mt-1 text-xs leading-relaxed">{questao.trecho}</p>
                 </div>
+                {/* 40px de área de toque (o ícone continua pequeno): 28px era
+                    pouco pro dedo no celular. */}
                 <button
                   type="button"
                   onClick={() => void remover(questao.id)}
+                  disabled={salvando || gerando !== null}
                   aria-label={`Remover questão ${questao.numero}`}
-                  className="text-text-muted hover:text-text grid h-7 w-7 flex-none place-items-center rounded-md transition-colors hover:bg-[var(--surface)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--primary)]"
+                  className="text-text-muted hover:text-text -m-1.5 grid h-10 w-10 flex-none place-items-center rounded-md transition-colors hover:bg-[var(--surface)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <IconFechar size={14} />
                 </button>
@@ -203,17 +247,20 @@ export function CartaoListaExercicios({ listaId }: CartaoListaExerciciosProps) {
               linha so' quebrariam no meio do rotulo abaixo disso. */}
           <div className="mt-3 grid grid-cols-2 gap-2 min-[480px]:flex min-[480px]:flex-wrap">
             {DOWNLOADS.map(({ formato, parte, rotulo }) => (
-              <a
+              <button
                 key={`${formato}-${parte}`}
-                href={urlDoArquivo(lista.id, formato, parte)}
-                download
+                type="button"
+                onClick={() =>
+                  void baixar(formato, parte, `${parte}.${formato === "docx" ? "docx" : "pdf"}`)
+                }
+                disabled={salvando || gerando !== null}
                 className="btn-acao justify-center"
               >
                 <span aria-hidden>
                   <IconBaixar size={13} />
                 </span>
-                {rotulo}
-              </a>
+                {gerando === `${formato}-${parte}` ? "Gerando…" : rotulo}
+              </button>
             ))}
           </div>
         </>
