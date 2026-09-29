@@ -27,9 +27,25 @@
   --surface-brand: var(--violet-500); /* bloco solido da marca */
   --surface-soft: rgba(255, 255, 255, 0.62); /* secao tingida / veu */
 
-  /* Vidro: usados por .cartao e afins. Sao PARTE do token de superficie —
-     quem usa --surface sem o blur perde metade do efeito. */
-  --blur-card: blur(20px) saturate(135%);
+  /* Vidro: usados por .cartao e afins.
+
+     ⚠️ --blur-card e' `none` desde 28/09/2026, nos TRES temas. Os cards ROLAM,
+     e backdrop-filter em coisa que rola e' refeito a cada quadro (a mesma
+     licao de 22/08, ver globals.css). Ela voltou pela porta dos fundos: os
+     componentes redesenhados depois passaram a ligar o vidro no proprio
+     `style={{ backdropFilter: "var(--blur-card)" }}`, que vence a regra global.
+     Medido no Chrome, rolando a pagina (1536x674, DPR 1,25):
+
+       /relatorios/turma/7     50,7 ms/quadro -> 15,3   (26 de 26 engasgos -> 0)
+       /aulas                  15,0 -> 13,0             (28 de 80 -> 3)
+       relatorio da aula       13,4 -> 12,7             (34 de 82 -> 0)
+
+     Screenshots dos dois temas, antes e depois: praticamente iguais — a
+     atmosfera de tras ja' vem borrada pelo `filter` dela. A variavel fica (em
+     vez de apagar os `style` dos componentes) pra ser UM lugar so' de ligar e
+     desligar. --blur-painel continua: sidebar e header sao fixos e nao pagam
+     por quadro. */
+  --blur-card: none;
   --blur-painel: blur(30px) saturate(125%);
   --painel: rgba(255, 252, 255, 0.15); /* o painel que cobre a atmosfera */
   /* Substituto SOLIDO do vidro onde backdrop-filter nao existe (ver o
@@ -351,7 +367,7 @@
   --surface-brand: var(--violet-700);
   --surface-soft: rgba(0, 0, 0, 0.3);
 
-  --blur-card: blur(26px) saturate(140%);
+  --blur-card: none; /* ver o tema claro, la' em cima */
   --blur-painel: blur(30px) saturate(125%);
   /* 0.12 e nao 0.055 (22/08/2026): metade do brilho desta camada vinha do
      `backdrop-filter: blur(30px)` que o painel de tela cheia tinha, e que
@@ -577,7 +593,7 @@
     --surface-brand: var(--violet-700);
     --surface-soft: rgba(0, 0, 0, 0.3);
 
-    --blur-card: blur(26px) saturate(140%);
+    --blur-card: none; /* ver o tema claro, la' em cima */
     --blur-painel: blur(30px) saturate(125%);
     /* Igual ao bloco [data-theme="dark"] acima — ver a nota la' sobre o
        porque de 0.12. Este bloco atende o tema "Sistema", que segue o
