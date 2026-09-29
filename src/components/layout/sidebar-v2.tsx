@@ -144,15 +144,17 @@ export function SidebarV2({ aberto, aoFechar }: SidebarProps) {
 
           Vidro CLARO e translucido: --sidebar-v2-painel + blur proprio, e nao
           o degrade solido da v1 — a referencia e' um fosco raso, nao um
-          gradiente de cor forte. */}
+          gradiente de cor forte.
+
+          Fundo e blur moram na classe `sidebar-vidro` (globals.css), e nao no
+          `style`: no computador o blur ao vivo virou uma copia pintada do
+          fundo, que rola a ~2x mais fps (medido em 28/09/2026). Estilo inline
+          venceria a regra da media query. */}
       <aside
-        className={`fixed inset-y-3 left-3 z-50 flex w-[var(--sidebar-w)] flex-col gap-4 overflow-hidden rounded-[var(--radius-xl)] px-3 pt-4 pb-3 shadow-[var(--shadow-raise)] transition-[transform,padding] duration-200 lg:sticky lg:top-3 lg:mr-4 lg:ml-3 lg:h-[calc(100vh-1.5rem)] lg:translate-x-0 ${
+        className={`sidebar-vidro fixed inset-y-3 left-3 z-50 flex w-[var(--sidebar-w)] flex-col gap-4 overflow-hidden rounded-[var(--radius-xl)] px-3 pt-4 pb-3 shadow-[var(--shadow-raise)] transition-[transform,padding] duration-200 lg:sticky lg:top-3 lg:mr-4 lg:ml-3 lg:h-[calc(100vh-1.5rem)] lg:translate-x-0 ${
           aberto ? "translate-x-0" : "-translate-x-[120%]"
         } ${recolhida ? "lg:px-[11px]" : ""}`}
         style={{
-          background: "var(--sidebar-v2-painel)",
-          backdropFilter: "var(--blur-painel)",
-          WebkitBackdropFilter: "var(--blur-painel)",
           border: "1px solid var(--sidebar-v2-borda)",
         }}
         aria-label="Menu principal"

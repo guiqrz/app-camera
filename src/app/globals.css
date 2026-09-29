@@ -188,7 +188,14 @@ h4 {
      isso e' decisao do dono do produto, nao de quem otimiza. Fica registrado
      aqui com os numeros pra escolha ser informada. */
   contain: paint;
-  background:
+  background: var(--atmosfera-camadas);
+}
+
+/* As camadas da atmosfera numa variavel so', porque o vidro da sidebar no
+   computador pinta uma COPIA delas (ver `.sidebar-vidro` abaixo). Duas listas
+   escritas a mao sairiam de sincronia na primeira troca de cor. */
+:root {
+  --atmosfera-camadas:
     var(--faixa-sidebar) left / calc(var(--sidebar-w, 240px) + 42px) 100%
       no-repeat,
     radial-gradient(70vw 46vw at 74% -6%, var(--mancha), transparent 66%),
@@ -198,6 +205,67 @@ h4 {
     radial-gradient(50vw 44vw at 100% 6%, var(--atm-azul), transparent 62%),
     radial-gradient(54vw 48vw at 94% 100%, var(--atm-rosa), transparent 60%),
     radial-gradient(44vw 40vw at 16% 96%, var(--atm-branco), transparent 62%);
+}
+
+/* --- O vidro da sidebar ---------------------------------------------------
+   No celular a sidebar e' gaveta: desliza, e por tras dela ha conteudo e a
+   camada escura do overlay. Ali o vidro e' o de verdade (backdrop-filter).
+
+   No computador (28/09/2026) o vidro virou uma COPIA pintada do fundo. MEDIDO
+   rolando /aulas no Chrome (1536x674): o backdrop-filter desta sidebar, mesmo
+   ela sendo sticky e nada passando por tras, custava metade de cada quadro —
+
+     backdrop-filter (como era)...... 15,0 ms/quadro (~66 fps)
+     sem vidro nenhum (teto)......... 7,4 ms
+     copia do fundo (isto)........... 7,1-7,8 ms  (~140 fps, monitor de 144 Hz)
+
+   Tentados antes, sem ganho: will-change, translateZ(0), contain:strict.
+
+   Por que a copia fica igual: atras da sidebar SO' existe a atmosfera, que e'
+   fixa e nunca muda. O que o backdrop-filter calculava a cada quadro era
+   sempre a mesma imagem — aqui ela e' pintada uma vez. Camadas, de tras pra
+   frente, iguais ao vidro real:
+     ::before  a atmosfera, no MESMO lugar da tela em que ela esta. A sidebar
+               fica a 12px da borda (sticky, `lg:ml-3`/`lg:top-3`) + 1px de
+               borda, e a atmosfera comeca 40px pra fora da tela: -53px.
+               Blur 35px ~ o blur de 18px da propria atmosfera somado aos 30px
+               do --blur-painel; saturate 1.5625 = 1.25 x 1.25, pelo mesmo motivo.
+     ::after   a cor translucida do painel, POR CIMA do fundo borrado.
+   Se a sidebar mudar de posicao (lg:ml-3/lg:top-3) ou de borda, o -53px
+   muda junto. */
+.sidebar-vidro {
+  background: var(--sidebar-v2-painel);
+  backdrop-filter: var(--blur-painel);
+}
+
+@media (min-width: 1024px) {
+  .sidebar-vidro {
+    background: transparent;
+    backdrop-filter: none;
+    isolation: isolate;
+  }
+
+  .sidebar-vidro::before,
+  .sidebar-vidro::after {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  .sidebar-vidro::before {
+    left: -53px;
+    top: -53px;
+    width: calc(100vw + 80px);
+    height: calc(100vh + 80px);
+    background: var(--atmosfera-camadas);
+    filter: blur(35px) saturate(1.5625);
+  }
+
+  .sidebar-vidro::after {
+    inset: 0;
+    background: var(--sidebar-v2-painel);
+  }
 }
 
 /* No celular a sidebar vira gaveta: a faixa lateral da atmosfera nao tem onde
