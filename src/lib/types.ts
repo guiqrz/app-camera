@@ -730,6 +730,36 @@ export type MensagemConversa = {
    * nas do assistente e nas gravadas antes desta coluna existir.
    */
   anexos?: string[];
+  /**
+   * Lista de exercicios que esta resposta do Cup AI montou (29/09/2026).
+   *
+   * So' o id: o cartao busca a lista ATUAL no backend, entao reabrir a conversa
+   * mostra a lista como ficou depois dos ✕ do professor. `null`/ausente nas
+   * demais mensagens.
+   */
+  lista_exercicios_id?: number | null;
+};
+
+/** Uma questao da lista, como o cartao mostra (nunca o enunciado inteiro). */
+export type QuestaoDaLista = {
+  numero: number;
+  id: number;
+  /** Ex.: "ENEM 2019 · Questão 142". */
+  fonte: string;
+  materia: string | null;
+  assuntos: string[];
+  /** Comeco do enunciado, ate' 280 caracteres, sem marcador de imagem. */
+  trecho: string;
+};
+
+/** Lista de exercicios montada pelo Cup AI SO' com questoes reais do banco. */
+export type ListaExercicios = {
+  id: number;
+  conversa_id: number | null;
+  titulo: string;
+  questoes: QuestaoDaLista[];
+  criada_em: string;
+  atualizada_em: string;
 };
 
 export type Conversa = {
