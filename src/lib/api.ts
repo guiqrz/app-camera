@@ -57,6 +57,7 @@ import type {
   EstatisticasDaTurma,
   Lembrete,
   LembreteEditado,
+  ListaExercicios,
   Lousa,
   Materia,
   ModoCamera,
@@ -1351,6 +1352,70 @@ export async function exportarMaterial(
       resposta.status,
       "/ia/exportar",
     );
+  }
+
+  return {
+    bytes: await resposta.blob(),
+    contentType: resposta.headers.get("content-type") ?? "application/octet-stream",
+    contentDisposition: resposta.headers.get("content-disposition") ?? "attachment",
+  };
+}
+
+/* --- Lista de exercicios do Cup AI (29/09/2026) --------------------- */
+/*                                                                      */
+/* A lista sai SO' do banco de questoes reais (ENEM, Fuvest, Unicamp): o */
+/* Cup AI escolhe ids, e o arquivo e' montado pelo backend a partir     */
+/* deles, nunca do texto da conversa.                                   */
+
+/** A lista no estado ATUAL (depois dos ✕ do professor). Nunca cacheada. */
+export function lerListaDeExercicios(listaId: number): Promise<ListaExercicios> {
+  return requisitar<ListaExercicios>(`/listas/${listaId}`, { revalidate: 0 });
+}
+
+/**
+ * Grava a nova ordem/selecao de questoes (o ✕ do cartao).
+ *
+ * O backend so' aceita REMOVER ou REORDENAR ids que ja' estao na lista (422
+ * pra id novo): trocar questao e' pedido ao Cup AI, nunca por aqui.
+ */
+export function atualizarListaDeExercicios(
+  listaId: number,
+  questaoIds: number[],
+): Promise<ListaExercicios> {
+  return requisitar<ListaExercicios>(`/listas/${listaId}`, {
+    method: "PATCH",
+    body: { questao_ids: questaoIds },
+  });
+}
+
+/**
+ * Baixa a Lista ou o Gabarito em PDF ou Word, em bytes.
+ *
+ * Mesmo desenho de `exportarMaterial` (bytes + cabecalhos repassados sem
+ * alteracao), e pelo mesmo motivo nao usa `requisitar<T>`: a resposta e' um
+ * arquivo, nao JSON.
+ */
+export async function baixarArquivoDaLista(
+  listaId: number,
+  formato: "pdf" | "docx",
+  parte: "lista" | "gabarito",
+): Promise<MaterialExportado> {
+  const { baseUrl, apiKey } = lerConfiguracao();
+  const rota = `/listas/${listaId}/arquivo`;
+  const consulta = new URLSearchParams({ formato, parte });
+
+  let resposta: Response;
+  try {
+    resposta = await fetch(`${baseUrl}${rota}?${consulta}`, {
+      headers: { "X-API-Key": apiKey },
+      cache: "no-store",
+    });
+  } catch {
+    throw new ApiError("Nao foi possivel falar com a API do CUPCAM na nuvem.", 0, rota);
+  }
+
+  if (!resposta.ok) {
+    throw new ApiError("Não foi possível gerar o arquivo. Tente de novo.", resposta.status, rota);
   }
 
   return {

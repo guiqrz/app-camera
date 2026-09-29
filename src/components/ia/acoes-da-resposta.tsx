@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import { IconBaixar, IconCopiar, IconSeta } from "@/components/ui/icons";
+import { baixarBlob } from "@/lib/baixar-arquivo";
 import { dataDoTimestamp } from "@/lib/format";
 
 /** Quanto tempo o "Copiado!" fica na tela, igual ao diario de classe. */
@@ -52,26 +53,6 @@ function extrairTitulo(texto: string): string {
   const primeiraLinha = texto.split("\n")[0] ?? "";
   const titulo = primeiraLinha.match(/^#\s+(.+)/)?.[1];
   return titulo?.trim() ?? "";
-}
-
-/**
- * Baixa um Blob pelo caminho de object URL: cria, clica, revoga.
- *
- * Extraido pra ser reusado pelos tres formatos — o Markdown ja usava esse
- * caminho (validado no navegador real em 07/08), e PowerPoint/PDF entram
- * nele tambem em vez de reinventar o download.
- */
-function baixarBlob(blob: Blob, nomeArquivo: string) {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = nomeArquivo;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  // Sem o revoke o blob fica vivo ate' a aba fechar. Numa conversa longa,
-  // baixar varios materiais seguraria todos eles na memoria.
-  URL.revokeObjectURL(url);
 }
 
 type AcoesDaRespostaProps = {
