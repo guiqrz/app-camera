@@ -775,6 +775,32 @@ export type PlanoDeAula = {
   };
   criado_em: string;
   atualizado_em: string;
+  /** Quando o roteiro da aula foi gerado (01/10/2026); null se ainda nao tem. */
+  roteiro_gerado_em: string | null;
+};
+
+/**
+ * Roteiro da aula pro professor estudar antes (GET/POST
+ * /planos-de-aula/{id}/roteiro). Um bloco por etapa do plano, com a etapa e os
+ * minutos copiados do plano pelo backend, nunca escritos pelo modelo.
+ */
+export type RoteiroDeAula = {
+  plano_id: number;
+  modelo: string | null;
+  gerado_em: string;
+  conteudo: {
+    abertura: string;
+    blocos: {
+      etapa: string;
+      minutos: number | null;
+      topicos: string[];
+      falas: string[];
+      perguntas: { pergunta: string; resposta_esperada: string }[];
+      duvidas_provaveis: { duvida: string; como_responder: string }[];
+      exemplos: string[];
+    }[];
+    fechamento: string;
+  };
 };
 
 /** Uma questao da lista, como o cartao mostra (nunca o enunciado inteiro). */

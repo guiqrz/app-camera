@@ -19,6 +19,11 @@ export function urlDoArquivoDoPlano(planoId: number, formato: FormatoDoPlano): s
   return `/api/ia/planos/${encodeURIComponent(String(planoId))}/arquivo?${consulta}`;
 }
 
+export function urlDoArquivoDoRoteiro(planoId: number, formato: FormatoDoPlano): string {
+  const consulta = new URLSearchParams({ formato });
+  return `/api/ia/planos/${encodeURIComponent(String(planoId))}/roteiro/arquivo?${consulta}`;
+}
+
 export function minutosTotais(plano: {
   campos: { metodologia: { minutos: number | null }[] };
 }): number {

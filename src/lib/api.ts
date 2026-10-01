@@ -59,6 +59,7 @@ import type {
   LembreteEditado,
   ListaExercicios,
   PlanoDeAula,
+  RoteiroDeAula,
   Lousa,
   Materia,
   ModoCamera,
@@ -1495,6 +1496,45 @@ export function gravarPlanoNaAgenda(
     method: "POST",
     body: { substituir },
   });
+}
+
+/**
+ * Gera (ou gera de novo) o roteiro da aula. CUSTA chamada ao modelo e pode
+ * levar ~40s (o backend insiste quando o Gemini esta sobrecarregado). So' por
+ * clique do professor. ApiError 409 (sem etapas), 503 (IA indisponivel),
+ * 502 (resposta inaproveitavel) ou 404.
+ */
+export function gerarRoteiro(planoId: number): Promise<RoteiroDeAula> {
+  return requisitar<RoteiroDeAula>(`/planos-de-aula/${planoId}/roteiro`, { method: "POST" });
+}
+
+/** Word ou PDF do roteiro, em bytes (mesmo desenho de `baixarArquivoDoPlano`). */
+export async function baixarArquivoDoRoteiro(
+  planoId: number,
+  formato: "pdf" | "docx",
+): Promise<MaterialExportado> {
+  const { baseUrl, apiKey } = lerConfiguracao();
+  const rota = `/planos-de-aula/${planoId}/roteiro/arquivo`;
+
+  let resposta: Response;
+  try {
+    resposta = await fetch(`${baseUrl}${rota}?${new URLSearchParams({ formato })}`, {
+      headers: { "X-API-Key": apiKey },
+      cache: "no-store",
+    });
+  } catch {
+    throw new ApiError("Nao foi possivel falar com a API do CUPCAM na nuvem.", 0, rota);
+  }
+
+  if (!resposta.ok) {
+    throw new ApiError("Não foi possível gerar o arquivo. Tente de novo.", resposta.status, rota);
+  }
+
+  return {
+    bytes: await resposta.blob(),
+    contentType: resposta.headers.get("content-type") ?? "application/octet-stream",
+    contentDisposition: resposta.headers.get("content-disposition") ?? "attachment",
+  };
 }
 
 /* ==================================================================== */
