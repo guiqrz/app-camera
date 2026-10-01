@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useId, useState, type ReactNode } from "react";
 
+import { FaixaRoteiro } from "@/components/ia/faixa-roteiro";
 import { IconAlerta, IconBaixar, IconCalendario, IconCheck } from "@/components/ui/icons";
 import { baixarBlob, nomeDoArquivoDoCabecalho } from "@/lib/baixar-arquivo";
 import {
@@ -362,6 +363,12 @@ export function CartaoPlanoDeAula({ planoId }: CartaoPlanoDeAulaProps) {
           </div>
         </div>
       )}
+
+      <FaixaRoteiro
+        planoId={plano.id}
+        temEtapas={campos.metodologia.length > 0}
+        geradoEm={plano.roteiro_gerado_em}
+      />
 
       {/* Progresso anunciado sem roubar o foco; erro anuncia na hora. */}
       <p className="sr-only" aria-live="polite">
