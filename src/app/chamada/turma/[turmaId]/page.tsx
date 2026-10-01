@@ -68,9 +68,6 @@ export default async function EscolherAulaChamadaPage({ params }: Props) {
           </p>
         </div>
 
-        <div className="lg:hidden">
-          <SeletorTurma turmas={turmas} turmaAtualId={id} baseRota="/chamada/turma" />
-        </div>
 
         <ListaAulasChamada aulas={ordenadas} turmaId={id} />
       </div>

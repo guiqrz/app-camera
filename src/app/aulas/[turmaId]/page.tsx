@@ -114,9 +114,6 @@ export default async function AulasDaTurmaPage({ params, searchParams }: Props) 
         </p>
 
         {/* O seletor tambem aparece aqui no celular, onde o cabecalho e' enxuto. */}
-        <div className="lg:hidden">
-          <SeletorTurma turmas={turmas} turmaAtualId={id} comOpcaoTodas />
-        </div>
 
         {/* A condicao caiu de `temGrade` pra `semana`: com o botao de
             adicionar, a grade VAZIA deixou de ser cinco colunas dizendo "sem

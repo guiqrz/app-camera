@@ -94,9 +94,6 @@ export default async function AulasPage({ searchParams }: Props) {
           Sua semana e o total do que a Cupcam acompanhou até agora.
         </p>
 
-        <div className="lg:hidden">
-          <SeletorTurma turmas={turmas} turmaAtualId={null} comOpcaoTodas />
-        </div>
 
         {/* `turmas` e `materias` aqui, e nao so' na tela de UMA turma: sem
             turma no topo pra herdar, o modal de aula nova e o de evento

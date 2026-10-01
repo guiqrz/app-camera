@@ -2432,12 +2432,15 @@ h4 {
   gap: 12px;
   padding: 15px 17px 16px;
   border-radius: var(--radius);
-  background: var(--surface);
-  border: 1px solid var(--border);
+  /* O ambar entra na BORDA INTEIRA (suave) e num brilho leve no topo, e nao
+     mais num filete grosso a' esquerda: o filete lateral e' o padrao mais
+     reconhecivel de template (trocado a pedido dele em 01/10/2026). Chapar o
+     fundo de ambar continua fora: competiria com os cartoes de numero acima. */
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--warn) 9%, transparent), transparent 55%),
+    var(--surface);
+  border: 1px solid color-mix(in srgb, var(--warn) 45%, transparent);
   box-shadow: var(--shadow-card);
-  /* A faixa ambar na borda esquerda e' o unico sinal de cor do bloco: chapar
-     o fundo inteiro de ambar competiria com os cartoes de numero logo acima. */
-  border-left: 3px solid var(--warn);
 }
 .pendencias-topo {
   display: flex;
@@ -2509,6 +2512,23 @@ h4 {
   font-size: 11.5px;
   line-height: 1.45;
   color: var(--text-muted);
+}
+
+/* Celular (01/10/2026): o botao da pendencia DESCE pra baixo do texto. Na
+   mesma linha ele roubava a largura e o titulo saia uma palavra por linha
+   ("21TC / nao / tem / alunos..."). A margem alinha o botao com o texto, nao
+   com o icone. */
+@media (max-width: 560px) {
+  .pendencia {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  .pendencia-texto {
+    flex-basis: calc(100% - 41px);
+  }
+  .pendencia > .btn-acao {
+    margin-left: 41px;
+  }
 }
 
 /* Tudo configurado: o bloco continua existindo, so' muda de cor e de tom.
@@ -2969,8 +2989,11 @@ h4 {
    linha em vez de o botao quebrar pra baixo. */
 .alunos-busca {
   margin: 0;
-  flex: 1 1 170px;
-  min-width: 0;
+  flex: 1 1 210px;
+  /* Piso que cabe "Buscar por nome ou RA…" inteiro (01/10/2026): com 0 o
+     campo encolhia ao lado do "Adicionar aluno" e o placeholder virava
+     "Buscar por nome ou R". Abaixo disso o botao quebra de linha. */
+  min-width: 205px;
   min-height: 36px;
 }
 

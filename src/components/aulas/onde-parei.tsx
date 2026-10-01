@@ -76,7 +76,10 @@ export function OndeParei({ continuidade, turmaId, materia }: OndeParieProps) {
         <IconRelogio size={17} />
       </span>
 
-      <div className="min-w-0 flex-1">
+      {/* `min-w-[12rem]` (01/10/2026): com min-w-0 o texto encolhia ate' uma
+          palavra por linha no celular e o botao ficava por cima dele. Com um
+          piso, quem cede e' o botao, que quebra pra linha de baixo. */}
+      <div className="min-w-[12rem] flex-1">
         <div className="text-text-muted text-[9.5px] font-bold tracking-[0.11em] uppercase">
           Você parou aqui
         </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 
 type AvatarAlunoProps = {
   nome: string;
@@ -42,6 +42,20 @@ export function AvatarAluno({ nome, ra, tamanho = 40 }: AvatarAlunoProps) {
   // "carregando": o circulo com as iniciais ja' esta desenhado por tras, entao
   // a foto aparece por cima quando chega — nunca ha buraco no lugar dela.
   const [semFoto, setSemFoto] = useState(false);
+  const foto = useRef<HTMLImageElement>(null);
+
+  // O 404 pode chegar ANTES de o React hidratar a pagina vinda do servidor: o
+  // evento de erro dispara sem ninguem escutando, o `onError` nunca roda e o
+  // navegador desenha o icone de imagem quebrada por cima das iniciais (visto
+  // na chamada e na coordenacao em 01/10/2026). Depois de montar, confere se a
+  // imagem ja' terminou sem nenhum pixel. setTimeout(0): mesmo padrao do
+  // header.tsx pra leitura de DOM depois da montagem.
+  useEffect(() => {
+    const imagem = foto.current;
+    if (!imagem || !imagem.complete || imagem.naturalWidth > 0) return;
+    const id = setTimeout(() => setSemFoto(true), 0);
+    return () => clearTimeout(id);
+  }, [ra]);
 
   let hash = 0;
   for (const caractere of ra) hash += caractere.charCodeAt(0);
@@ -67,6 +81,7 @@ export function AvatarAluno({ nome, ra, tamanho = 40 }: AvatarAlunoProps) {
            imagem vem da nossa propria ponte, ja' em tamanho de miniatura. */
         // eslint-disable-next-line @next/next/no-img-element
         <img
+          ref={foto}
           src={`/api/admin/alunos/${encodeURIComponent(ra)}/foto`}
           alt=""
           className="absolute inset-0 h-full w-full object-cover"

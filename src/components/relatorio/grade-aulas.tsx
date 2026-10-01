@@ -380,7 +380,8 @@ function FiltroSelect({
       <select
         value={valor}
         onChange={(e) => aoMudar(e.target.value)}
-        className="text-text cursor-pointer appearance-none bg-transparent text-[12.5px] font-semibold outline-none"
+        // Mesmo esticamento do SeletorTurma: a pilula inteira abre a lista.
+        className="text-text -my-[9px] -mr-[18px] cursor-pointer appearance-none bg-transparent py-[9px] pr-[18px] text-[12.5px] font-semibold outline-none"
       >
         {opcoes.map((o) => (
           <option key={o.valor} value={o.valor}>
@@ -388,7 +389,7 @@ function FiltroSelect({
           </option>
         ))}
       </select>
-      <span className="text-text-muted flex-none" aria-hidden>
+      <span className="text-text-muted pointer-events-none flex-none" aria-hidden>
         <IconSeta size={12} />
       </span>
     </label>

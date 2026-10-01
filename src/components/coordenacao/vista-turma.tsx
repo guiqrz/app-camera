@@ -323,7 +323,9 @@ export function VistaTurma({ turmaInicial }: VistaTurmaProps) {
         <span className="turma-turno-icone" aria-hidden>
           <IconRelogio size={16} />
         </span>
-        <div className="min-w-0 flex-1">
+        {/* Piso de 12rem (01/10/2026): com min-w-0 o texto virava uma coluna
+            fininha no celular; com o piso, as pilulas de turno quebram de linha. */}
+        <div className="min-w-[12rem] flex-1">
           <p className="turma-turno-titulo">
             Turno da {turno.nome.toLowerCase()}: as aulas vão de {turno.inicio} às{" "}
             {turno.fim}.

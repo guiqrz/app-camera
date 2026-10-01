@@ -509,14 +509,15 @@ export function ModalAluno({
               As travas continuam no backend (ver gestao/fichas.py). */}
           {/* MAIS VISIVEL (29/08/2026): era `--surface-2`, a elevacao mais
               sutil do sistema — o card se perdia entre os campos e ele nao
-              achava. Agora tem superficie propria, borda na cor da marca e um
-              filete de destaque na esquerda. */}
+              achava. Agora tem superficie propria e borda na cor da marca. O
+              filete grosso a' esquerda saiu em 01/10/2026 (padrao de template):
+              no lugar, a borda inteira em roxo suave + brilho leve no topo. */}
           <div
             className="flex flex-col gap-3 overflow-hidden rounded-xl p-4"
             style={{
-              background: "var(--surface)",
-              border: "1px solid var(--primary-soft-hover)",
-              borderLeft: "3px solid var(--primary)",
+              background:
+                "linear-gradient(180deg, color-mix(in srgb, var(--primary) 8%, transparent), transparent 55%), var(--surface)",
+              border: "1px solid color-mix(in srgb, var(--primary) 40%, transparent)",
               boxShadow: "var(--shadow-card)",
             }}
           >

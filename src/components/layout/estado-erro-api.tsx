@@ -42,9 +42,10 @@ export function EstadoErroApi({
 }) {
   // Casa com o prefixo das duas mensagens de rede de lib/api.ts ("...com a API
   // do CUPCAM na nuvem" e "...com o computador da sala"), sem depender do texto
-  // completo de nenhuma delas.
+  // completo de nenhuma delas. Aceita com e sem acento: as mensagens ganharam
+  // acento em 01/10/2026, e um build antigo em cache ainda manda a grafia velha.
   const pareceApiForaDoAr =
-    error.message.includes("Nao foi possivel falar com") ||
+    /N[aã]o foi poss[ií]vel falar com/.test(error.message) ||
     error.message.includes("fetch failed");
 
   return (

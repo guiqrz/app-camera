@@ -77,7 +77,11 @@ export function SeletorTurma({
             escolhido === TODAS ? baseRota : `${baseRota}/${escolhido}`;
           iniciarTransicao(() => router.push(destino));
         }}
-        className="text-text cursor-pointer appearance-none bg-transparent pr-0.5 text-[12.5px] font-semibold outline-none"
+        // O select se ESTICA ate' as bordas da pilula e passa por baixo da seta
+        // (01/10/2026): media 19px de altura, e no celular tocar no resto da
+        // pilula so' focava o select, sem abrir a lista. A seta deixa o toque
+        // atravessar (pointer-events-none). O desenho nao muda.
+        className="text-text -my-[7px] -mr-[21px] cursor-pointer appearance-none bg-transparent py-[7px] pr-[21px] text-[12.5px] font-semibold outline-none"
       >
         {comOpcaoTodas && <option value={TODAS}>Todas as turmas</option>}
         {turmas.map((turma) => (
@@ -87,7 +91,7 @@ export function SeletorTurma({
         ))}
       </select>
 
-      <span className="text-text-muted flex-none" aria-hidden>
+      <span className="text-text-muted pointer-events-none flex-none" aria-hidden>
         <IconSeta size={13} />
       </span>
     </label>

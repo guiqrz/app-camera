@@ -29,7 +29,7 @@ const montserrat = Montserrat({
 export const metadata: Metadata = {
   title: "Cupcam Insights",
   description:
-    "Painel do professor: chamada automatica e indicadores de engajamento da turma.",
+    "Painel do professor: chamada automática e indicadores de engajamento da turma.",
 };
 
 /**

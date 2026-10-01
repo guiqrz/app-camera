@@ -327,7 +327,10 @@ function BlocoDaAula({
         type="button"
         onClick={aoEditar ? () => aoEditar(aula) : undefined}
         disabled={!aoEditar}
-        className="absolute top-1.5 right-1.5 grid h-5 w-5 place-items-center rounded-md opacity-0 transition-opacity duration-150 group-hover/bloco:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
+        // `before:` = area de toque de 32px em volta do icone de 20px (01/10/2026):
+        // 20px fica abaixo do minimo de 24px pra toque (WCAG 2.5.8), e no
+        // celular este e' o unico caminho pro plano da aula. O desenho nao muda.
+        className="absolute top-1.5 right-1.5 grid h-5 w-5 place-items-center rounded-md opacity-0 transition-opacity duration-150 group-hover/bloco:opacity-100 focus-visible:opacity-100 before:absolute before:-inset-1.5 before:content-[''] [@media(hover:none)]:opacity-100"
         style={{ background: "var(--veu-bloco)", color: "inherit" }}
         // A DATA entra no rotulo: plano e material sao daquele dia, e um leitor
         // de tela que so' ouvisse "terça 14:00" nao saberia de qual terça.

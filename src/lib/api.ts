@@ -303,8 +303,8 @@ async function requisitar<T>(
     //           alem de esperar (o plano gratuito dorme depois de 15 min).
     throw new ApiError(
       destino === "camera"
-        ? "Nao foi possivel falar com o computador da sala. Ele esta ligado, com o CUPCAM e o tunel abertos?"
-        : "Nao foi possivel falar com a API do CUPCAM na nuvem.",
+        ? "Não foi possível falar com o computador da sala. Ele está ligado, com o CUPCAM e o túnel abertos?"
+        : "Não foi possível falar com a API do CUPCAM na nuvem.",
       0,
       rota,
       undefined,
@@ -1351,7 +1351,7 @@ export async function exportarMaterial(
     });
   } catch {
     throw new ApiError(
-      "Nao foi possivel falar com a API do CUPCAM na nuvem.",
+      "Não foi possível falar com a API do CUPCAM na nuvem.",
       0,
       "/ia/exportar",
     );
@@ -1429,7 +1429,7 @@ export async function baixarArquivoDaLista(
       cache: "no-store",
     });
   } catch {
-    throw new ApiError("Nao foi possivel falar com a API do CUPCAM na nuvem.", 0, rota);
+    throw new ApiError("Não foi possível falar com a API do CUPCAM na nuvem.", 0, rota);
   }
 
   if (!resposta.ok) {
@@ -1470,7 +1470,7 @@ export async function baixarArquivoDoPlano(
       cache: "no-store",
     });
   } catch {
-    throw new ApiError("Nao foi possivel falar com a API do CUPCAM na nuvem.", 0, rota);
+    throw new ApiError("Não foi possível falar com a API do CUPCAM na nuvem.", 0, rota);
   }
 
   if (!resposta.ok) {
@@ -1523,7 +1523,7 @@ export async function baixarArquivoDoRoteiro(
       cache: "no-store",
     });
   } catch {
-    throw new ApiError("Nao foi possivel falar com a API do CUPCAM na nuvem.", 0, rota);
+    throw new ApiError("Não foi possível falar com a API do CUPCAM na nuvem.", 0, rota);
   }
 
   if (!resposta.ok) {
@@ -1813,7 +1813,7 @@ export async function trocarTokenDeLogin(token: string): Promise<{
     });
   } catch {
     throw new ApiError(
-      "Nao foi possivel falar com a API do CUPCAM na nuvem.",
+      "Não foi possível falar com a API do CUPCAM na nuvem.",
       0,
       "/auth/trocar-token",
     );
@@ -1863,7 +1863,7 @@ export async function entrarPeloApp(credenciais: {
       signal: AbortSignal.timeout(TEMPO_LIMITE_TENTATIVA_DE_LOGIN_MS),
     });
   } catch {
-    throw new ApiError("Nao foi possivel falar com a API do CUPCAM na nuvem.", 0, "/conta/entrar");
+    throw new ApiError("Não foi possível falar com a API do CUPCAM na nuvem.", 0, "/conta/entrar");
   }
   if (!resposta.ok) {
     // O corpo NAO entra na mensagem: nada da resposta de login deve ir pro log.
@@ -1919,7 +1919,7 @@ async function requisitarRotaDeSessao(
       signal: AbortSignal.timeout(TEMPO_LIMITE_SESSAO_MS),
     });
   } catch {
-    throw new ApiError("Nao foi possivel falar com a API do CUPCAM na nuvem.", 0, rota);
+    throw new ApiError("Não foi possível falar com a API do CUPCAM na nuvem.", 0, rota);
   }
 }
 
