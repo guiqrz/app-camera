@@ -448,7 +448,16 @@ h4 {
 /* A caixa de 185px tem mais vao vazio em volta que a de 172, entao as margens
    crescem na mesma proporcao (185/172 = 1,08). Medido: -34 * 1,08 = -37. */
 .cup-abertura:has(> svg[width="185"]) {
-  margin: -10px 0 -37px;
+  /* 01/10/2026: o mascote da abertura acompanha a ALTURA da tela, pra a
+     abertura inteira caber sem rolagem em notebook (1150x687 sobrava 327px).
+     As margens negativas seguem a mesma proporcao de antes (10/185 e 37/185),
+     senao o vao em volta do desenho voltaria a crescer. */
+  --cup-tamanho: clamp(88px, 17vh, 185px);
+  margin: calc(var(--cup-tamanho) * -0.054) 0 calc(var(--cup-tamanho) * -0.2);
+}
+.cup-abertura > svg[width="185"] {
+  width: var(--cup-tamanho);
+  height: var(--cup-tamanho);
 }
 
 /* HALO QUE RESPIRA atras do mascote, como se ele estivesse aceso.
@@ -752,24 +761,92 @@ h4 {
    Tres cartoes que preenchem o campo de pergunta com um rascunho editavel, em
    vez de disparar a pergunta direto: mandar sem o professor ler gastaria uma
    chamada ao modelo por engano de clique. */
-/* auto-fit, e nao `repeat(3, ...)` fixo: os cartoes passaram de 3 para 5 em
-   06/09/2026, quando o Cup AI ganhou agenda, plano e lembretes. Com 3 colunas
-   fixas o quarto e o quinto cairiam sozinhos numa linha torta; com auto-fit a
-   grade se reorganiza sozinha na proxima vez que a lista mudar. */
-.rec-grade {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(196px, 1fr));
-  gap: 11px;
+/* CARROSSEL (01/10/2026): os cartoes numa LINHA SO'. Antes eram uma grade
+   auto-fit que quebrava em 2-3 linhas com 5 cartoes e empurrava a abertura
+   pra fora da tela (medido: 327px de scroll numa janela de 1150x687). Agora
+   sao 7 cartoes, 3 visiveis no computador, e o resto se alcanca pelas setas,
+   arrastando, pelo trackpad ou pela roda do mouse. So' CSS (scroll-snap). */
+.rec-carrossel {
+  --rec-vao: 11px;
+  position: relative;
   width: 100%;
   max-width: 680px;
-  margin-top: 44px;
+  /* Encolhe em tela baixa: e' um dos vaos que cede pra abertura caber sem
+     rolagem. 44px era o respiro fixo de antes. */
+  margin-top: clamp(12px, 3.5vh, 44px);
+}
+
+.rec-trilho {
+  display: flex;
+  gap: var(--rec-vao);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  /* Respiro pro hover (`scale(1.025)`) e pra sombra nao serem cortados pelo
+     overflow, que corta nos DOIS eixos. */
+  padding: 4px 4px 6px;
+  scroll-padding-inline: 4px;
+  scrollbar-width: none;
+}
+.rec-trilho::-webkit-scrollbar {
+  display: none;
+}
+
+.rec-trilho > .rec {
+  flex: 0 0 calc((100% - 2 * var(--rec-vao)) / 3);
+  scroll-snap-align: start;
+}
+
+.rec-seta {
+  position: absolute;
+  top: 50%;
+  z-index: 1;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  /* Solido de proposito: por cima de um cartao translucido, a seta de vidro
+     sumia contra o texto do cartao. */
+  background: var(--modal);
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-card);
+  color: var(--text);
+  cursor: pointer;
+  transform: translateY(-50%);
+  transition: transform 160ms ease, border-color 160ms ease;
+}
+.rec-seta:hover {
+  border-color: var(--primary);
+  transform: translateY(-50%) scale(1.06);
+}
+.rec-seta:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+/* POR DENTRO da borda, em todos os tamanhos: fora dela (-12px) a seta da
+   direita criava rolagem horizontal no miolo e a da esquerda era cortada atras
+   do primeiro cartao (visto em 1280x720, 01/10/2026). */
+.rec-seta-anterior {
+  left: 2px;
+}
+.rec-seta-proxima {
+  right: 2px;
 }
 
 .rec {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  padding: 13px 14px 15px;
+  /* Icone e titulo na MESMA linha, descricao embaixo (01/10/2026): com 3
+     cartoes numa linha so' o cartao ficou mais estreito, a descricao quebrava
+     em 3 linhas e o cartao em coluna chegava a 146px, sozinho o motivo de a
+     abertura nao caber sem rolagem. */
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  grid-template-areas:
+    "icone titulo"
+    "texto texto";
+  align-items: center;
+  gap: 8px 10px;
+  padding: 12px 13px 13px;
   text-align: left;
   border-radius: var(--radius);
   background: var(--surface);
@@ -812,6 +889,7 @@ h4 {
 }
 
 .rec-icone {
+  grid-area: icone;
   width: 30px;
   height: 30px;
   flex: none;
@@ -835,6 +913,7 @@ h4 {
 }
 
 .rec-titulo {
+  grid-area: titulo;
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 13px;
@@ -842,16 +921,51 @@ h4 {
 }
 
 .rec-texto {
+  grid-area: texto;
   font-size: 11.5px;
   line-height: 1.45;
   color: var(--text-muted);
 }
 
-/* Abaixo de 720px os tres nao cabem lado a lado sem espremer o texto. */
+/* Tela BAIXA (notebook com barra de favoritos, janela que nao e' tela cheia):
+   o titulo da abertura volta pro tamanho do celular e cola mais no mascote.
+   Fica aqui, e nao numa classe do Tailwind, porque o Tailwind nao tem variante
+   de altura de tela. */
+@media (max-height: 760px) {
+  .titulo-abertura-ia {
+    margin-top: 12px;
+    font-size: 27px;
+  }
+}
+
+/* Celular: em 360px o titulo de 27px quebrava em TRES linhas (101px). */
+@media (max-width: 480px) {
+  .titulo-abertura-ia {
+    margin-top: 10px;
+    font-size: 22px;
+  }
+}
+
+/* Abaixo de 720px tres lado a lado espremeriam o texto: dois. */
 @media (max-width: 720px) {
-  .rec-grade {
-    grid-template-columns: 1fr;
-    margin-top: 30px;
+  .rec-trilho > .rec {
+    flex-basis: calc((100% - var(--rec-vao)) / 2);
+  }
+}
+
+/* Celular: um cartao e o comeco do proximo — o pedaco que aparece e' a pista
+   de que a linha continua. As setas entram pra dentro da borda: fora dela
+   criariam rolagem horizontal na pagina inteira. */
+@media (max-width: 480px) {
+  .rec-trilho > .rec {
+    flex-basis: 74%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rec-seta,
+  .rec-seta:hover {
+    transition: none;
   }
 }
 
@@ -1277,10 +1391,22 @@ h4 {
 /* Abaixo de 1100px o historico nao cabe ao lado sem espremer o miolo: ele sai
    da linha e vira uma faixa ABAIXO do chat. */
 @media (max-width: 1100px) {
+  /* Altura LIVRE aqui (01/10/2026). Com a altura fixa do computador, miolo e
+     historico empilhados dividiam a tela meio a meio (medido: 414px pra cada
+     num tablet de 768x1024) e a abertura do Cup AI rolava ate' no tablet em
+     pe'. Agora o MIOLO ocupa a tela inteira (o desconto e' o cabecalho + o
+     respiro do <main> no celular, medido: 70px em cima, 28px embaixo) e o
+     historico fica logo abaixo, alcancado rolando a pagina. */
   .conteudo-ia {
     grid-template-columns: minmax(0, 1fr);
     gap: 18px;
     min-height: 0;
+    height: auto;
+    overflow: visible;
+  }
+
+  .conteudo-ia > :first-child {
+    height: calc(100dvh - 98px);
   }
 
   .historico {
@@ -2951,6 +3077,19 @@ h4 {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-muted);
+}
+
+/* ---- Lista aberta de TODO <select> do app (01/10/2026) ----
+   A lista que abre e' desenhada pelo navegador, e o Chrome no Windows nao
+   pinta fundo translucido nela: os selects usam `bg-transparent` ou tokens
+   rgba (--surface*), a lista caia no BRANCO do sistema e herdava o texto
+   claro do tema escuro — ilegivel em todas as telas com seletor. As opcoes
+   ganham uma cor SOLIDA do tema: --modal e' a cor de "caixa flutuante" do
+   design system e existe nos tres blocos de tema (claro, escuro, sistema). */
+select option,
+select optgroup {
+  background-color: var(--modal);
+  color: var(--text);
 }
 
 /* ---- Controles ----

@@ -219,7 +219,7 @@ export function PainelConversas({
       {/* mt-5, nao mt-1: o mascote e a saudacao sao dois blocos distintos, e
           colados o desenho parecia parte do titulo (01/09/2026). */}
       <h1
-        className="text-text mt-5 text-center text-[27px] leading-tight font-semibold tracking-tight sm:text-[33px]"
+        className="titulo-abertura-ia text-text mt-5 text-center text-[27px] leading-tight font-semibold tracking-tight sm:text-[33px]"
         style={{ fontFamily: "var(--font-display)" }}
       >
         {saudacao}, professor.
@@ -344,7 +344,7 @@ export function PainelConversas({
           `overflow-y: auto` porque o grid tem altura fixa — em tela baixa o
           miolo passa da altura e sem rolagem propria seria CORTADO pelo
           `overflow: hidden` do pai. */}
-      <div className="flex min-w-0 flex-col overflow-y-auto">{miolo}</div>
+      <div className="flex min-w-0 flex-col overflow-x-hidden overflow-y-auto">{miolo}</div>
 
       {historicoAberto ? (
         <PainelHistorico

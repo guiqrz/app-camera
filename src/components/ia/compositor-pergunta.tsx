@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
 import { BotaoMicrofone } from "@/components/ia/botao-microfone";
 import { IconCalendario, IconFoto } from "@/components/ui/icons";
+import { alturaDoCampo } from "@/lib/campo-que-cresce";
 
 /**
  * Faisca do assistente, a' esquerda do campo.
@@ -67,7 +68,10 @@ type CompositorPerguntaProps = {
   formatosAceitos?: readonly string[];
   /** `true` quando o seletor de aula esta aberto, para o aria-expanded. */
   seletorAulaAberto?: boolean;
+  /** Linhas do campo vazio. Ele cresce com o texto ate' `linhasMaximas`. */
   linhas?: number;
+  /** A partir daqui o campo para de crescer e rola por dentro. */
+  linhasMaximas?: number;
   /**
    * Acesso ao `<textarea>` para quem precisa mexer no foco ou no cursor — os
    * cartoes de sugestao preenchem o campo e param o cursor no meio do texto.
@@ -102,9 +106,34 @@ export function CompositorPergunta({
   formatosAceitos,
   seletorAulaAberto,
   linhas = 2,
+  linhasMaximas = 4,
   campoRef,
 }: CompositorPerguntaProps) {
   const campoDeArquivo = useRef<HTMLInputElement>(null);
+  // Ref proprio quando quem usa nao passa um: o crescimento precisa medir o
+  // <textarea> nas duas telas.
+  const campoInterno = useRef<HTMLTextAreaElement>(null);
+  const campo = campoRef ?? campoInterno;
+
+  // Cresce com o texto (01/10/2026): antes o campo ficava preso em 2 linhas e
+  // rolava ja' na terceira, escondendo o comeco da pergunta enquanto o
+  // professor ainda escrevia. Layout effect, e nao efeito comum: a altura nova
+  // tem que valer ANTES da pintura, senao o campo pisca no tamanho velho.
+  useLayoutEffect(() => {
+    const elemento = campo.current;
+    if (!elemento) return;
+    const estilo = getComputedStyle(elemento);
+    elemento.style.height = "auto";
+    const { altura, rolar } = alturaDoCampo({
+      alturaConteudo: elemento.scrollHeight,
+      alturaLinha: parseFloat(estilo.lineHeight),
+      folga: parseFloat(estilo.paddingTop) + parseFloat(estilo.paddingBottom),
+      minLinhas: linhas,
+      maxLinhas: linhasMaximas,
+    });
+    elemento.style.height = `${altura}px`;
+    elemento.style.overflowY = rolar ? "auto" : "hidden";
+  }, [valor, linhas, linhasMaximas, campo]);
   const [arrastando, setArrastando] = useState(false);
 
   // Espelho de `valor` para o ditado por voz — ver o comentario no
@@ -203,7 +232,7 @@ export function CompositorPergunta({
             de varias linhas, e obrigar o clique tiraria a mao do teclado a
             cada pergunta. */}
         <textarea
-          ref={campoRef}
+          ref={campo}
           // Ver globals.css: o anel de foco fica na caixa, nao no campo.
           data-campo-sem-anel
           value={valor}
