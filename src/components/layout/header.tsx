@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { IconMenu, IconSetaEsquerda } from "@/components/ui/icons";
 
+import { ID_ACOES_DO_TOPO } from "./acao-do-topo";
+
 type HeaderProps = {
   aoAbrirMenu: () => void;
   /** Titulo curto exibido no celular, onde nao ha menu lateral visivel. */
@@ -98,6 +100,11 @@ export function Header({ aoAbrirMenu, titulo, children }: HeaderProps) {
           pe da sidebar, onde o prototipo o coloca — o topo de cada tela fica
           so' com o titulo e os controles dela. */}
       <div className="flex flex-none items-center gap-2">
+        {/* Encaixe pra acoes PROPRIAS da tela, ao lado do tema (01/10/2026).
+            Quem preenche e' `AcaoDoTopo` por portal: o estado do botao vive
+            na tela (ex.: o historico do Cup AI), que e' filha do AppShell e
+            nao teria como passar um botao pra cima de outro jeito. */}
+        <div id={ID_ACOES_DO_TOPO} className="flex items-center gap-2 empty:hidden" />
         <ThemeToggle />
       </div>
 

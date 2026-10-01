@@ -1395,8 +1395,10 @@ h4 {
      historico empilhados dividiam a tela meio a meio (medido: 414px pra cada
      num tablet de 768x1024) e a abertura do Cup AI rolava ate' no tablet em
      pe'. Agora o MIOLO ocupa a tela inteira (o desconto e' o cabecalho + o
-     respiro do <main> no celular, medido: 70px em cima, 28px embaixo) e o
-     historico fica logo abaixo, alcancado rolando a pagina. */
+     respiro do <main> no celular, medido: 70px em cima, 28px embaixo). O
+     historico sai da pagina e abre por cima, pelo botao do topo
+     (historico-sobreposto.tsx) — pedido dele em 01/10/2026, depois que o
+     empilhado, fechado, nao tinha como voltar. */
   .conteudo-ia {
     grid-template-columns: minmax(0, 1fr);
     gap: 18px;
@@ -1409,14 +1411,75 @@ h4 {
     height: calc(100dvh - 98px);
   }
 
-  .historico {
-    max-height: 420px;
-  }
-
-  /* Sem coluna pra reabrir ao lado, a aba fixa perde o sentido: aqui o painel
-     fica sempre visivel, empilhado. */
-  .historico-abrir {
+  /* So' os filhos DIRETOS: o historico de dentro da sobreposicao continua. */
+  .conteudo-ia > .historico,
+  .conteudo-ia > .historico-abrir {
     display: none;
+  }
+}
+
+/* ===== Historico por cima da tela (celular e tablet, 01/10/2026) ===== */
+
+/* No computador o historico esta' na coluna: o botao do topo nao existe. */
+@media (min-width: 1101px) {
+  .historico-botao-topo {
+    display: none;
+  }
+}
+
+.historico-sobreposicao {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+}
+
+.historico-sobreposicao-fundo {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(14, 9, 24, 0.5);
+  cursor: pointer;
+  animation: historico-fundo-entra 180ms ease-out;
+}
+
+/* Painel pela DIREITA: e' o lado de onde o historico vem no computador, e a
+   seta do X dele ja' aponta pra la'. */
+.historico-sobreposicao-painel {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  bottom: 10px;
+  width: min(360px, calc(100vw - 48px));
+  display: flex;
+  outline: none;
+  animation: historico-painel-entra 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Solido: por cima do vidro da pagina, o painel translucido deixaria o texto
+   de tras atravessar a lista. */
+.historico-sobreposicao-painel > .historico {
+  flex: 1;
+  max-height: none;
+  background: var(--modal);
+}
+
+@keyframes historico-fundo-entra {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes historico-painel-entra {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .historico-sobreposicao-fundo,
+  .historico-sobreposicao-painel {
+    animation: none;
   }
 }
 

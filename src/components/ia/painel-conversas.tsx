@@ -10,6 +10,7 @@ import {
 } from "@/components/ia/barra-anexos";
 import { CartoesSugestao } from "@/components/ia/cartoes-sugestao";
 import { CompositorPergunta } from "@/components/ia/compositor-pergunta";
+import { HistoricoSobreposto } from "@/components/ia/historico-sobreposto";
 import { MascoteCup } from "@/components/ia/mascote-cup";
 import {
   AbaHistorico,
@@ -99,6 +100,15 @@ export function PainelConversas({
   // `useState` com funcao: a saudacao e' lida uma vez, na montagem. Recalcular
   // a cada desenho trocaria "Boa tarde" por "Boa noite" no meio do uso.
   const [saudacao] = useState(saudacaoDaHora);
+
+  // "Nova conversa" na abertura e' onde ele ja' esta: o util e' limpar o que
+  // estava escrito e devolver o foco ao campo.
+  const limparParaNovaConversa = () => {
+    setPergunta("");
+    setAnexos([]);
+    setErro(null);
+    campoPergunta.current?.focus();
+  };
 
   const apagar = async (conversaId: number) => {
     setErro(null);
@@ -350,19 +360,20 @@ export function PainelConversas({
         <PainelHistorico
           conversas={conversas}
           aoApagar={apagar}
-          aoNova={() => {
-            // "Nova conversa" na abertura e' onde ele ja' esta: o util e'
-            // limpar o que estava escrito e devolver o foco ao campo.
-            setPergunta("");
-            setAnexos([]);
-            setErro(null);
-            campoPergunta.current?.focus();
-          }}
+          aoNova={limparParaNovaConversa}
           aoFechar={() => setHistoricoAberto(false)}
         />
       ) : (
         <AbaHistorico aoAbrir={() => setHistoricoAberto(true)} />
       )}
+
+      {/* Celular e tablet: o historico da coluna acima some (CSS) e vira este
+          botao no topo + painel por cima da tela. */}
+      <HistoricoSobreposto
+        conversas={conversas}
+        aoApagar={apagar}
+        aoNova={limparParaNovaConversa}
+      />
     </div>
   );
 }
