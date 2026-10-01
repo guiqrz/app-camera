@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { AcoesDaResposta } from "@/components/ia/acoes-da-resposta";
 import { CartaoListaExercicios } from "@/components/ia/cartao-lista-exercicios";
+import { CartaoPlanoDeAula } from "@/components/ia/cartao-plano-de-aula";
 import { MascoteCup } from "@/components/ia/mascote-cup";
 import { TextoFormatado } from "@/components/ia/texto-formatado";
 import { IconCalendario } from "@/components/ui/icons";
@@ -93,6 +94,16 @@ export function BolhaMensagem({ mensagem, conversaId }: BolhaMensagemProps) {
               continuam valendo quando ele reabre a conversa. */}
           {mensagem.lista_exercicios_id ? (
             <CartaoListaExercicios listaId={mensagem.lista_exercicios_id} />
+          ) : null}
+
+          {/* Planos de aula desta resposta: um cartao por turma. So' os ids
+              ficam na mensagem; cada cartao busca o plano salvo. */}
+          {mensagem.plano_de_aula_ids?.length ? (
+            <div className="mt-3 flex flex-col gap-3">
+              {mensagem.plano_de_aula_ids.map((id) => (
+                <CartaoPlanoDeAula key={id} planoId={id} />
+              ))}
+            </div>
           ) : null}
 
           {/* So' quando ha texto de fato: copiar/baixar o vazio nao faz nada, e
