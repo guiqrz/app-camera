@@ -738,6 +738,43 @@ export type MensagemConversa = {
    * demais mensagens.
    */
   lista_exercicios_id?: number | null;
+  /**
+   * Planos de aula que esta resposta do Cup AI montou (29/09/2026), um por
+   * turma. So' os ids: o cartao busca cada plano no backend. Vazio/ausente nas
+   * demais mensagens.
+   */
+  plano_de_aula_ids?: number[];
+};
+
+/** De onde saiu uma recomendacao do plano (mesmos valores de campos.py). */
+export type BaseDaRecomendacao = "onde_parou" | "engajamento" | "transcricao";
+
+/**
+ * Plano de aula formal montado pelo Cup AI (GET /planos-de-aula/{id}).
+ *
+ * `aula_id`/`data` vem null quando a data pedida nao era dia de aula da turma:
+ * o plano baixa normalmente, mas nao tem encontro na agenda pra gravar.
+ */
+export type PlanoDeAula = {
+  id: number;
+  conversa_id: number | null;
+  turma_id: number;
+  turma: string;
+  materia: string | null;
+  aula_id: number | null;
+  data: string | null;
+  tema: string;
+  campos: {
+    objetivos: string[];
+    habilidades_bncc: { codigo: string; descricao: string }[];
+    conteudos: string[];
+    metodologia: { etapa: string; minutos: number | null; descricao: string }[];
+    recursos: string[];
+    avaliacao: string;
+    recomendacoes: { texto: string; base: BaseDaRecomendacao }[];
+  };
+  criado_em: string;
+  atualizado_em: string;
 };
 
 /** Uma questao da lista, como o cartao mostra (nunca o enunciado inteiro). */

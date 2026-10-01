@@ -58,6 +58,7 @@ import type {
   Lembrete,
   LembreteEditado,
   ListaExercicios,
+  PlanoDeAula,
   Lousa,
   Materia,
   ModoCamera,
@@ -1439,6 +1440,61 @@ export async function baixarArquivoDaLista(
     contentType: resposta.headers.get("content-type") ?? "application/octet-stream",
     contentDisposition: resposta.headers.get("content-disposition") ?? "attachment",
   };
+}
+
+/* --- Plano de aula do Cup AI (29/09/2026) ----------------------------- */
+/*                                                                      */
+/* Montado pelo backend a partir dos campos salvos, um por turma.       */
+
+/** O plano como foi salvo. Nunca cacheado. */
+export function lerPlanoDeAula(planoId: number): Promise<PlanoDeAula> {
+  return requisitar<PlanoDeAula>(`/planos-de-aula/${planoId}`, { revalidate: 0 });
+}
+
+/**
+ * Word ou PDF do plano, em bytes. Mesmo desenho de `baixarArquivoDaLista`:
+ * a resposta e' arquivo, nao JSON, entao nao passa por `requisitar<T>`.
+ */
+export async function baixarArquivoDoPlano(
+  planoId: number,
+  formato: "pdf" | "docx",
+): Promise<MaterialExportado> {
+  const { baseUrl, apiKey } = lerConfiguracao();
+  const rota = `/planos-de-aula/${planoId}/arquivo`;
+
+  let resposta: Response;
+  try {
+    resposta = await fetch(`${baseUrl}${rota}?${new URLSearchParams({ formato })}`, {
+      headers: { "X-API-Key": apiKey },
+      cache: "no-store",
+    });
+  } catch {
+    throw new ApiError("Nao foi possivel falar com a API do CUPCAM na nuvem.", 0, rota);
+  }
+
+  if (!resposta.ok) {
+    throw new ApiError("Não foi possível gerar o arquivo. Tente de novo.", resposta.status, rota);
+  }
+
+  return {
+    bytes: await resposta.blob(),
+    contentType: resposta.headers.get("content-type") ?? "application/octet-stream",
+    contentDisposition: resposta.headers.get("content-disposition") ?? "attachment",
+  };
+}
+
+/**
+ * Grava o plano na agenda. ApiError 409 com `detalhe.detail.motivo`
+ * "plano_existente" (e `previa`) pede confirmacao; "sem_data" = nao ha encontro.
+ */
+export function gravarPlanoNaAgenda(
+  planoId: number,
+  substituir: boolean,
+): Promise<{ ok: true; aula_id: number; data: string }> {
+  return requisitar(`/planos-de-aula/${planoId}/agenda`, {
+    method: "POST",
+    body: { substituir },
+  });
 }
 
 /* ==================================================================== */
