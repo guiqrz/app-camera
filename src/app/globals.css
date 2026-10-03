@@ -3354,6 +3354,33 @@ select optgroup {
   color: var(--danger-fg);
 }
 
+/* Formularios das abas Conta e Equipe (27/09/2026): campos empilhados dentro
+   do painel, com a mesma folga horizontal das .cfg-linha pra alinhar com os
+   rotulos de cima. */
+.cfg-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 15px 18px;
+}
+
+.cfg-form-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+@media (max-width: 480px) {
+  .cfg-form {
+    padding: 14px 15px 16px;
+  }
+  .cfg-form-acoes > .btn-acao {
+    flex: 1 1 100%;
+    justify-content: center;
+  }
+}
+
 /* ---- Aba Privacidade ----
    O conteudo (seis topicos) ja' estava certo — e' regra de projeto, revisada.
    O que faltava era a casca: os `<details>` viviam num retangulo `bg-surface`
