@@ -76,6 +76,7 @@ import type {
   VisaoAdmin,
   VisaoGeral,
 } from "./types";
+import type { TipoDeLink } from "@/lib/link-de-conta";
 
 /** Erro de comunicacao com a API, com o status HTTP preservado. */
 export class ApiError extends Error {
@@ -1873,6 +1874,54 @@ export async function entrarPeloApp(credenciais: {
   if (typeof token !== "string" || token === "") {
     throw new ApiError("Login sem token na resposta.", 502, "/conta/entrar");
   }
+  return token;
+}
+
+/**
+ * {tipo, email} de um link de convite ou de nova senha. Chamado pela ponte
+ * /entrar/link (servidor do app) com o IP real do navegador — a rota exige a
+ * X-API-Key, entao so' este servidor a alcanca. O token vai no CORPO, nunca
+ * no caminho: o caminho entra no log de acesso do Render.
+ *
+ * @throws ApiError com o status da API (0 = rede/timeout: servidor ligando).
+ */
+export function lerLinkDeConta(
+  token: string,
+  ip: string,
+): Promise<{ tipo: TipoDeLink; email: string }> {
+  return requisitar("/conta/link", {
+    method: "POST",
+    body: { token, ip },
+    tempoLimiteMs: TEMPO_LIMITE_TENTATIVA_DE_LOGIN_MS,
+  });
+}
+
+/** Cria a conta do convite. Devolve o token de LOGIN (vai pro trocarTokenDeLogin). */
+export async function aceitarConvite(dados: {
+  token: string;
+  nome: string;
+  senha: string;
+  ip: string;
+}): Promise<string> {
+  const { token } = await requisitar<{ token: string }>("/conta/aceitar-convite", {
+    method: "POST",
+    body: dados,
+    tempoLimiteMs: TEMPO_LIMITE_TENTATIVA_DE_LOGIN_MS,
+  });
+  return token;
+}
+
+/** Define a senha pelo link de 24 h. Devolve o token de LOGIN. */
+export async function definirNovaSenha(dados: {
+  token: string;
+  senha: string;
+  ip: string;
+}): Promise<string> {
+  const { token } = await requisitar<{ token: string }>("/conta/definir-nova-senha", {
+    method: "POST",
+    body: dados,
+    tempoLimiteMs: TEMPO_LIMITE_TENTATIVA_DE_LOGIN_MS,
+  });
   return token;
 }
 
