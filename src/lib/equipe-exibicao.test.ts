@@ -23,6 +23,14 @@ describe("prazoRestante", () => {
     assert.equal(prazoRestante("2026-09-27T10:30:00", AGORA), "vence em menos de 1 hora");
     assert.equal(prazoRestante("2026-09-27T09:00:00", AGORA), "vencido");
   });
+
+  it("link recem-gerado mostra o prazo cheio, e nao um a menos", () => {
+    // O backend grava o prazo e a tela le alguns segundos depois: cortar pra
+    // baixo mostraria "6 dias" logo abaixo de "vale por 7 dias".
+    const segundosDepois = new Date("2026-09-27T10:00:05");
+    assert.equal(prazoRestante("2026-10-04T10:00:00", segundosDepois), "vence em 7 dias");
+    assert.equal(prazoRestante("2026-09-28T10:00:00", segundosDepois), "vence em 24 horas");
+  });
 });
 
 describe("dataCurta", () => {

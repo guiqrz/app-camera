@@ -22,11 +22,13 @@ export function prazoRestante(expiraEm: string, agora: Date): string {
   const restanteMs = new Date(expiraEm).getTime() - agora.getTime();
   if (restanteMs <= 0) return "vencido";
   if (restanteMs < HORA_MS) return "vence em menos de 1 hora";
+  // Arredonda pro MAIS PROXIMO, e nao pra baixo: a tela le o prazo segundos
+  // depois de o backend grava-lo, e cortar mostraria "6 dias" num link de 7.
   if (restanteMs < 24 * HORA_MS) {
-    const horas = Math.floor(restanteMs / HORA_MS);
+    const horas = Math.round(restanteMs / HORA_MS);
     return `vence em ${horas} ${horas === 1 ? "hora" : "horas"}`;
   }
-  const dias = Math.floor(restanteMs / (24 * HORA_MS));
+  const dias = Math.round(restanteMs / (24 * HORA_MS));
   return dias === 1 ? "vence amanhã" : `vence em ${dias} dias`;
 }
 

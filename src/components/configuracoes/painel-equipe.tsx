@@ -158,7 +158,7 @@ function FormConvite({ papeis, aoGerar }: { papeis: string[]; aoGerar: (link: st
 function LinkGeradoBox({ titulo, link, expiraEm, aoFechar }: NonNullable<LinkMostrado> & { aoFechar: () => void }) {
   const [copiado, setCopiado] = useState(false);
   return (
-    <Secao titulo={titulo} descricao={`Copie agora: ele não aparece de novo. ${prazoRestante(expiraEm, new Date())}.`}>
+    <Secao titulo={titulo} descricao={`Copie agora: ele não aparece de novo e ${prazoRestante(expiraEm, new Date())}.`}>
       <div className="cfg-form">
         <div className="cfg-link-gerado">
           <ValorFixo><code>{link}</code></ValorFixo>
