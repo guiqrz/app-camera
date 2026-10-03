@@ -1,0 +1,427 @@
+/* Paginas de link (/convite e /nova-senha) com o visual do site Strix.
+ *
+ * Porte de projeto-tcc-strix-frontend/css/criar-conta.css (+ o que ele herda
+ * de global.css, + os estados de envio e erro de login.css), feito em
+ * 03/10/2026 a pedido do usuario: "o design tem que ficar identico ao do
+ * Strix". Por isso os valores sao os do Strix, e nao os tokens do app.
+ *
+ * Tudo escopado em .pagina-auth e com variaveis prefixadas --sx-: este
+ * arquivo e' global (importado pela PaginaAuth), e um seletor solto aqui
+ * mudaria as outras telas.
+ *
+ * Mudou o visual do Strix? Refazer o porte a partir dos arquivos de la' --
+ * este CSS nao acompanha sozinho.
+ */
+
+.pagina-auth {
+  --sx-fonte-titulo: var(--font-cal-sans), var(--font-montserrat), sans-serif;
+  --sx-fonte-texto: var(--font-montserrat), sans-serif;
+
+  --sx-branco: #fff;
+  --sx-background: #fafbff;
+  --sx-texto-principal: #171c1f;
+  --sx-texto-italico: #4c4353;
+  --sx-cor-principal: #6a30ac;
+  --sx-cor-secundaria: var(--sx-cor-principal);
+
+  /* Regras que no Strix eram "body.dark-mode X", viradas variavel. */
+  --sx-arte-mobile: linear-gradient(160deg, #e7d3f7 0%, #dec5f3 100%);
+  --sx-arte-desktop: linear-gradient(160deg, #c9a8e9 0%, #a97bd8 55%, #9b63d2 100%);
+  --sx-borda-campo: var(--sx-texto-principal);
+  --sx-cor-erro: #b42318;
+  --sx-mostrar-icone-escuro: block; /* icone "modo escuro", mostrado no claro */
+  --sx-mostrar-icone-claro: none;
+
+  position: relative;
+  z-index: 1;
+  min-height: 100dvh;
+  overflow-x: clip;
+  background: var(--sx-background);
+  color: var(--sx-texto-principal);
+}
+
+/* Tema escuro escolhido no app. */
+:root[data-theme="dark"] .pagina-auth {
+  --sx-background: #181818;
+  --sx-texto-principal: #ffffff;
+  --sx-texto-italico: #ffffff;
+  --sx-cor-principal: #00c1d7;
+  --sx-cor-secundaria: #00aec2;
+  --sx-arte-mobile: linear-gradient(160deg, #1a1a1a 0%, #0d0d0d 100%);
+  --sx-arte-desktop: linear-gradient(160deg, #1a1a1a 0%, #0d0d0d 100%);
+  --sx-borda-campo: var(--sx-texto-italico);
+  --sx-cor-erro: #ff7b7b;
+  --sx-mostrar-icone-escuro: none;
+  --sx-mostrar-icone-claro: block;
+}
+
+/* Sem escolha no app: segue o aparelho, como o resto do app (semantic.css). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .pagina-auth {
+    --sx-background: #181818;
+    --sx-texto-principal: #ffffff;
+    --sx-texto-italico: #ffffff;
+    --sx-cor-principal: #00c1d7;
+    --sx-cor-secundaria: #00aec2;
+    --sx-arte-mobile: linear-gradient(160deg, #1a1a1a 0%, #0d0d0d 100%);
+    --sx-arte-desktop: linear-gradient(160deg, #1a1a1a 0%, #0d0d0d 100%);
+    --sx-borda-campo: var(--sx-texto-italico);
+    --sx-cor-erro: #ff7b7b;
+    --sx-mostrar-icone-escuro: none;
+    --sx-mostrar-icone-claro: block;
+  }
+}
+
+/* Reset do global.css do Strix, so' aqui dentro. */
+.pagina-auth,
+.pagina-auth * {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: var(--sx-fonte-texto);
+}
+
+.pagina-auth h2 {
+  font-family: var(--sx-fonte-titulo);
+  font-weight: 400;
+  font-size: 2.25rem;
+}
+
+.pagina-auth p {
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--sx-texto-italico);
+  line-height: 1.5;
+}
+
+.pagina-auth button {
+  font-family: var(--sx-fonte-texto);
+  font-weight: 600;
+}
+
+.pagina-auth a {
+  color: var(--sx-texto-principal);
+}
+
+/* Botao de tema (a imagem troca com o tema, como o content:url do Strix). */
+.pagina-auth .tema-flutuante {
+  cursor: pointer;
+  line-height: 0;
+  background: none;
+  border: none;
+}
+
+.pagina-auth .tema-flutuante img {
+  width: 5.5rem;
+  height: auto;
+  filter: drop-shadow(0 0 4px var(--sx-cor-principal));
+}
+
+.pagina-auth .tema-flutuante img:hover {
+  transition: 0.2s;
+  transform: scale(1.1);
+}
+
+.pagina-auth .tema-flutuante .tema-icone-escuro {
+  display: var(--sx-mostrar-icone-escuro);
+}
+
+.pagina-auth .tema-flutuante .tema-icone-claro {
+  display: var(--sx-mostrar-icone-claro);
+}
+
+.pagina-auth .auth {
+  padding-inline: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.pagina-auth .auth-arte {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 1.25rem;
+  padding: 1.5rem 1.5rem 4rem;
+  background: var(--sx-arte-mobile);
+}
+
+.pagina-auth .auth-arte .auth-mascote {
+  display: none;
+}
+
+.pagina-auth .auth-arte .auth-topo-mobile {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pagina-auth .auth-arte .auth-topo-mobile .auth-logo-mobile img {
+  width: 4.5rem;
+}
+
+.pagina-auth .auth-form {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  padding: 2rem 1.5rem 2.5rem;
+  background: var(--sx-background);
+  margin-top: -2.5rem;
+  border-radius: 2.5rem 2.5rem 0 0;
+}
+
+.pagina-auth .auth-form .auth-topo-desktop {
+  display: none;
+}
+
+.pagina-auth .auth-form .auth-conteudo {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.pagina-auth .auth-form .auth-titulos {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.pagina-auth .auth-form .auth-titulos h2 {
+  color: var(--sx-texto-principal);
+}
+
+.pagina-auth .auth-form .auth-titulos p {
+  font-size: 0.9375rem;
+}
+
+.pagina-auth .auth-form .auth-rodape {
+  text-align: center;
+  font-size: 0.9375rem;
+}
+
+.pagina-auth .auth-form .auth-rodape a {
+  font-weight: 600;
+  color: var(--sx-cor-principal);
+  text-decoration: none;
+}
+
+.pagina-auth .auth-form .auth-rodape a:hover {
+  text-decoration: underline;
+}
+
+.pagina-auth .form-auth {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+.pagina-auth .form-auth .campo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.pagina-auth .form-auth .campo label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--sx-texto-principal);
+}
+
+.pagina-auth .form-auth .campo input {
+  width: 100%;
+  font-family: var(--sx-fonte-texto);
+  font-size: 1rem;
+  color: var(--sx-texto-principal);
+  background: transparent;
+  border: none;
+  border-bottom: 0.0625rem solid var(--sx-borda-campo);
+  border-radius: 0;
+  padding: 0.5rem 0;
+  transition: border-color 0.2s ease;
+}
+
+.pagina-auth .form-auth .campo input::placeholder {
+  color: var(--sx-texto-italico);
+}
+
+.pagina-auth .form-auth .campo input:focus {
+  outline: none;
+  border-bottom-color: var(--sx-cor-principal);
+}
+
+/* Email travado do convite: mesmo desenho, sem cursor de digitar.
+   (Unica regra sem par no Strix: la' o campo era editavel.) */
+.pagina-auth .form-auth .campo input[readonly] {
+  cursor: default;
+}
+
+.pagina-auth .form-auth .campo-senha {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.pagina-auth .form-auth .campo-senha input {
+  padding-right: 2.25rem;
+}
+
+.pagina-auth .form-auth .campo-senha .mostrar-senha {
+  position: absolute;
+  right: 0;
+  bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--sx-texto-italico);
+}
+
+.pagina-auth .form-auth .campo-senha .mostrar-senha:hover {
+  color: var(--sx-cor-principal);
+}
+
+.pagina-auth .form-auth .botao-auth {
+  align-self: center;
+  width: 100%;
+  max-width: 20rem;
+  height: 3.25rem;
+  margin-top: 0.75rem;
+  font-family: var(--sx-fonte-texto);
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--sx-branco);
+  background: var(--sx-cor-principal);
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.pagina-auth .form-auth .botao-auth:hover {
+  background: var(--sx-cor-secundaria);
+  transform: translateY(-0.125rem);
+}
+
+/* Estados de login.css (o criar-conta.css do Strix nao os tinha). */
+.pagina-auth .form-auth .botao-auth:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Enviando: so' o spinner, sem frase. Opacidade cheia pra nao parecer
+   botao desligado. */
+.pagina-auth .form-auth .botao-auth.carregando {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 1;
+  cursor: progress;
+}
+
+.pagina-auth .form-auth .botao-spinner {
+  width: 1.375rem;
+  height: 1.375rem;
+  border: 0.1875rem solid rgba(255, 255, 255, 0.35);
+  border-top-color: var(--sx-branco);
+  border-radius: 50%;
+  animation: sx-botao-girar 0.8s linear infinite;
+}
+
+@keyframes sx-botao-girar {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Movimento reduzido: o spinner gira devagar em vez de parar. */
+@media (prefers-reduced-motion: reduce) {
+  .pagina-auth .form-auth .botao-spinner {
+    animation-duration: 2.4s;
+  }
+}
+
+.pagina-auth .auth-erro {
+  color: var(--sx-cor-erro);
+  font-size: 0.875rem;
+  margin: 0.5rem 0;
+}
+
+/* Link que nao vale mais: a mesma tipografia do texto de apoio do titulo. */
+.pagina-auth .auth-aviso-link {
+  font-size: 0.9375rem;
+  color: var(--sx-texto-principal);
+}
+
+@media screen and (min-width: 1024px) {
+  .pagina-auth .auth {
+    flex-direction: row-reverse;
+    height: 100vh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .pagina-auth .auth-arte {
+    flex: 1 1 45%;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    overflow: hidden;
+    background: var(--sx-arte-desktop);
+  }
+
+  .pagina-auth .auth-arte .auth-mascote {
+    display: block;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    object-fit: cover;
+  }
+
+  .pagina-auth .auth-arte .auth-topo-mobile {
+    display: none;
+  }
+
+  .pagina-auth .auth-form {
+    flex: 1 1 55%;
+    height: 100%;
+    overflow-y: auto;
+    justify-content: flex-start;
+    gap: 2rem;
+    padding: 2rem clamp(3rem, 8vw, 8rem);
+    margin-top: 0;
+    border-radius: 0;
+  }
+
+  .pagina-auth .auth-form .auth-topo-desktop {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .pagina-auth .auth-form .auth-topo-desktop .auth-logo img {
+    width: 3.5rem;
+  }
+
+  .pagina-auth .auth-form .auth-conteudo {
+    max-width: 26rem;
+    width: 100%;
+    margin: 0 auto;
+    flex: 1;
+    justify-content: center;
+  }
+
+  .pagina-auth .auth-form .auth-titulos {
+    text-align: center;
+  }
+
+  .pagina-auth .auth-form .auth-rodape {
+    margin-top: auto;
+  }
+}
