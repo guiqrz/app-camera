@@ -1236,3 +1236,14 @@ export type PreparacaoDaSemana = {
   pendencias: AulaDaSemana[];
   total_de_eventos: number;
 };
+
+/* Conta e equipe (subprojeto A, 27/09/2026). Espelho do backend /conta/*. */
+export type MinhaConta = { id: number; nome: string; email: string; papel: string; criado_em: string };
+export type AcoesSobrePessoa = { nova_senha: boolean; desativar: boolean; reativar: boolean };
+export type PessoaDaEquipe = {
+  id: number; nome: string; email: string; papel: string; ativo: boolean; criado_em: string;
+  pode: AcoesSobrePessoa;
+};
+export type ConvitePendente = { id: number; email: string; papel: string; criado_em: string; expira_em: string };
+export type Equipe = { pessoas: PessoaDaEquipe[]; convites_pendentes: ConvitePendente[]; papeis_convidaveis: string[] };
+export type LinkGerado = { id: number; token: string; expira_em: string };

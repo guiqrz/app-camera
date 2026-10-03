@@ -75,6 +75,9 @@ import type {
   PanoramaCoordenacao,
   VisaoAdmin,
   VisaoGeral,
+  Equipe,
+  LinkGerado,
+  MinhaConta,
 } from "./types";
 import type { TipoDeLink } from "@/lib/link-de-conta";
 
@@ -199,6 +202,11 @@ type OpcoesRequisicao = {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   /** FormData vai crua (multipart); qualquer outra coisa vira JSON. */
   body?: unknown;
+  /**
+   * Sessao CRUA do professor (do cookie, lida no servidor). Vira o header
+   * X-Sessao. So' as rotas /conta/* usam; as outras continuam so' com a chave.
+   */
+  sessao?: string;
   /** Qual API atende. Padrao "nuvem"; so' a secao Camera passa "camera". */
   destino?: DestinoApi;
   /** Teto em ms. Padrao por destino (ver TEMPO_LIMITE_MS). */
@@ -263,6 +271,7 @@ async function requisitar<T>(
     destino = "nuvem",
     tempoLimiteMs,
     tags,
+    sessao,
   }: OpcoesRequisicao = {},
 ): Promise<T> {
   const { baseUrl, apiKey } = lerConfiguracao(destino);
@@ -283,6 +292,7 @@ async function requisitar<T>(
       method,
       headers: {
         "X-API-Key": apiKey,
+        ...(sessao ? { "X-Sessao": sessao } : {}),
         // FormData: NAO setar Content-Type manualmente — o fetch monta o
         // boundary do multipart sozinho. Setar aqui quebra o parse no backend.
         ...(body && !eFormData ? { "Content-Type": "application/json" } : {}),
@@ -336,6 +346,9 @@ async function requisitar<T>(
       destino,
     );
   }
+
+  // 204 nao tem corpo: resposta.json() estouraria "Unexpected end of JSON".
+  if (resposta.status === 204) return undefined as T;
 
   return (await resposta.json()) as T;
 }
@@ -2022,4 +2035,79 @@ export async function encerrarSessao(sessao: string): Promise<void> {
     resposta.status,
     rota,
   );
+}
+
+/* ------------------------------------------------------------------ */
+/* Conta e equipe (subprojeto A, 27/09/2026)                           */
+/* ------------------------------------------------------------------ */
+
+/**
+ * `detail` que o backend manda quando a SESSAO (e nao a chave) nao vale nas
+ * rotas /conta/*. As pontes usam isto pra decidir se desconectam a pessoa:
+ * 401 com outro detail e' a X-API-Key do servidor, e ai' ninguem e' deslogado.
+ */
+export const DETALHE_SESSAO_INVALIDA = "sessao invalida ou expirada.";
+
+export function eSessaoInvalida(causa: unknown): boolean {
+  if (!(causa instanceof ApiError) || causa.status !== 401) return false;
+  const detalhe = causa.detalhe as { detail?: unknown } | undefined;
+  return detalhe?.detail === DETALHE_SESSAO_INVALIDA;
+}
+
+// Tudo aqui e' por pessoa e muda com as acoes da tela: nunca cachear.
+const SEM_CACHE = { revalidate: 0 } as const;
+
+export function lerMinhaConta(sessao: string): Promise<MinhaConta> {
+  return requisitar<MinhaConta>("/conta/eu", { ...SEM_CACHE, sessao });
+}
+
+export function alterarMeuNome(sessao: string, nome: string): Promise<{ nome: string }> {
+  return requisitar("/conta/nome", { method: "PATCH", body: { nome }, sessao });
+}
+
+export async function trocarMinhaSenha(
+  sessao: string,
+  senhaAtual: string,
+  senhaNova: string,
+): Promise<void> {
+  await requisitar("/conta/senha", {
+    method: "POST",
+    body: { senha_atual: senhaAtual, senha_nova: senhaNova },
+    sessao,
+  });
+}
+
+export async function sairDeTodos(sessao: string): Promise<void> {
+  await requisitar<void>("/conta/sair-de-todos", { method: "POST", sessao });
+}
+
+export function lerEquipe(sessao: string): Promise<Equipe> {
+  return requisitar<Equipe>("/conta/equipe", { ...SEM_CACHE, sessao });
+}
+
+export function criarConvite(sessao: string, email: string, papel: string): Promise<LinkGerado> {
+  return requisitar<LinkGerado>("/conta/convites", {
+    method: "POST",
+    body: { email, papel },
+    sessao,
+  });
+}
+
+export async function cancelarConvite(sessao: string, id: number): Promise<void> {
+  await requisitar<void>(`/conta/convites/${id}`, { method: "DELETE", sessao });
+}
+
+export function gerarLinkNovaSenha(sessao: string, usuarioId: number): Promise<LinkGerado> {
+  return requisitar<LinkGerado>(`/conta/usuarios/${usuarioId}/nova-senha`, {
+    method: "POST",
+    sessao,
+  });
+}
+
+export async function desativarPessoa(sessao: string, usuarioId: number): Promise<void> {
+  await requisitar<void>(`/conta/usuarios/${usuarioId}/desativar`, { method: "POST", sessao });
+}
+
+export async function reativarPessoa(sessao: string, usuarioId: number): Promise<void> {
+  await requisitar<void>(`/conta/usuarios/${usuarioId}/reativar`, { method: "POST", sessao });
 }
