@@ -112,6 +112,11 @@ export const config = {
   //   entrar(?:/|$)   /entrar e suas subrotas (iniciar, erro) — senao o login
   //                   nunca completaria. So' como segmento EXATO: o antigo
   //                   `entrar` solto liberaria tambem /entrarqualquercoisa.
+  //   convite/ nova-senha/  paginas de link (conta nova e nova senha): quem
+  //                   abre ainda nao tem sessao.
+  //   auth/<arquivo>.png|svg  imagens dessas paginas (visual do Strix). So'
+  //                   arquivo com extensao de imagem, pelo mesmo motivo da
+  //                   regra da raiz abaixo.
   //   sair$           o logout precisa funcionar ate' com cookie invalido
   //                   (e' justamente o que ele apaga).
   //   _next/static, _next/image, favicon.ico   arquivos do proprio Next.
@@ -121,6 +126,6 @@ export const config = {
   //                   proposito: uma regra "qualquer coisa com ponto" liberaria
   //                   rotas dinamicas como /aulas/5.png sem sessao.
   matcher: [
-    "/((?!entrar(?:/|$)|sair$|_next/static|_next/image|favicon\\.ico$|api/saude$|[^/]+\\.(?:png|jpe?g|gif|svg|webp|avif|ico|txt|xml|webmanifest|woff2?)$).*)",
+    "/((?!entrar(?:/|$)|convite/|nova-senha/|auth/[^/]+\\.(?:png|svg)$|sair$|_next/static|_next/image|favicon\\.ico$|api/saude$|[^/]+\\.(?:png|jpe?g|gif|svg|webp|avif|ico|txt|xml|webmanifest|woff2?)$).*)",
   ],
 };

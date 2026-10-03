@@ -29,7 +29,7 @@
   --sx-arte-desktop: linear-gradient(160deg, #c9a8e9 0%, #a97bd8 55%, #9b63d2 100%);
   --sx-borda-campo: var(--sx-texto-principal);
   --sx-cor-erro: #b42318;
-  --sx-mostrar-icone-escuro: block; /* icone "modo escuro", mostrado no claro */
+  --sx-mostrar-icone-escuro: inline; /* icone "modo escuro", mostrado no claro */
   --sx-mostrar-icone-claro: none;
 
   position: relative;
@@ -38,6 +38,20 @@
   overflow-x: clip;
   background: var(--sx-background);
   color: var(--sx-texto-principal);
+  /* O <body> do app tem line-height 1.5 e peso 300; o do Strix, os padroes
+     do navegador. Sem isto, todo campo e rotulo herdaria a medida do app. */
+  line-height: normal;
+  font-weight: 400;
+  -webkit-font-smoothing: auto;
+  -moz-osx-font-smoothing: auto;
+}
+
+/* O reset do Tailwind deixa <img> em block/middle; no Strix e' o padrao do
+   navegador (inline/baseline). As imagens que precisam de outro display
+   (mascote, icones de tema) tem regra propria, mais especifica. */
+.pagina-auth img {
+  display: inline;
+  vertical-align: baseline;
 }
 
 /* Tema escuro escolhido no app. */
@@ -52,7 +66,7 @@
   --sx-borda-campo: var(--sx-texto-italico);
   --sx-cor-erro: #ff7b7b;
   --sx-mostrar-icone-escuro: none;
-  --sx-mostrar-icone-claro: block;
+  --sx-mostrar-icone-claro: inline;
 }
 
 /* Sem escolha no app: segue o aparelho, como o resto do app (semantic.css). */
@@ -68,7 +82,7 @@
     --sx-borda-campo: var(--sx-texto-italico);
     --sx-cor-erro: #ff7b7b;
     --sx-mostrar-icone-escuro: none;
-    --sx-mostrar-icone-claro: block;
+    --sx-mostrar-icone-claro: inline;
   }
 }
 
@@ -85,6 +99,8 @@
   font-family: var(--sx-fonte-titulo);
   font-weight: 400;
   font-size: 2.25rem;
+  /* O globals.css do app aperta os titulos (-0.015em); o Strix nao. */
+  letter-spacing: normal;
 }
 
 .pagina-auth p {
@@ -105,10 +121,15 @@
 
 /* Botao de tema (a imagem troca com o tema, como o content:url do Strix). */
 .pagina-auth .tema-flutuante {
-  cursor: pointer;
-  line-height: 0;
+  /* No Strix e' um <div>; aqui e' <button> (acessivel por teclado), entao
+     zera o que o botao traz de fabrica. `font` antes do line-height: o
+     atalho `font` tambem redefine o line-height. */
+  font: inherit;
+  text-align: start;
   background: none;
   border: none;
+  cursor: pointer;
+  line-height: 0;
 }
 
 .pagina-auth .tema-flutuante img {

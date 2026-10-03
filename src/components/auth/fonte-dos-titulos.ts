@@ -10,4 +10,7 @@ export const fonteDosTitulos = Cal_Sans({
   subsets: ["latin"],
   weight: "400",
   display: "swap",
+  // O Next nao tem as medidas da Cal Sans pra montar a fonte reserva
+  // ajustada (avisava no build); a reserva ja' e' a Montserrat, pelo CSS.
+  adjustFontFallback: false,
 });
