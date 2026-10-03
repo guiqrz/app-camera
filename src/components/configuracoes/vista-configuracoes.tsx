@@ -2,27 +2,34 @@
 
 import { useState } from "react";
 
+import { PainelConta } from "@/components/configuracoes/painel-conta";
+import { PainelEquipe } from "@/components/configuracoes/painel-equipe";
 import { PainelGeral } from "@/components/configuracoes/painel-geral";
 import { PainelPrivacidade } from "@/components/configuracoes/painel-privacidade";
-import type { EstadoCamera, Turma } from "@/lib/types";
+import type { Equipe, EstadoCamera, MinhaConta, Turma } from "@/lib/types";
 
-type Aba = "geral" | "privacidade";
+type Aba = "geral" | "conta" | "equipe" | "privacidade";
 
 type VistaConfiguracoesProps = {
   turmas: Turma[];
   estadoCamera: EstadoCamera | null;
   salaId: string | null;
   alcanceAutomatico: { alcancadas: number; total: number } | null;
+  /** Dados da propria conta; `null` se a API nao respondeu. */
+  conta: MinhaConta | null;
+  /**
+   * Pessoas e convites da escola. `undefined`: a pessoa nao e' admin nem
+   * coordenacao, e a aba nem aparece. `null`: a API nao respondeu.
+   */
+  equipe: Equipe | null | undefined;
 };
 
 /**
  * Vista interativa da tela "Configuracoes".
  *
- * Duas abas. Havia uma terceira, "Conta", que existia apenas travada — o
- * CUPCAM nao tem login (a API se autentica por chave, no servidor). Ela
- * gastava um terco da barra pra dizer que nao existe; agora e' a primeira
- * linha da aba Geral, onde responde a mesma pergunta ("onde configuro minha
- * senha?") sem ocupar a navegacao.
+ * Quatro abas desde 27/09/2026: a "Conta" voltou com o login de verdade
+ * (nome, senha, sair de todos), e "Equipe" aparece so' pra admin e
+ * coordenacao.
  *
  * As abas reusam o desenho do `.chamada-filtro` — o padrao do app pra "um do
  * grupo esta valendo" — em vez de inventar um segundo desenho pra mesma ideia.
@@ -32,6 +39,8 @@ export function VistaConfiguracoes({
   estadoCamera,
   salaId,
   alcanceAutomatico,
+  conta,
+  equipe,
 }: VistaConfiguracoesProps) {
   const [aba, setAba] = useState<Aba>("geral");
 
@@ -45,6 +54,14 @@ export function VistaConfiguracoes({
         <BotaoAba atual={aba} valor="geral" aoTrocar={setAba}>
           Geral
         </BotaoAba>
+        <BotaoAba atual={aba} valor="conta" aoTrocar={setAba}>
+          Conta
+        </BotaoAba>
+        {equipe !== undefined && (
+          <BotaoAba atual={aba} valor="equipe" aoTrocar={setAba}>
+            Equipe
+          </BotaoAba>
+        )}
         <BotaoAba atual={aba} valor="privacidade" aoTrocar={setAba}>
           Privacidade
         </BotaoAba>
@@ -58,6 +75,18 @@ export function VistaConfiguracoes({
             salaId={salaId}
             alcanceAutomatico={alcanceAutomatico}
           />
+        </div>
+      )}
+
+      {aba === "conta" && (
+        <div role="tabpanel" aria-labelledby="aba-conta">
+          <PainelConta conta={conta} />
+        </div>
+      )}
+
+      {aba === "equipe" && equipe !== undefined && (
+        <div role="tabpanel" aria-labelledby="aba-equipe">
+          <PainelEquipe equipeInicial={equipe} />
         </div>
       )}
 

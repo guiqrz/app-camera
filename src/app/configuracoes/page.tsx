@@ -2,11 +2,15 @@ import { AppShell } from "@/components/layout/app-shell";
 import { VistaConfiguracoes } from "@/components/configuracoes/vista-configuracoes";
 import {
   ApiError,
+  lerEquipe,
   lerEstadoCamera,
+  lerMinhaConta,
   listarAulasDaTurma,
   listarTurmas,
 } from "@/lib/api";
-import type { EstadoCamera, Turma } from "@/lib/types";
+import { podeVerEquipe } from "@/lib/equipe-exibicao";
+import { lerSessaoDoServidor } from "@/lib/sessao-cookie";
+import type { Equipe, EstadoCamera, MinhaConta, Turma } from "@/lib/types";
 
 /**
  * Tela "Configuracoes" (item "Configuracoes" do menu).
@@ -63,6 +67,12 @@ export default async function ConfiguracoesPage() {
   let turmas: Turma[] = [];
   let estadoCamera: EstadoCamera | null = null;
 
+  // Conta e equipe (27/09/2026). O papel vem do cookie assinado: decide se a
+  // aba Equipe existe sem ir a API. Os dados em si vem da API, em paralelo com
+  // o resto da tela, e falha em qualquer um so' mostra o aviso da propria aba.
+  const lida = await lerSessaoDoServidor().catch(() => null);
+  const mostraEquipe = lida !== null && podeVerEquipe(lida.papel);
+
   // As duas leituras correm JUNTAS, e nao em fila. Elas falam com maquinas
   // diferentes (nuvem e notebook) e nenhuma depende do resultado da outra —
   // encadea-las com await somava as duas esperas por nada. Com o notebook
@@ -71,10 +81,21 @@ export default async function ConfiguracoesPage() {
   //
   // allSettled, e nao all: um destino fora nao pode derrubar o outro. A camera
   // ausente e' esperada, e a tela sabe mostrar `estadoCamera` nulo.
-  const [resultadoTurmas, resultadoCamera] = await Promise.allSettled([
-    listarTurmas(),
-    lerEstadoCamera(),
-  ]);
+  const [resultadoTurmas, resultadoCamera, resultadoConta, resultadoEquipe] =
+    await Promise.allSettled([
+      listarTurmas(),
+      lerEstadoCamera(),
+      lida ? lerMinhaConta(lida.sessao) : Promise.reject(new Error("sem sessao")),
+      mostraEquipe && lida ? lerEquipe(lida.sessao) : Promise.resolve(undefined),
+    ]);
+
+  const conta: MinhaConta | null =
+    resultadoConta.status === "fulfilled" ? resultadoConta.value : null;
+  const equipe: Equipe | null | undefined = !mostraEquipe
+    ? undefined
+    : resultadoEquipe.status === "fulfilled"
+      ? (resultadoEquipe.value ?? null)
+      : null;
 
   if (resultadoTurmas.status === "fulfilled") {
     turmas = resultadoTurmas.value;
@@ -101,6 +122,8 @@ export default async function ConfiguracoesPage() {
         estadoCamera={estadoCamera}
         salaId={SALA_DA_CAMERA}
         alcanceAutomatico={alcanceAutomatico}
+        conta={conta}
+        equipe={equipe}
       />
     </AppShell>
   );

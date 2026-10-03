@@ -3381,6 +3381,30 @@ select optgroup {
   }
 }
 
+/* Link gerado (convite / nova senha): caixa de texto so' de leitura + Copiar.
+   O texto quebra em qualquer ponto: um token de 43 caracteres sem espaco
+   estouraria o painel no celular. */
+.cfg-link-gerado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.cfg-link-gerado code {
+  flex: 1 1 16rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 12.5px;
+}
+
+.cfg-pessoa-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 /* ---- Aba Privacidade ----
    O conteudo (seis topicos) ja' estava certo — e' regra de projeto, revisada.
    O que faltava era a casca: os `<details>` viviam num retangulo `bg-surface`

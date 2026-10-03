@@ -164,16 +164,14 @@ export function PainelGeral({
             </select>
           </Linha>
 
-          {/* Era uma ABA travada, que gastava um terco da barra pra dizer que
-              nao existe. Como linha, responde a mesma pergunta de quem veio
-              procurar a senha, sem ocupar a navegacao. */}
+          {/* Responde a quem veio procurar a senha aqui na Geral: desde
+              27/09/2026 ela mora na aba Conta, ao lado. */}
           <Linha
             rotulo="Conta e senha"
-            apoio="O CUPCAM não tem login: o app fala com a API por uma chave que fica no servidor."
+            apoio="Na aba Conta."
             icone={<IconCadeado size={15} />}
-            inerte
           >
-            <Selo>Em breve</Selo>
+            <Selo>Aba Conta</Selo>
           </Linha>
         </Linhas>
       </Secao>
