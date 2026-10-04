@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { statusSeguro } from "@/app/api/admin/_lib/status-seguro";
+import { invalidarNumerosGerais } from "@/app/api/admin/_lib/invalidar-numeros";
 import { ApiError, editarAula, excluirAula } from "@/lib/api";
 import type { NovaAula } from "@/lib/types";
 
@@ -83,6 +84,9 @@ export async function PUT(requisicao: Request, { params }: Params) {
 
   try {
     const resposta = await editarAula(idNum, dados);
+    // Trocar o dono muda as turmas e os numeros do professor (papeis,
+    // 03/10/2026). Depois do sucesso, nunca antes.
+    invalidarNumerosGerais();
     return NextResponse.json(resposta);
   } catch (causa) {
     if (causa instanceof ApiError) {
@@ -129,6 +133,7 @@ export async function DELETE(_requisicao: Request, { params }: Params) {
     // As sessoes que rodaram nessa aula nao somem — so' perdem o vinculo
     // (aula_id vira NULL no backend). Chamada e engajamento continuam.
     const resposta = await excluirAula(idNum);
+    invalidarNumerosGerais();
     return NextResponse.json(resposta);
   } catch (causa) {
     if (causa instanceof ApiError) {

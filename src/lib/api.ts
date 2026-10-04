@@ -403,22 +403,18 @@ async function requisitar<T>(
 export function listarTurmas(): Promise<Turma[]> {
   // Turmas mudam raramente; cache mais longo evita ida a rede a cada tela.
   //
-  // LACUNA CONHECIDA (auditoria de cache, 24/08/2026): estes 300s NAO sao
-  // invalidados quando o coordenador cria, renomeia ou exclui uma turma. Nao
-  // existe revalidatePath nem revalidateTag em lugar nenhum do projeto —
-  // conferido com grep em src/ inteiro.
+  // Desde os papeis (03/10/2026) a lista do PROFESSOR e' "as turmas onde ele
+  // da' aula" -- muda quando a coordenacao atribui uma aula a ele. Medido no
+  // E2E: sem invalidar, o professor recem-atribuido via "Nenhuma aula
+  // atribuida" mesmo depois do prazo, porque o Next serve a entrada velha uma
+  // vez enquanto busca a nova. Por isso a lista leva a etiqueta dos numeros
+  // gerais, que as pontes de escrita de turma e de aula derrubam na hora
+  // (invalidarNumerosGerais). Os 300s ficam como rede de seguranca. Isso
+  // tambem fecha a lacuna de 24/08/2026 (CRUD de turma sem invalidar o seletor).
   //
-  // Efeito pratico: depois de um CRUD de turma, o SELETOR das telas que chamam
-  // esta funcao (/aulas, /chamada, /camera, /relatorios, /configuracoes) pode
-  // ficar ate' 5 minutos desatualizado. A tela de Administracao nao sofre: ela
-  // le a lista por buscarPanoramaCoordenacao e se atualiza sozinha com
-  // `no-store` depois de cada escrita.
-  //
-  // Documentado em vez de corrigido porque o conserto certo (invalidar na
-  // escrita) toca o caminho de atualizacao de cinco telas, e cache mudado
-  // errado mostra dado velho — falha PIOR que lentidao, porque e' silenciosa.
-  // CRUD de turma e' raro e so' o coordenador faz, entao o risco hoje e' baixo.
-  return requisitar<Turma[]>("/turmas", { revalidate: 300 });
+  // A chave do cache inclui o header X-Sessao: cada conta tem a propria
+  // entrada, e a etiqueta derruba a de todas.
+  return requisitar<Turma[]>("/turmas", { revalidate: 300, tags: [TAG_NUMEROS_GERAIS] });
 }
 
 /**
