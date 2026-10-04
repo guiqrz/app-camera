@@ -9,6 +9,7 @@ import {
   Recado,
   Secao,
 } from "@/components/configuracoes/secao";
+import { useUsuarioLogado } from "@/components/layout/usuario-logado";
 import { IconIA } from "@/components/ui/icons";
 import type { ConfiguracaoIA } from "@/lib/types";
 
@@ -25,6 +26,9 @@ export function SecaoAssistente() {
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [salvo, setSalvo] = useState(false);
+  // Papeis (03/10/2026): o modelo vale pra escola inteira, entao so' o admin
+  // troca (o backend responde 403 pros outros). Quem nao pode ve, mas nao mexe.
+  const podeTrocar = useUsuarioLogado()?.papel === "admin";
 
   // setTimeout(0) em vez de chamar no corpo do efeito: mesmo motivo do
   // painel-geral.tsx — o lint le o setState sincrono como estado derivavel do
@@ -98,14 +102,18 @@ export function SecaoAssistente() {
       <Linhas>
         <Linha
           rotulo="Modelo"
-          apoio={escolhido?.descricao ?? "Carregando as opções…"}
+          apoio={
+            podeTrocar
+              ? (escolhido?.descricao ?? "Carregando as opções…")
+              : "Só a administração da escola troca o modelo."
+          }
           icone={<IconIA size={15} />}
         >
           <select
             className="cfg-select"
             value={configuracao?.modelo ?? ""}
             onChange={(evento) => void trocarModelo(evento.target.value)}
-            disabled={carregando || salvando || configuracao === null}
+            disabled={!podeTrocar || carregando || salvando || configuracao === null}
             aria-label="Modelo do assistente"
           >
             {configuracao === null ? (

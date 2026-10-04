@@ -7,7 +7,8 @@ import { useEffect, useState, type ComponentType } from "react";
 
 import { BotaoSair } from "@/components/layout/botao-sair";
 import { LogoCupcam } from "@/components/layout/logo-cupcam";
-import { useCartaoDoUsuario } from "@/components/layout/usuario-logado";
+import { useCartaoDoUsuario, useUsuarioLogado } from "@/components/layout/usuario-logado";
+import { podeAbrir } from "@/lib/papeis";
 import {
   IconAdministracao,
   IconAulas,
@@ -76,6 +77,14 @@ type SidebarProps = {
 export function SidebarV2({ aberto, aoFechar }: SidebarProps) {
   const caminho = usePathname();
   const cartao = useCartaoDoUsuario();
+  const usuario = useUsuarioLogado();
+  // Papeis (03/10/2026): cada papel so' ve as telas dele. Sem usuario no
+  // contexto (nao acontece atras do proxy) mostra tudo -- o proxy e o backend
+  // e' que barram; aqui e' so' o menu.
+  const grupos = GRUPOS.map((grupo) => ({
+    ...grupo,
+    itens: grupo.itens.filter((item) => !usuario || podeAbrir(usuario.papel, item.href)),
+  }));
 
   // Mesma logica de recolhimento da v1: 62px, persistida no MESMO
   // localStorage (`CHAVE_RECOLHIDA`) — trocar de v1 pra v2 nao perde a
@@ -244,37 +253,40 @@ export function SidebarV2({ aberto, aoFechar }: SidebarProps) {
 
         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto">
           {/* Grupo "Sala de aula": itens soltos no painel, pilula solida no
-              ativo — igual ao grupo "Menu" da referencia. */}
-          <div>
-            <p
-              className={`mb-1.5 flex items-baseline gap-1 px-2 text-[10px] font-bold uppercase ${
-                recolhida ? "lg:hidden" : ""
-              }`}
-              style={{
-                color: "var(--sidebar-v2-text-muted)",
-                letterSpacing: "0.1em",
-              }}
-            >
-              {GRUPOS[0].rotulo}
-              {/* O CONTADOR da referencia ("Menu: 6"): quantos itens o grupo
-                  tem, no mesmo peso do rotulo — nao e' destaque, e' inventario. */}
-              <span aria-hidden>· {GRUPOS[0].itens.length}</span>
-            </p>
+              ativo — igual ao grupo "Menu" da referencia. Some inteiro pra
+              coordenacao, que nao tem tela de professor. */}
+          {grupos[0].itens.length > 0 && (
+            <div>
+              <p
+                className={`mb-1.5 flex items-baseline gap-1 px-2 text-[10px] font-bold uppercase ${
+                  recolhida ? "lg:hidden" : ""
+                }`}
+                style={{
+                  color: "var(--sidebar-v2-text-muted)",
+                  letterSpacing: "0.1em",
+                }}
+              >
+                {grupos[0].rotulo}
+                {/* O CONTADOR da referencia ("Menu: 6"): quantos itens o grupo
+                    tem, no mesmo peso do rotulo — nao e' destaque, e' inventario. */}
+                <span aria-hidden>· {grupos[0].itens.length}</span>
+              </p>
 
-            <nav className="flex flex-col gap-1">
-              {GRUPOS[0].itens.map(({ rotulo, href, Icone }) => (
-                <ItemDeMenu
-                  key={href}
-                  rotulo={rotulo}
-                  href={href}
-                  Icone={Icone}
-                  ativo={caminho.startsWith(href)}
-                  recolhida={recolhida}
-                  aoFechar={aoFechar}
-                />
-              ))}
-            </nav>
-          </div>
+              <nav className="flex flex-col gap-1">
+                {grupos[0].itens.map(({ rotulo, href, Icone }) => (
+                  <ItemDeMenu
+                    key={href}
+                    rotulo={rotulo}
+                    href={href}
+                    Icone={Icone}
+                    ativo={caminho.startsWith(href)}
+                    recolhida={recolhida}
+                    aoFechar={aoFechar}
+                  />
+                ))}
+              </nav>
+            </div>
+          )}
 
           {/* Grupo "Apoio": SEM cartao proprio (pedido dele em 29/08/2026). A
               referencia embrulha esse grupo numa camada branca, mas aqui ela
@@ -290,12 +302,12 @@ export function SidebarV2({ aberto, aoFechar }: SidebarProps) {
                 letterSpacing: "0.1em",
               }}
             >
-              {GRUPOS[1].rotulo}
-              <span aria-hidden>· {GRUPOS[1].itens.length}</span>
+              {grupos[1].rotulo}
+              <span aria-hidden>· {grupos[1].itens.length}</span>
             </p>
 
             <nav className="flex flex-col gap-1">
-              {GRUPOS[1].itens.map(({ rotulo, href, Icone }) => (
+              {grupos[1].itens.map(({ rotulo, href, Icone }) => (
                 <ItemDeMenu
                   key={href}
                   rotulo={rotulo}
