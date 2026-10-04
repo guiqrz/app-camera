@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { statusSeguro } from "@/app/api/admin/_lib/status-seguro";
-import { ApiError, excluirAudioDaSessao } from "@/lib/api";
+import { ApiError, cabecalhosDaNuvem, excluirAudioDaSessao } from "@/lib/api";
 
 /**
  * Ponte do audio da aula: tocar (GET), checar existencia (HEAD), excluir (DELETE).
@@ -56,7 +56,7 @@ export async function HEAD(
 
   try {
     const resposta = await fetch(`${baseUrl}/sessoes/${id}/audio`, {
-      headers: { "X-API-Key": apiKey, Range: "bytes=0-0" },
+      headers: { ...(await cabecalhosDaNuvem(apiKey)), Range: "bytes=0-0" },
       cache: "no-store",
     });
     // Drena o corpo com `arrayBuffer()`, NAO com `body.cancel()`: cancelar o
@@ -95,7 +95,7 @@ export async function GET(
   let resposta: Response;
   try {
     resposta = await fetch(`${baseUrl}/sessoes/${id}/audio`, {
-      headers: { "X-API-Key": apiKey },
+      headers: await cabecalhosDaNuvem(apiKey),
       cache: "no-store",
     });
   } catch {

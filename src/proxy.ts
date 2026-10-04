@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 import { ApiError, ConfiguracaoAusenteError, validarSessao } from "@/lib/api";
+import { podeAbrir, telaInicial } from "@/lib/papeis";
 import { agoraEmSegundos, precisaRevalidar } from "@/lib/sessao-assinada";
 import {
   apagarCookieDeSessao,
@@ -39,7 +40,7 @@ export async function proxy(request: NextRequest) {
 
   const agora = agoraEmSegundos();
   if (!precisaRevalidar(lida.validadoEm, agora)) {
-    return NextResponse.next();
+    return barrarForaDoPapel(request, lida.papel) ?? NextResponse.next();
   }
 
   let usuario;
@@ -61,12 +62,16 @@ export async function proxy(request: NextRequest) {
         }); deixando passar sem regravar:`,
         causa.message,
       );
-      return NextResponse.next();
+      return barrarForaDoPapel(request, lida.papel) ?? NextResponse.next();
     }
     throw causa;
   }
 
   if (!usuario) return negarAcesso(request);
+
+  // Papel vindo do backend agora (pode ter mudado desde o cookie): ele decide.
+  const barrada = barrarForaDoPapel(request, usuario.papel);
+  if (barrada) return barrada;
 
   // Regrava com os dados que o backend acabou de confirmar: nome ou papel
   // trocados no banco chegam ao cookie (e a barra lateral) em ate' 5 min.
@@ -79,6 +84,28 @@ export async function proxy(request: NextRequest) {
     papel: usuario.papel,
   });
   return resposta;
+}
+
+/**
+ * Tela ou ponte fora do papel (subprojetos B+C, 03/10/2026): pagina vai pra
+ * tela inicial do papel; /api/* recebe 403 JSON. `null` quando pode passar.
+ *
+ * Nao substitui o backend (que responde 403/404 sozinho) -- exceto nas pontes
+ * da camera, que falam com o notebook, e ele nao tem como conferir o papel.
+ */
+const PAPEIS_DO_APP = new Set(["admin", "coordenacao", "professor"]);
+
+function barrarForaDoPapel(request: NextRequest, papel: string): NextResponse | null {
+  const { pathname } = request.nextUrl;
+  if (podeAbrir(papel, pathname)) return null;
+  // Papel que o app nao conhece (cookie antigo, conta de aluno) nao tem tela
+  // inicial: redirecionar daria laco. Vale como sem sessao.
+  if (!PAPEIS_DO_APP.has(papel)) return negarAcesso(request);
+  if (pathname === "/api" || pathname.startsWith("/api/")) {
+    return NextResponse.json({ erro: "sem permissao" }, { status: 403 });
+  }
+  const leitura = request.method === "GET" || request.method === "HEAD";
+  return NextResponse.redirect(new URL(telaInicial(papel), request.url), leitura ? 307 : 303);
 }
 
 /**

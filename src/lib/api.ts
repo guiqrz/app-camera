@@ -79,7 +79,9 @@ import type {
   LinkGerado,
   MinhaConta,
 } from "./types";
+import { cabecalhosDaApi } from "@/lib/cabecalhos-api";
 import type { TipoDeLink } from "@/lib/link-de-conta";
+import { lerSessaoDoServidor } from "@/lib/sessao-cookie";
 
 /** Erro de comunicacao com a API, com o status HTTP preservado. */
 export class ApiError extends Error {
@@ -158,6 +160,41 @@ export class ConfiguracaoAusenteError extends Error {
   }
 }
 
+/**
+ * Sessao do cookie da requisicao em curso, ou undefined.
+ *
+ * Fora de uma requisicao (build, scripts) `cookies()` lanca: ai' nao ha' quem
+ * esteja logado, e o backend responde 401 -- que e' o certo.
+ */
+async function sessaoDaRequisicao(): Promise<string | undefined> {
+  try {
+    return (await lerSessaoDoServidor())?.sessao;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Cabecalhos pra quem fala com a API fora do `requisitar` (pontes que repassam
+ * bytes: foto, anexo, imagem da lousa, audio). Mesma regra: chave + sessao do
+ * cookie, nunca a sessao pro notebook.
+ */
+export async function cabecalhosDoServidor(
+  destino: DestinoApi = "nuvem",
+): Promise<Record<string, string>> {
+  const { apiKey } = lerConfiguracao(destino);
+  return cabecalhosDaApi(destino, apiKey, await sessaoDaRequisicao());
+}
+
+/**
+ * Chave + sessao do cookie pra nuvem, a partir de uma chave ja' lida. Pras
+ * pontes que conferem as variaveis de ambiente por conta propria (pra
+ * responder JSON em vez de deixar `lerConfiguracao` lancar).
+ */
+export async function cabecalhosDaNuvem(apiKey: string): Promise<Record<string, string>> {
+  return cabecalhosDaApi("nuvem", apiKey, await sessaoDaRequisicao());
+}
+
 export function lerConfiguracao(destino: DestinoApi = "nuvem"): {
   baseUrl: string;
   apiKey: string;
@@ -203,8 +240,11 @@ type OpcoesRequisicao = {
   /** FormData vai crua (multipart); qualquer outra coisa vira JSON. */
   body?: unknown;
   /**
-   * Sessao CRUA do professor (do cookie, lida no servidor). Vira o header
-   * X-Sessao. So' as rotas /conta/* usam; as outras continuam so' com a chave.
+   * Sessao CRUA (do cookie, lida no servidor). Vira o header X-Sessao. Sem
+   * ela, `requisitar` le o cookie da requisicao em curso sozinho (papeis,
+   * 03/10/2026: toda rota de dados exige a sessao). Passar explicito so' serve
+   * a quem ja' tem a sessao na mao e nao esta' dentro de uma requisicao com
+   * cookie (o proxy, que valida a sessao antes de gravar o cookie).
    */
   sessao?: string;
   /** Qual API atende. Padrao "nuvem"; so' a secao Camera passa "camera". */
@@ -275,6 +315,7 @@ async function requisitar<T>(
   }: OpcoesRequisicao = {},
 ): Promise<T> {
   const { baseUrl, apiKey } = lerConfiguracao(destino);
+  const sessaoUsada = sessao ?? (destino === "nuvem" ? await sessaoDaRequisicao() : undefined);
 
   const eFormData = body instanceof FormData;
   // Escrita nunca e' cacheada; leitura revalida no intervalo pedido. PATCH
@@ -291,8 +332,7 @@ async function requisitar<T>(
     resposta = await fetch(`${baseUrl}${rota}`, {
       method,
       headers: {
-        "X-API-Key": apiKey,
-        ...(sessao ? { "X-Sessao": sessao } : {}),
+        ...cabecalhosDaApi(destino, apiKey, sessaoUsada),
         // FormData: NAO setar Content-Type manualmente — o fetch monta o
         // boundary do multipart sozinho. Setar aqui quebra o parse no backend.
         ...(body && !eFormData ? { "Content-Type": "application/json" } : {}),
@@ -1350,14 +1390,14 @@ export async function exportarMaterial(
   formato: "pdf" | "pdf-slides" | "pptx",
   titulo: string,
 ): Promise<MaterialExportado> {
-  const { baseUrl, apiKey } = lerConfiguracao();
+  const { baseUrl } = lerConfiguracao();
 
   let resposta: Response;
   try {
     resposta = await fetch(`${baseUrl}/ia/exportar`, {
       method: "POST",
       headers: {
-        "X-API-Key": apiKey,
+        ...(await cabecalhosDoServidor()),
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ texto, formato, titulo }),
@@ -1432,14 +1472,14 @@ export async function baixarArquivoDaLista(
   formato: "pdf" | "docx",
   parte: "lista" | "gabarito",
 ): Promise<MaterialExportado> {
-  const { baseUrl, apiKey } = lerConfiguracao();
+  const { baseUrl } = lerConfiguracao();
   const rota = `/listas/${listaId}/arquivo`;
   const consulta = new URLSearchParams({ formato, parte });
 
   let resposta: Response;
   try {
     resposta = await fetch(`${baseUrl}${rota}?${consulta}`, {
-      headers: { "X-API-Key": apiKey },
+      headers: await cabecalhosDoServidor(),
       cache: "no-store",
     });
   } catch {
@@ -1474,13 +1514,13 @@ export async function baixarArquivoDoPlano(
   planoId: number,
   formato: "pdf" | "docx",
 ): Promise<MaterialExportado> {
-  const { baseUrl, apiKey } = lerConfiguracao();
+  const { baseUrl } = lerConfiguracao();
   const rota = `/planos-de-aula/${planoId}/arquivo`;
 
   let resposta: Response;
   try {
     resposta = await fetch(`${baseUrl}${rota}?${new URLSearchParams({ formato })}`, {
-      headers: { "X-API-Key": apiKey },
+      headers: await cabecalhosDoServidor(),
       cache: "no-store",
     });
   } catch {
@@ -1527,13 +1567,13 @@ export async function baixarArquivoDoRoteiro(
   planoId: number,
   formato: "pdf" | "docx",
 ): Promise<MaterialExportado> {
-  const { baseUrl, apiKey } = lerConfiguracao();
+  const { baseUrl } = lerConfiguracao();
   const rota = `/planos-de-aula/${planoId}/roteiro/arquivo`;
 
   let resposta: Response;
   try {
     resposta = await fetch(`${baseUrl}${rota}?${new URLSearchParams({ formato })}`, {
-      headers: { "X-API-Key": apiKey },
+      headers: await cabecalhosDoServidor(),
       cache: "no-store",
     });
   } catch {
