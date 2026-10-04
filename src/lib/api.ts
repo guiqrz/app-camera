@@ -33,6 +33,7 @@ import "server-only";
 import type {
   AlunoAdmin,
   Aula,
+  AulaDaAgendaCoordenacao,
   AulasDaTurma,
   ChamadaDaSessao,
   ConfiguracaoIA,
@@ -45,6 +46,7 @@ import type {
   FichaDoAluno,
   PeriodoDoRelatorio,
   PreparacaoDaSemana,
+  ProfessorDaLista,
   RascunhoDePeriodo,
   RespostaDaFicha,
   TempoDaAula,
@@ -985,6 +987,29 @@ export function excluirAula(id: number): Promise<{ id: number }> {
 }
 
 /* ------------------------------------------------------------------ */
+/* Agenda da coordenacao (papeis, 03/10/2026)                          */
+/* ------------------------------------------------------------------ */
+
+/** Quem pode ser dono de aula (select "Professor" e filtro da agenda). */
+export function listarProfessores(): Promise<ProfessorDaLista[]> {
+  return requisitar<ProfessorDaLista[]>("/coordenacao/professores", { revalidate: 0 });
+}
+
+/** A grade da escola em formato de semana, com filtros opcionais. */
+export function buscarAgendaCoordenacao(filtros: {
+  professorId?: number;
+  turmaId?: number;
+}): Promise<{ aulas: AulaDaAgendaCoordenacao[] }> {
+  const consulta = new URLSearchParams();
+  if (filtros.professorId !== undefined) consulta.set("professor_id", String(filtros.professorId));
+  if (filtros.turmaId !== undefined) consulta.set("turma_id", String(filtros.turmaId));
+  const sufixo = consulta.size > 0 ? `?${consulta}` : "";
+  return requisitar<{ aulas: AulaDaAgendaCoordenacao[] }>(`/coordenacao/agenda${sufixo}`, {
+    revalidate: 0,
+  });
+}
+
+/* ------------------------------------------------------------------ */
 /* Camera — TODAS falam com o NOTEBOOK, nunca com a nuvem              */
 /* ------------------------------------------------------------------ */
 /*
@@ -1027,11 +1052,20 @@ export function ligarCamera(
   turmaId?: number,
   modo?: ModoCamera,
   audio?: boolean,
+  professorId?: number,
 ): Promise<{ iniciando: boolean }> {
-  const corpo: { turma_id?: number; modo?: ModoCamera; audio?: boolean } = {};
+  const corpo: {
+    turma_id?: number;
+    modo?: ModoCamera;
+    audio?: boolean;
+    professor_id?: number;
+  } = {};
   if (turmaId != null) corpo.turma_id = turmaId;
   if (modo != null) corpo.modo = modo;
   if (audio != null) corpo.audio = audio;
+  // Quem ligou vira o dono da sessao (papeis, 03/10/2026). Vem SEMPRE do
+  // servidor (ponte), nunca do navegador.
+  if (professorId != null) corpo.professor_id = professorId;
   return requisitar<{ iniciando: boolean }>("/camera/ligar", {
     method: "POST",
     // Sem nada escolhido, manda POST sem corpo: e' o caminho automatico.

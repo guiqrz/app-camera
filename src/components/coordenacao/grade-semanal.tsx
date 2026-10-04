@@ -6,7 +6,7 @@ import { FormularioAula } from "@/components/coordenacao/formulario-aula";
 import { BotaoIcone } from "@/components/ui/botao-icone";
 import { EtiquetaMateria } from "@/components/ui/etiqueta-materia";
 import { IconCheck, IconFechar, IconLixeira, IconMais } from "@/components/ui/icons";
-import type { Aula, Materia, NovaAula } from "@/lib/types";
+import type { Aula, Materia, NovaAula, ProfessorDaLista } from "@/lib/types";
 import { dentroDoTurno, type Turno } from "@/lib/turnos";
 
 /**
@@ -34,6 +34,8 @@ type FormularioAberto =
 type GradeSemanalProps = {
   aulas: Aula[];
   materias: Materia[];
+  /** Quem pode ser dono de aula (papeis, 03/10/2026). Ausente = sem o campo. */
+  professores?: ProfessorDaLista[];
   turno: Turno;
   carregando?: boolean;
   erro?: string | null;
@@ -62,6 +64,7 @@ type GradeSemanalProps = {
 export function GradeSemanal({
   aulas,
   materias,
+  professores,
   turno,
   carregando = false,
   erro = null,
@@ -229,6 +232,7 @@ export function GradeSemanal({
                           diaSemana={dia}
                           aula={aula}
                           materias={materias}
+                          professores={professores}
                           turno={turno}
                           aoCancelar={() => setFormulario(null)}
                           aoSalvar={async (dados) => {
@@ -258,6 +262,13 @@ export function GradeSemanal({
                                 cor={aula.materia_cor}
                               />
                             </p>
+                            {/* Dono da aula (papeis, 03/10/2026). So' a grade
+                                da Coordenacao recebe o campo. */}
+                            {aula.professor_id !== undefined && (
+                              <p className="text-text-muted mt-1 truncate text-[11px]">
+                                {aula.professor ?? "Sem professor"}
+                              </p>
+                            )}
                           </div>
 
                           {armada ? (
@@ -326,6 +337,7 @@ export function GradeSemanal({
                       key={`criar-${dia}`}
                       diaSemana={dia}
                       materias={materias}
+                      professores={professores}
                       turno={turno}
                       aoCancelar={() => setFormulario(null)}
                       aoSalvar={async (dados) => {

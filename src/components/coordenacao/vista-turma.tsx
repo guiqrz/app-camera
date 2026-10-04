@@ -5,7 +5,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { GradeSemanal } from "@/components/coordenacao/grade-semanal";
 import { CampoComExemplo } from "@/components/ui/campo-com-exemplo";
 import { IconRelogio } from "@/components/ui/icons";
-import type { Aula, Materia, NovaAula, NovaTurma, TurmaAdmin } from "@/lib/types";
+import type {
+  Aula,
+  Materia,
+  NovaAula,
+  NovaTurma,
+  ProfessorDaLista,
+  TurmaAdmin,
+} from "@/lib/types";
 import { deduzirTurno, TURNOS, turnoPorId, TURNO_PADRAO } from "@/lib/turnos";
 
 type VistaTurmaProps = {
@@ -45,6 +52,10 @@ export function VistaTurma({ turmaInicial }: VistaTurmaProps) {
   const [erroAulas, setErroAulas] = useState<string | null>(null);
 
   const [materias, setMaterias] = useState<Materia[]>([]);
+  // Donos possiveis das aulas (papeis, 03/10/2026). `undefined` ate' chegar ou
+  // se falhar: a grade so' mostra o campo Professor com a lista na mao, pra
+  // nunca mandar "sem professor" por falta de dado.
+  const [professores, setProfessores] = useState<ProfessorDaLista[] | undefined>(undefined);
 
   // Turno escolhido na mao. Nulo = seguir o que as aulas dizem. So' afeta o
   // texto de recomendacao e o exemplo que o Tab preenche — nunca valida nada.
@@ -124,10 +135,15 @@ export function VistaTurma({ turmaInicial }: VistaTurmaProps) {
       void (async () => {
         try {
           const resposta = await fetch("/api/admin/materias", { cache: "no-store" });
-          if (!resposta.ok) return;
-          setMaterias((await resposta.json()) as Materia[]);
+          if (resposta.ok) setMaterias((await resposta.json()) as Materia[]);
         } catch (causa) {
           console.error("[cupcam] falha ao carregar materias:", causa);
+        }
+        try {
+          const resposta = await fetch("/api/coordenacao/professores", { cache: "no-store" });
+          if (resposta.ok) setProfessores((await resposta.json()) as ProfessorDaLista[]);
+        } catch (causa) {
+          console.error("[cupcam] falha ao carregar professores:", causa);
         }
       })();
     }, 0);
@@ -360,6 +376,7 @@ export function VistaTurma({ turmaInicial }: VistaTurmaProps) {
       <GradeSemanal
         aulas={aulas}
         materias={materias}
+        professores={professores}
         turno={turno}
         carregando={carregandoAulas}
         erro={erroAulas}

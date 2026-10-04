@@ -423,6 +423,10 @@ export type Aula = {
    * por cada tela que mostra material, e e' assim que duas telas discordam.
    */
   anexo_eh_link: boolean;
+  /** Dono da aula. So' vem na grade da Coordenacao (papeis, 03/10/2026). */
+  professor_id?: number | null;
+  /** Nome de exibicao do dono. So' vem na grade da Coordenacao. */
+  professor?: string | null;
 };
 
 /**
@@ -523,6 +527,39 @@ export type NovaAula = {
   hora_inicio: string;
   hora_fim: string;
   materia_id: number | null;
+  /**
+   * Dono da aula (papeis, 03/10/2026). So' a grade da Coordenacao manda; null
+   * = sem professor. Ausente no PUT = mantem o dono (o backend olha se o campo
+   * veio, nao so' o valor).
+   */
+  professor_id?: number | null;
+};
+
+/** Quem pode ser dono de aula: contas ativas de professor ou admin. */
+export type ProfessorDaLista = {
+  id: number;
+  /** Nome de exibicao (o email, quando a conta ainda nao tem nome). */
+  nome: string;
+  papel: "professor" | "admin";
+};
+
+/**
+ * Uma aula na agenda da coordenacao. SO' horario, turma, materia e professor:
+ * a coordenacao nao ve plano, anexo nem o que aconteceu na aula.
+ */
+export type AulaDaAgendaCoordenacao = {
+  id: number;
+  turma_id: number;
+  turma: string;
+  materia_id: number | null;
+  materia: string | null;
+  cor: CorMateria | null;
+  professor_id: number | null;
+  professor: string | null;
+  /** 0 = domingo ... 6 = sabado. */
+  dia_semana: number;
+  hora_inicio: string;
+  hora_fim: string;
 };
 
 /* ------------------------------------------------------------------ */

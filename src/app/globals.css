@@ -2906,6 +2906,12 @@ h4 {
 .grade-aula:hover {
   border-color: var(--border-strong);
 }
+/* Na agenda da coordenacao o cartao e' um link pra grade da turma: precisa de
+   foco visivel no teclado. */
+.grade-aula:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
 /* Armada pra exclusao: o vermelho e' o unico sinal de que o proximo clique
    apaga. Ver o comentario da confirmacao inline no componente. */
 .grade-aula[data-armada="sim"] {

@@ -10,6 +10,7 @@ import {
   useTransition,
 } from "react";
 
+import { AgendaCoordenacao } from "@/components/coordenacao/agenda-coordenacao";
 import { ModalAluno } from "@/components/coordenacao/modal-aluno";
 import { ModalConfirmarExclusao } from "@/components/coordenacao/modal-confirmar-exclusao";
 import {
@@ -91,6 +92,9 @@ export function VistaAdministracao({
   panoramaInicial,
 }: VistaAdministracaoProps) {
   const [visao, setVisao] = useState<VisaoAdmin>(visaoInicial);
+  // Papeis (03/10/2026): "Cadastro" e' a tela de sempre; "Agenda" e' a grade
+  // da escola inteira em formato de semana, com filtro por professor.
+  const [aba, setAba] = useState<"cadastro" | "agenda">("cadastro");
   // O panorama anda JUNTO da visao: cadastrar um aluno muda a lista (visao) e
   // pode fazer uma pendencia sumir (panorama). Por isso `recarregar` busca os
   // dois em paralelo — atualizar so' um deixaria a tela se contradizendo.
@@ -555,105 +559,138 @@ export function VistaAdministracao({
         Cadastre turmas, matricule alunos e gerencie a base do CUPCAM.
       </p>
 
-      {/* Aviso: a mutacao deu certo, mas a recarga da lista falhou depois. */}
-      {avisoRecarga && (
-        <p
-          role="alert"
-          className="rounded-xl px-4 py-3 text-sm font-semibold"
-          style={{ background: "var(--warn-bg)", color: "var(--warn-fg)" }}
+      <div className="cfg-abas" role="tablist" aria-label="Seções da coordenação" style={{ marginBottom: 0 }}>
+        <button
+          type="button"
+          role="tab"
+          id="aba-cadastro"
+          className="cfg-aba"
+          aria-selected={aba === "cadastro"}
+          onClick={() => setAba("cadastro")}
         >
-          {avisoRecarga}
-        </p>
+          Cadastro
+        </button>
+        <button
+          type="button"
+          role="tab"
+          id="aba-agenda"
+          className="cfg-aba"
+          aria-selected={aba === "agenda"}
+          onClick={() => setAba("agenda")}
+        >
+          Agenda
+        </button>
+      </div>
+
+      {aba === "agenda" && (
+        <div role="tabpanel" aria-labelledby="aba-agenda">
+          <AgendaCoordenacao turmas={visao.turmas} />
+        </div>
       )}
 
-      {/* Os numeros da escola. `CartaoNumero` (o mesmo de Minhas Aulas, Chamada
-          e Camera) no lugar do `StatCard` antigo: esta era a ultima tela fora
-          do padrao do redesign.
+      {aba === "cadastro" && (
+        <div role="tabpanel" aria-labelledby="aba-cadastro" className="flex flex-col gap-4">
+        {/* Aviso: a mutacao deu certo, mas a recarga da lista falhou depois. */}
+        {avisoRecarga && (
+          <p
+            role="alert"
+            className="rounded-xl px-4 py-3 text-sm font-semibold"
+            style={{ background: "var(--warn-bg)", color: "var(--warn-fg)" }}
+          >
+            {avisoRecarga}
+          </p>
+        )}
 
-          Os quatro sao de CADASTRO e OPERACAO — o que existe e o que a camera
-          ja' rodou. Nenhum e' media de desempenho: "media por turma" (o card
-          antigo) saiu porque um numero medio da escola so' serve pra comparar
-          turmas contra ele, que e' o que esta tela nao faz. */}
-      <div className="numeros-cam">
-        <CartaoNumero
-          rotulo="Turmas"
-          cor="roxo"
-          valor={panorama.totais.turmas}
-          nota="Cadastradas no sistema"
-          icone={<IconTurma size={18} />}
-        />
-        <CartaoNumero
-          rotulo="Alunos"
-          cor="azul"
-          valor={panorama.totais.alunos}
-          nota="Matriculados em todas as turmas"
-          icone={<IconPessoas size={18} />}
-        />
-        <CartaoNumero
-          rotulo="Aulas na grade"
-          cor="verde"
-          valor={panorama.totais.aulas_na_grade}
-          nota={`${panorama.totais.materias} ${
-            panorama.totais.materias === 1
-              ? "matéria cadastrada"
-              : "matérias cadastradas"
-          }`}
-          icone={<IconAulas size={18} />}
-        />
-        {/* Quantas aulas a camera ja' acompanhou. E' cobertura do sistema,
-            nao produtividade de ninguem: nao abre por turma nem por professor. */}
-        <CartaoNumero
-          rotulo="Aulas monitoradas"
-          cor="ambar"
-          valor={panorama.totais.sessoes_monitoradas}
-          nota="Desde o início do uso"
-          icone={<IconCamera size={18} />}
-        />
-      </div>
+        {/* Os numeros da escola. `CartaoNumero` (o mesmo de Minhas Aulas, Chamada
+            e Camera) no lugar do `StatCard` antigo: esta era a ultima tela fora
+            do padrao do redesign.
 
-      {/* O que falta configurar. Vem ANTES do cadastro de proposito: quem abre
-          a tela precisa saber o que exige acao antes de mergulhar nas listas. */}
-      <PainelPendencias
-        pendencias={panorama.pendencias}
-        aoCadastrarAlunos={aoCadastrarAlunosDaTurma}
-      />
+            Os quatro sao de CADASTRO e OPERACAO — o que existe e o que a camera
+            ja' rodou. Nenhum e' media de desempenho: "media por turma" (o card
+            antigo) saiu porque um numero medio da escola so' serve pra comparar
+            turmas contra ele, que e' o que esta tela nao faz. */}
+        <div className="numeros-cam">
+          <CartaoNumero
+            rotulo="Turmas"
+            cor="roxo"
+            valor={panorama.totais.turmas}
+            nota="Cadastradas no sistema"
+            icone={<IconTurma size={18} />}
+          />
+          <CartaoNumero
+            rotulo="Alunos"
+            cor="azul"
+            valor={panorama.totais.alunos}
+            nota="Matriculados em todas as turmas"
+            icone={<IconPessoas size={18} />}
+          />
+          <CartaoNumero
+            rotulo="Aulas na grade"
+            cor="verde"
+            valor={panorama.totais.aulas_na_grade}
+            nota={`${panorama.totais.materias} ${
+              panorama.totais.materias === 1
+                ? "matéria cadastrada"
+                : "matérias cadastradas"
+            }`}
+            icone={<IconAulas size={18} />}
+          />
+          {/* Quantas aulas a camera ja' acompanhou. E' cobertura do sistema,
+              nao produtividade de ninguem: nao abre por turma nem por professor. */}
+          <CartaoNumero
+            rotulo="Aulas monitoradas"
+            cor="ambar"
+            valor={panorama.totais.sessoes_monitoradas}
+            nota="Desde o início do uso"
+            icone={<IconCamera size={18} />}
+          />
+        </div>
 
-      {/* Paineis: turmas a esquerda, alunos da turma selecionada a direita. A
-          grade de aulas saiu daqui — vive na pagina da turma, junto dos dados
-          dela. Em tela estreita as colunas empilham. */}
-      <div
-        className="grid gap-5 lg:grid-cols-[340px_1fr] lg:items-start"
-        // Esmaece durante a troca de turma, como fazem os outros seletores do
-        // app: sem isso a navegacao parece travada por um instante.
-        style={{ opacity: navegando ? 0.6 : 1 }}
-      >
-        <PainelTurmas
-          turmas={panorama.turmas}
-          selecionadaId={selecionadaId}
-          aoSelecionar={selecionarTurma}
-          aoNovaTurma={aoNovaTurma}
-          aoExcluirTurma={aoExcluirTurma}
+        {/* O que falta configurar. Vem ANTES do cadastro de proposito: quem abre
+            a tela precisa saber o que exige acao antes de mergulhar nas listas. */}
+        <PainelPendencias
+          pendencias={panorama.pendencias}
+          aoCadastrarAlunos={aoCadastrarAlunosDaTurma}
         />
-        <PainelAlunos
-          turma={turmaSelecionada}
-          alunos={alunosDaTurma}
-          versaoFotos={versaoFotos}
-          aoNovoAluno={aoNovoAluno}
-          aoEditar={aoEditar}
-          aoExcluir={aoExcluir}
-        />
-      </div>
 
-      {/* Materias sao globais: nao pertencem a turma selecionada, entao ficam
-          numa secao propria de largura cheia, fora do grid acima. */}
-      <PainelMaterias
-        materias={materias}
-        carregando={carregandoMaterias}
-        erro={erroMaterias}
-        aoNovaMateria={aoNovaMateria}
-        aoEditarMateria={aoEditarMateria}
-        aoExcluirMateria={aoExcluirMateria}
-      />
+        {/* Paineis: turmas a esquerda, alunos da turma selecionada a direita. A
+            grade de aulas saiu daqui — vive na pagina da turma, junto dos dados
+            dela. Em tela estreita as colunas empilham. */}
+        <div
+          className="grid gap-5 lg:grid-cols-[340px_1fr] lg:items-start"
+          // Esmaece durante a troca de turma, como fazem os outros seletores do
+          // app: sem isso a navegacao parece travada por um instante.
+          style={{ opacity: navegando ? 0.6 : 1 }}
+        >
+          <PainelTurmas
+            turmas={panorama.turmas}
+            selecionadaId={selecionadaId}
+            aoSelecionar={selecionarTurma}
+            aoNovaTurma={aoNovaTurma}
+            aoExcluirTurma={aoExcluirTurma}
+          />
+          <PainelAlunos
+            turma={turmaSelecionada}
+            alunos={alunosDaTurma}
+            versaoFotos={versaoFotos}
+            aoNovoAluno={aoNovoAluno}
+            aoEditar={aoEditar}
+            aoExcluir={aoExcluir}
+          />
+        </div>
+
+        {/* Materias sao globais: nao pertencem a turma selecionada, entao ficam
+            numa secao propria de largura cheia, fora do grid acima. */}
+        <PainelMaterias
+          materias={materias}
+          carregando={carregandoMaterias}
+          erro={erroMaterias}
+          aoNovaMateria={aoNovaMateria}
+          aoEditarMateria={aoEditarMateria}
+          aoExcluirMateria={aoExcluirMateria}
+        />
+        </div>
+      )}
 
       <ModalTurma
         aberto={modalNovaTurma}
