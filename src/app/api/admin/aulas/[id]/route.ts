@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { statusSeguro } from "@/app/api/admin/_lib/status-seguro";
+import { invalidarNumerosGerais } from "@/app/api/admin/_lib/invalidar-numeros";
 import { ApiError, editarAula, excluirAula } from "@/lib/api";
 import type { NovaAula } from "@/lib/types";
 
@@ -39,6 +40,11 @@ function validarNovaAula(dados: unknown): dados is NovaAula {
     d.materia_id === undefined ||
     d.materia_id === null ||
     (typeof d.materia_id === "number" && Number.isInteger(d.materia_id) && d.materia_id > 0);
+  // Papeis (03/10/2026): dono da aula, so' a grade da Coordenacao manda.
+  const professorValido =
+    d.professor_id === undefined ||
+    d.professor_id === null ||
+    (typeof d.professor_id === "number" && Number.isInteger(d.professor_id) && d.professor_id > 0);
   return (
     typeof d.dia_semana === "number" &&
     Number.isInteger(d.dia_semana) &&
@@ -48,7 +54,8 @@ function validarNovaAula(dados: unknown): dados is NovaAula {
     d.hora_inicio.trim() !== "" &&
     typeof d.hora_fim === "string" &&
     d.hora_fim.trim() !== "" &&
-    materiaValida
+    materiaValida &&
+    professorValido
   );
 }
 
@@ -77,6 +84,9 @@ export async function PUT(requisicao: Request, { params }: Params) {
 
   try {
     const resposta = await editarAula(idNum, dados);
+    // Trocar o dono muda as turmas e os numeros do professor (papeis,
+    // 03/10/2026). Depois do sucesso, nunca antes.
+    invalidarNumerosGerais();
     return NextResponse.json(resposta);
   } catch (causa) {
     if (causa instanceof ApiError) {
@@ -123,6 +133,7 @@ export async function DELETE(_requisicao: Request, { params }: Params) {
     // As sessoes que rodaram nessa aula nao somem — so' perdem o vinculo
     // (aula_id vira NULL no backend). Chamada e engajamento continuam.
     const resposta = await excluirAula(idNum);
+    invalidarNumerosGerais();
     return NextResponse.json(resposta);
   } catch (causa) {
     if (causa instanceof ApiError) {

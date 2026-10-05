@@ -33,6 +33,7 @@ import "server-only";
 import type {
   AlunoAdmin,
   Aula,
+  AulaDaAgendaCoordenacao,
   AulasDaTurma,
   ChamadaDaSessao,
   ConfiguracaoIA,
@@ -45,6 +46,7 @@ import type {
   FichaDoAluno,
   PeriodoDoRelatorio,
   PreparacaoDaSemana,
+  ProfessorDaLista,
   RascunhoDePeriodo,
   RespostaDaFicha,
   TempoDaAula,
@@ -79,7 +81,9 @@ import type {
   LinkGerado,
   MinhaConta,
 } from "./types";
+import { cabecalhosDaApi } from "@/lib/cabecalhos-api";
 import type { TipoDeLink } from "@/lib/link-de-conta";
+import { lerSessaoDoServidor } from "@/lib/sessao-cookie";
 
 /** Erro de comunicacao com a API, com o status HTTP preservado. */
 export class ApiError extends Error {
@@ -158,6 +162,41 @@ export class ConfiguracaoAusenteError extends Error {
   }
 }
 
+/**
+ * Sessao do cookie da requisicao em curso, ou undefined.
+ *
+ * Fora de uma requisicao (build, scripts) `cookies()` lanca: ai' nao ha' quem
+ * esteja logado, e o backend responde 401 -- que e' o certo.
+ */
+async function sessaoDaRequisicao(): Promise<string | undefined> {
+  try {
+    return (await lerSessaoDoServidor())?.sessao;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Cabecalhos pra quem fala com a API fora do `requisitar` (pontes que repassam
+ * bytes: foto, anexo, imagem da lousa, audio). Mesma regra: chave + sessao do
+ * cookie, nunca a sessao pro notebook.
+ */
+export async function cabecalhosDoServidor(
+  destino: DestinoApi = "nuvem",
+): Promise<Record<string, string>> {
+  const { apiKey } = lerConfiguracao(destino);
+  return cabecalhosDaApi(destino, apiKey, await sessaoDaRequisicao());
+}
+
+/**
+ * Chave + sessao do cookie pra nuvem, a partir de uma chave ja' lida. Pras
+ * pontes que conferem as variaveis de ambiente por conta propria (pra
+ * responder JSON em vez de deixar `lerConfiguracao` lancar).
+ */
+export async function cabecalhosDaNuvem(apiKey: string): Promise<Record<string, string>> {
+  return cabecalhosDaApi("nuvem", apiKey, await sessaoDaRequisicao());
+}
+
 export function lerConfiguracao(destino: DestinoApi = "nuvem"): {
   baseUrl: string;
   apiKey: string;
@@ -203,8 +242,11 @@ type OpcoesRequisicao = {
   /** FormData vai crua (multipart); qualquer outra coisa vira JSON. */
   body?: unknown;
   /**
-   * Sessao CRUA do professor (do cookie, lida no servidor). Vira o header
-   * X-Sessao. So' as rotas /conta/* usam; as outras continuam so' com a chave.
+   * Sessao CRUA (do cookie, lida no servidor). Vira o header X-Sessao. Sem
+   * ela, `requisitar` le o cookie da requisicao em curso sozinho (papeis,
+   * 03/10/2026: toda rota de dados exige a sessao). Passar explicito so' serve
+   * a quem ja' tem a sessao na mao e nao esta' dentro de uma requisicao com
+   * cookie (o proxy, que valida a sessao antes de gravar o cookie).
    */
   sessao?: string;
   /** Qual API atende. Padrao "nuvem"; so' a secao Camera passa "camera". */
@@ -275,6 +317,7 @@ async function requisitar<T>(
   }: OpcoesRequisicao = {},
 ): Promise<T> {
   const { baseUrl, apiKey } = lerConfiguracao(destino);
+  const sessaoUsada = sessao ?? (destino === "nuvem" ? await sessaoDaRequisicao() : undefined);
 
   const eFormData = body instanceof FormData;
   // Escrita nunca e' cacheada; leitura revalida no intervalo pedido. PATCH
@@ -291,8 +334,7 @@ async function requisitar<T>(
     resposta = await fetch(`${baseUrl}${rota}`, {
       method,
       headers: {
-        "X-API-Key": apiKey,
-        ...(sessao ? { "X-Sessao": sessao } : {}),
+        ...cabecalhosDaApi(destino, apiKey, sessaoUsada),
         // FormData: NAO setar Content-Type manualmente — o fetch monta o
         // boundary do multipart sozinho. Setar aqui quebra o parse no backend.
         ...(body && !eFormData ? { "Content-Type": "application/json" } : {}),
@@ -361,22 +403,18 @@ async function requisitar<T>(
 export function listarTurmas(): Promise<Turma[]> {
   // Turmas mudam raramente; cache mais longo evita ida a rede a cada tela.
   //
-  // LACUNA CONHECIDA (auditoria de cache, 24/08/2026): estes 300s NAO sao
-  // invalidados quando o coordenador cria, renomeia ou exclui uma turma. Nao
-  // existe revalidatePath nem revalidateTag em lugar nenhum do projeto —
-  // conferido com grep em src/ inteiro.
+  // Desde os papeis (03/10/2026) a lista do PROFESSOR e' "as turmas onde ele
+  // da' aula" -- muda quando a coordenacao atribui uma aula a ele. Medido no
+  // E2E: sem invalidar, o professor recem-atribuido via "Nenhuma aula
+  // atribuida" mesmo depois do prazo, porque o Next serve a entrada velha uma
+  // vez enquanto busca a nova. Por isso a lista leva a etiqueta dos numeros
+  // gerais, que as pontes de escrita de turma e de aula derrubam na hora
+  // (invalidarNumerosGerais). Os 300s ficam como rede de seguranca. Isso
+  // tambem fecha a lacuna de 24/08/2026 (CRUD de turma sem invalidar o seletor).
   //
-  // Efeito pratico: depois de um CRUD de turma, o SELETOR das telas que chamam
-  // esta funcao (/aulas, /chamada, /camera, /relatorios, /configuracoes) pode
-  // ficar ate' 5 minutos desatualizado. A tela de Administracao nao sofre: ela
-  // le a lista por buscarPanoramaCoordenacao e se atualiza sozinha com
-  // `no-store` depois de cada escrita.
-  //
-  // Documentado em vez de corrigido porque o conserto certo (invalidar na
-  // escrita) toca o caminho de atualizacao de cinco telas, e cache mudado
-  // errado mostra dado velho — falha PIOR que lentidao, porque e' silenciosa.
-  // CRUD de turma e' raro e so' o coordenador faz, entao o risco hoje e' baixo.
-  return requisitar<Turma[]>("/turmas", { revalidate: 300 });
+  // A chave do cache inclui o header X-Sessao: cada conta tem a propria
+  // entrada, e a etiqueta derruba a de todas.
+  return requisitar<Turma[]>("/turmas", { revalidate: 300, tags: [TAG_NUMEROS_GERAIS] });
 }
 
 /**
@@ -945,6 +983,29 @@ export function excluirAula(id: number): Promise<{ id: number }> {
 }
 
 /* ------------------------------------------------------------------ */
+/* Agenda da coordenacao (papeis, 03/10/2026)                          */
+/* ------------------------------------------------------------------ */
+
+/** Quem pode ser dono de aula (select "Professor" e filtro da agenda). */
+export function listarProfessores(): Promise<ProfessorDaLista[]> {
+  return requisitar<ProfessorDaLista[]>("/coordenacao/professores", { revalidate: 0 });
+}
+
+/** A grade da escola em formato de semana, com filtros opcionais. */
+export function buscarAgendaCoordenacao(filtros: {
+  professorId?: number;
+  turmaId?: number;
+}): Promise<{ aulas: AulaDaAgendaCoordenacao[] }> {
+  const consulta = new URLSearchParams();
+  if (filtros.professorId !== undefined) consulta.set("professor_id", String(filtros.professorId));
+  if (filtros.turmaId !== undefined) consulta.set("turma_id", String(filtros.turmaId));
+  const sufixo = consulta.size > 0 ? `?${consulta}` : "";
+  return requisitar<{ aulas: AulaDaAgendaCoordenacao[] }>(`/coordenacao/agenda${sufixo}`, {
+    revalidate: 0,
+  });
+}
+
+/* ------------------------------------------------------------------ */
 /* Camera — TODAS falam com o NOTEBOOK, nunca com a nuvem              */
 /* ------------------------------------------------------------------ */
 /*
@@ -987,11 +1048,20 @@ export function ligarCamera(
   turmaId?: number,
   modo?: ModoCamera,
   audio?: boolean,
+  professorId?: number,
 ): Promise<{ iniciando: boolean }> {
-  const corpo: { turma_id?: number; modo?: ModoCamera; audio?: boolean } = {};
+  const corpo: {
+    turma_id?: number;
+    modo?: ModoCamera;
+    audio?: boolean;
+    professor_id?: number;
+  } = {};
   if (turmaId != null) corpo.turma_id = turmaId;
   if (modo != null) corpo.modo = modo;
   if (audio != null) corpo.audio = audio;
+  // Quem ligou vira o dono da sessao (papeis, 03/10/2026). Vem SEMPRE do
+  // servidor (ponte), nunca do navegador.
+  if (professorId != null) corpo.professor_id = professorId;
   return requisitar<{ iniciando: boolean }>("/camera/ligar", {
     method: "POST",
     // Sem nada escolhido, manda POST sem corpo: e' o caminho automatico.
@@ -1350,14 +1420,14 @@ export async function exportarMaterial(
   formato: "pdf" | "pdf-slides" | "pptx",
   titulo: string,
 ): Promise<MaterialExportado> {
-  const { baseUrl, apiKey } = lerConfiguracao();
+  const { baseUrl } = lerConfiguracao();
 
   let resposta: Response;
   try {
     resposta = await fetch(`${baseUrl}/ia/exportar`, {
       method: "POST",
       headers: {
-        "X-API-Key": apiKey,
+        ...(await cabecalhosDoServidor()),
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ texto, formato, titulo }),
@@ -1432,14 +1502,14 @@ export async function baixarArquivoDaLista(
   formato: "pdf" | "docx",
   parte: "lista" | "gabarito",
 ): Promise<MaterialExportado> {
-  const { baseUrl, apiKey } = lerConfiguracao();
+  const { baseUrl } = lerConfiguracao();
   const rota = `/listas/${listaId}/arquivo`;
   const consulta = new URLSearchParams({ formato, parte });
 
   let resposta: Response;
   try {
     resposta = await fetch(`${baseUrl}${rota}?${consulta}`, {
-      headers: { "X-API-Key": apiKey },
+      headers: await cabecalhosDoServidor(),
       cache: "no-store",
     });
   } catch {
@@ -1474,13 +1544,13 @@ export async function baixarArquivoDoPlano(
   planoId: number,
   formato: "pdf" | "docx",
 ): Promise<MaterialExportado> {
-  const { baseUrl, apiKey } = lerConfiguracao();
+  const { baseUrl } = lerConfiguracao();
   const rota = `/planos-de-aula/${planoId}/arquivo`;
 
   let resposta: Response;
   try {
     resposta = await fetch(`${baseUrl}${rota}?${new URLSearchParams({ formato })}`, {
-      headers: { "X-API-Key": apiKey },
+      headers: await cabecalhosDoServidor(),
       cache: "no-store",
     });
   } catch {
@@ -1527,13 +1597,13 @@ export async function baixarArquivoDoRoteiro(
   planoId: number,
   formato: "pdf" | "docx",
 ): Promise<MaterialExportado> {
-  const { baseUrl, apiKey } = lerConfiguracao();
+  const { baseUrl } = lerConfiguracao();
   const rota = `/planos-de-aula/${planoId}/roteiro/arquivo`;
 
   let resposta: Response;
   try {
     resposta = await fetch(`${baseUrl}${rota}?${new URLSearchParams({ formato })}`, {
-      headers: { "X-API-Key": apiKey },
+      headers: await cabecalhosDoServidor(),
       cache: "no-store",
     });
   } catch {

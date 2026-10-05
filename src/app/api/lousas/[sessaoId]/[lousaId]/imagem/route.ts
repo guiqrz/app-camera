@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { cabecalhosDaNuvem } from "@/lib/api";
+
 /**
  * Ponte da foto do quadro. O <img> do navegador aponta para AQUI; esta rota,
  * no servidor, busca a imagem na API do CUPCAM com a X-API-Key e repassa os
@@ -40,7 +42,7 @@ export async function GET(_requisicao: Request, { params }: Params) {
   let resposta: Response;
   try {
     resposta = await fetch(`${baseUrl}/sessoes/${sessao}/lousas/${lousa}/imagem`, {
-      headers: { "X-API-Key": apiKey },
+      headers: await cabecalhosDaNuvem(apiKey),
       cache: "no-store",
     });
   } catch {

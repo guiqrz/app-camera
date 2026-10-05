@@ -4,6 +4,7 @@ import { lerDataDoEncontro } from "@/app/api/admin/_lib/data-do-encontro";
 import { statusSeguro } from "@/app/api/admin/_lib/status-seguro";
 import {
   ApiError,
+  cabecalhosDoServidor,
   lerConfiguracao,
   removerAnexoDaAula,
   salvarAnexoDaAula,
@@ -103,7 +104,8 @@ export async function GET(requisicao: Request, { params }: Props) {
     return NextResponse.json({ erro: encontro.erro }, { status: 422 });
   }
 
-  const { baseUrl, apiKey } = lerConfiguracao();
+  const { baseUrl } = lerConfiguracao();
+  const cabecalhos = await cabecalhosDoServidor();
 
   // So' `inline` e `data` atravessam: sao os unicos parametros que a rota do
   // backend conhece, e repassar a query inteira levaria lixo do cliente pra API.
@@ -117,7 +119,7 @@ export async function GET(requisicao: Request, { params }: Props) {
   let resposta: Response;
   try {
     resposta = await fetch(`${baseUrl}/admin/aulas/${aulaId}/anexo${query}`, {
-      headers: { "X-API-Key": apiKey },
+      headers: cabecalhos,
       cache: "no-store",
     });
   } catch {

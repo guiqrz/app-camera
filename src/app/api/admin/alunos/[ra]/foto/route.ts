@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { cabecalhosDaNuvem } from "@/lib/api";
+
 /**
  * Ponte da miniatura do aluno. O navegador aponta um <img> para AQUI; esta
  * rota (no servidor) busca a imagem na API do CUPCAM com a X-API-Key e repassa
@@ -26,7 +28,7 @@ export async function GET(_requisicao: Request, { params }: Params) {
   try {
     resposta = await fetch(
       `${baseUrl}/admin/alunos/${encodeURIComponent(ra)}/foto`,
-      { headers: { "X-API-Key": apiKey }, cache: "no-store" },
+      { headers: await cabecalhosDaNuvem(apiKey), cache: "no-store" },
     );
   } catch {
     return NextResponse.json({ erro: "Falha ao falar com a API." }, { status: 502 });

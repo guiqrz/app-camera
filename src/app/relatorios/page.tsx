@@ -1,8 +1,8 @@
-import Link from "next/link";
 
-import { listarTurmas } from "@/lib/api";
-import { AppShell } from "@/components/layout/app-shell";
 import { PonteTurmaPadrao } from "@/components/layout/ponte-turma-padrao";
+import { listarTurmas } from "@/lib/api";
+
+import { AvisoSemTurmas } from "../aulas/aviso-sem-turmas";
 
 import CarregandoRelatorioGeral from "./turma/[turmaId]/loading";
 
@@ -23,24 +23,10 @@ export default async function RelatoriosPage() {
 
   if (turmas.length === 0) {
     return (
-      <AppShell titulo="Relatórios">
-        <div className="border-border-default mx-auto max-w-lg rounded-2xl border border-dashed p-10 text-center">
-          <h1 className="text-text text-xl font-semibold">
-            Nenhuma turma cadastrada
-          </h1>
-          <p className="text-text-body mt-3 text-sm leading-relaxed">
-            Cadastre uma turma para ver o relatório consolidado das aulas.
-          </p>
-          {/* Estado vazio que abre a saida, em vez de so' descreve-la. */}
-          <Link
-            href="/coordenacao"
-            className="mt-6 inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-colors"
-            style={{ background: "var(--primary)" }}
-          >
-            Cadastrar turma
-          </Link>
-        </div>
-      </AppShell>
+      <AvisoSemTurmas
+        titulo="Relatórios"
+        descricao="Cadastre uma turma para ver o relatório consolidado das aulas."
+      />
     );
   }
 

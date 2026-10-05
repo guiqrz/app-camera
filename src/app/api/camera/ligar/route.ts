@@ -4,8 +4,9 @@ import {
   mensagemDeCameraOffline,
   statusSeguro,
 } from "@/app/api/admin/_lib/status-seguro";
-import { ApiError, ConfiguracaoAusenteError, ligarCamera } from "@/lib/api";
+import { ApiError, ConfiguracaoAusenteError, ligarCamera, validarSessao } from "@/lib/api";
 import { ehModoCamera } from "@/lib/modos-camera";
+import { lerSessaoDoServidor } from "@/lib/sessao-cookie";
 import type { ModoCamera } from "@/lib/types";
 
 /**
@@ -51,10 +52,31 @@ async function lerEscolhas(
   }
 }
 
+/**
+ * Id de quem esta' ligando a camera, perguntado ao backend da NUVEM.
+ *
+ * O cookie nao guarda o id (so' nome, email e papel), e o notebook nao tem as
+ * sessoes de login pra descobrir sozinho -- por isso a ponte pergunta e manda
+ * pronto. Sem resposta (nuvem fora do ar), a camera liga mesmo assim: a sessao
+ * nasce sem dono e fica visivel so' pra administracao. Travar o Ligar por causa
+ * da nuvem derrubaria a aula por um motivo que nao e' da aula.
+ */
+async function quemEstaLigando(): Promise<number | undefined> {
+  const lida = await lerSessaoDoServidor();
+  if (!lida) return undefined;
+  try {
+    return (await validarSessao(lida.sessao))?.id;
+  } catch (causa) {
+    console.error("[camera/ligar] nao deu pra saber quem ligou; sessao nasce sem dono:", causa);
+    return undefined;
+  }
+}
+
 export async function POST(requisicao: Request) {
   const { turmaId, modo, audio } = await lerEscolhas(requisicao);
+  const professorId = await quemEstaLigando();
   try {
-    return NextResponse.json(await ligarCamera(turmaId, modo, audio));
+    return NextResponse.json(await ligarCamera(turmaId, modo, audio, professorId));
   } catch (causa) {
     if (causa instanceof ConfiguracaoAusenteError) {
       return NextResponse.json(

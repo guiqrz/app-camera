@@ -4,11 +4,13 @@ import { useEffect, useRef, useState } from "react";
 
 import { CampoComExemplo } from "@/components/ui/campo-com-exemplo";
 import { EtiquetaMateria } from "@/components/ui/etiqueta-materia";
-import type { Aula, Materia, NovaAula } from "@/lib/types";
+import type { Aula, Materia, NovaAula, ProfessorDaLista } from "@/lib/types";
 import type { Turno } from "@/lib/turnos";
 
 /** Valor do <option> "Sem matéria" — vira `materia_id: null` no envio. */
 const SEM_MATERIA = "";
+/** Valor do <option> "Sem professor" — vira `professor_id: null` no envio. */
+const SEM_PROFESSOR = "";
 
 type FormularioAulaProps = {
   /** Dia da coluna onde o formulario abriu. 0 = domingo ... 6 = sabado. */
@@ -17,6 +19,11 @@ type FormularioAulaProps = {
   aula?: Aula | null;
   /** Materias cadastradas, pra popular o dropdown. Lista vazia e' valida. */
   materias: Materia[];
+  /**
+   * Quem pode ser dono da aula (papeis, 03/10/2026). Ausente = o campo nem
+   * aparece e o envio nao mexe no dono.
+   */
+  professores?: ProfessorDaLista[];
   /** Turno de referencia — so' alimenta o exemplo que o Tab preenche. */
   turno: Turno;
   aoCancelar: () => void;
@@ -47,6 +54,7 @@ export function FormularioAula({
   diaSemana,
   aula,
   materias,
+  professores,
   turno,
   aoCancelar,
   aoSalvar,
@@ -60,6 +68,16 @@ export function FormularioAula({
     // a materia da aula em silencio (substituicao total).
     aula?.materia_id == null ? SEM_MATERIA : String(aula.materia_id),
   );
+  // Mesmo cuidado da materia: abre com o dono atual, senao salvar o horario
+  // tiraria o professor da aula sem ninguem pedir.
+  const professorInicial = aula?.professor_id == null ? SEM_PROFESSOR : String(aula.professor_id);
+  const [professorId, setProfessorId] = useState(professorInicial);
+  // Dono atual que saiu da lista (conta desativada): continua como opcao, pra
+  // o select nao mentir mostrando "Sem professor".
+  const donoForaDaLista =
+    professores && aula?.professor_id != null && !professores.some((p) => p.id === aula.professor_id)
+      ? { id: aula.professor_id, nome: `${aula.professor ?? "Conta"} (inativa)` }
+      : null;
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
 
@@ -96,6 +114,11 @@ export function FormularioAula({
       hora_fim: horaFim,
       // Sempre explicito, inclusive null — ver o aviso no JSDoc do componente.
       materia_id: materiaId === SEM_MATERIA ? null : Number(materiaId),
+      // So' quando o dono MUDOU: sem o campo o backend mantem quem esta. Assim
+      // editar o horario de uma aula cujo dono foi desativado nao e' recusado.
+      ...(professores && professorId !== professorInicial
+        ? { professor_id: professorId === SEM_PROFESSOR ? null : Number(professorId) }
+        : {}),
     };
 
     setEnviando(true);
@@ -172,6 +195,32 @@ export function FormularioAula({
           </span>
         )}
       </label>
+
+      {professores && (
+        <label className="flex flex-col gap-1.5">
+          <span className="text-text-muted text-xs font-semibold">Professor</span>
+          <select
+            value={professorId}
+            onChange={(evento) => setProfessorId(evento.target.value)}
+            className="text-text w-full bg-transparent px-3 py-2 text-sm outline-none"
+            style={{
+              border: "1px solid var(--border)",
+              borderRadius: "var(--radius-sm)",
+            }}
+            disabled={enviando}
+          >
+            <option value={SEM_PROFESSOR}>Sem professor</option>
+            {donoForaDaLista && (
+              <option value={donoForaDaLista.id}>{donoForaDaLista.nome}</option>
+            )}
+            {professores.map((professor) => (
+              <option key={professor.id} value={professor.id}>
+                {professor.nome}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
 
       {erro && (
         <p
